@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block title %}Reportes{% endblock %}
+{% block page_title %}Reportes y Estadísticas{% endblock %}
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card p-3 text-center h-100">
+      <div class="fs-2 fw-bold text-success">{{ reporte.tasa_ocupacion }}%</div>
+      <div class="text-muted small">Tasa de ocupación (Hoy)</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3 text-center h-100">
+      <div class="fs-2 fw-bold text-info">{{ reporte.tasa_semanal }}%</div>
+      <div class="text-muted small">Tasa de ocupación (Estimado Semanal)</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3 text-center h-100">
+      <div class="fs-2 fw-bold text-primary">{{ reporte.habitaciones_ocupadas }}</div>
+      <div class="text-muted small">Habitaciones ocupadas</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3 text-center h-100">
+      <div class="fs-2 fw-bold text-warning">{{ reporte.total_habitaciones }}</div>
+      <div class="text-muted small">Total habitaciones</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-8">
+    <div class="card p-3 h-100">
+      <h6 class="mb-3">Ocupación por Tipo de Habitación</h6>
+      <canvas id="ocupacionChart" height="100"></canvas>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card p-3 h-100">
+      <h6 class="mb-3">Revenue Estimado (Estancias Activas)</h6>
+      {% for tipo, monto in reporte.revenue_por_tipo.items %}
+      <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+        <span>{{ tipo }}</span>
+        <strong class="text-success">S/. {{ monto|floatformat:2 }}</strong>
+      </div>
+      {% empty %}
+      <p class="text-muted small">No hay estancias activas generando revenue hoy.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const ctx = document.getElementById('ocupacionChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: {{ reporte.tipos_labels|safe }},
+            datasets: [{
+                label: 'Habitaciones Ocupadas',
+                data: {{ reporte.tipos_data|safe }},
+                backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                borderColor: 'rgba(59, 130, 246, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1 } }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

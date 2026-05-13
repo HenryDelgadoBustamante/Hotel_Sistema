@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}Huéspedes{% endblock %}
+{% block page_title %}Gestión de Huéspedes{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3">
+  <form class="d-flex gap-2" method="get">
+    <input type="text" name="q" value="{{ query }}" class="form-control form-control-sm" placeholder="Buscar por nombre o documento..." style="width:280px">
+    <button type="submit" class="btn btn-sm btn-outline-primary">Buscar</button>
+    {% if query %}<a href="/huespedes/" class="btn btn-sm btn-outline-secondary">Limpiar</a>{% endif %}
+  </form>
+  <a href="/huespedes/nuevo/" class="btn btn-primary"><i class="bi bi-person-plus me-1"></i>Nuevo huésped</a>
+</div>
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead class="table-light">
+        <tr><th>#</th><th>Nombre completo</th><th>Documento</th><th>Email</th><th>Teléfono</th><th>Nacionalidad</th><th>Acciones</th></tr>
+      </thead>
+      <tbody>
+        {% for h in huespedes %}
+        <tr>
+          <td>{{ h.id }}</td>
+          <td><strong>{{ h.nombres }} {{ h.apellidos }}</strong></td>
+          <td><span class="badge bg-light text-dark">{{ h.tipo_doc }}</span> {{ h.num_doc }}</td>
+          <td>{{ h.email|default:"—" }}</td>
+          <td>{{ h.telefono|default:"—" }}</td>
+          <td>{{ h.nacionalidad }}</td>
+          <td>
+            <a href="/huespedes/{{ h.id }}/editar/" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+            <a href="/reservas/nueva/?huesped={{ h.id }}" class="btn btn-sm btn-outline-success"><i class="bi bi-calendar-plus"></i></a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center text-muted py-4">No se encontraron huéspedes.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Housekeeping{% endblock %}
+{% block page_title %}Housekeeping - Habitaciones por Limpiar{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3 align-items-center">
+  <form method="get" class="d-flex gap-2">
+    <select name="piso" class="form-select form-select-sm" onchange="this.form.submit()">
+      <option value="">Todos los pisos</option>
+      {% for p in pisos %}
+      <option value="{{ p }}" {% if piso_filtro == p|stringformat:"s" %}selected{% endif %}>Piso {{ p }}</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+
+<div class="row g-3">
+  {% for hab in habitaciones %}
+  <div class="col-md-3">
+    <div class="card p-3 border-warning border-start border-4 shadow-sm text-center">
+      <h3 class="mb-0">{{ hab.numero }}</h3>
+      <p class="text-muted small mb-2">Piso {{ hab.piso }} - {{ hab.tipo.nombre }}</p>
+      <form method="post" action="/housekeeping/{{ hab.id }}/estado/">
+        {% csrf_token %}
+        <input type="hidden" name="estado" value="DISPONIBLE">
+        <button type="submit" class="btn btn-sm btn-success w-100" onclick="return confirm('¿Marcar habitación {{ hab.numero }} como LISTA?')">
+          <i class="bi bi-check-circle me-1"></i>Marcar LISTA
+        </button>
+      </form>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="alert alert-success text-center">
+      <i class="bi bi-stars me-2 fs-4"></i>No hay habitaciones pendientes de limpieza en este filtro. ¡Todo listo!
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

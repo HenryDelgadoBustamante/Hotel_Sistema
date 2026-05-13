@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card" style="background: #10b981;">
+      <div class="fs-2 fw-bold">{{ stats.disponibles }}</div>
+      <div>Habitaciones disponibles</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card" style="background: #ef4444;">
+      <div class="fs-2 fw-bold">{{ stats.ocupadas }}</div>
+      <div>Habitaciones ocupadas</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card" style="background: #f59e0b;">
+      <div class="fs-2 fw-bold">{{ stats.reservas_hoy }}</div>
+      <div>Reservas hoy</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card" style="background: #6366f1;">
+      <div class="fs-2 fw-bold">{{ stats.tasa_ocupacion }}%</div>
+      <div>Tasa de ocupación</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-8">
+    <div class="card p-3">
+      <h6 class="mb-3"><i class="bi bi-grid-3x3-gap me-2"></i>Plano del hotel</h6>
+      <div class="d-flex flex-wrap gap-2">
+        {% for hab in habitaciones %}
+        <a href="/reservas/nueva/?habitacion={{ hab.id }}" class="text-decoration-none">
+          <div class="hab-card hab-{{ hab.estado|lower }}">
+            <i class="bi bi-door-closed fs-5"></i>
+            <span>{{ hab.numero }}</span>
+            <small>P{{ hab.piso }}</small>
+          </div>
+        </a>
+        {% empty %}
+        <p class="text-muted">No hay habitaciones registradas.</p>
+        {% endfor %}
+      </div>
+      <div class="d-flex gap-3 mt-3 small">
+        <span><span class="badge" style="background:#10b981">●</span> Disponible</span>
+        <span><span class="badge" style="background:#ef4444">●</span> Ocupada</span>
+        <span><span class="badge" style="background:#f59e0b">●</span> Limpieza</span>
+        <span><span class="badge" style="background:#6366f1">●</span> Mantenimiento</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-white pb-0 pt-3 border-bottom-0">
+        <h6 class="mb-3"><i class="bi bi-clock-history me-2"></i>Panel de Reservas</h6>
+        <ul class="nav nav-tabs border-bottom-0" id="reservaTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active py-2 px-3 small" data-bs-toggle="tab" data-bs-target="#llegadas" type="button">Llegadas</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link py-2 px-3 small" data-bs-toggle="tab" data-bs-target="#encasa" type="button">En Casa</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link py-2 px-3 small" data-bs-toggle="tab" data-bs-target="#salidas" type="button">Salidas</button>
+          </li>
+        </ul>
+      </div>
+      <div class="card-body p-0 border-top">
+        <div class="tab-content" id="reservaTabsContent">
+          <!-- LLEGADAS -->
+          <div class="tab-pane fade show active p-3" id="llegadas" role="tabpanel">
+            {% for r in llegadas_hoy %}
+            <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+              <div>
+                <div class="fw-semibold small">{{ r.huesped.nombres }} {{ r.huesped.apellidos }}</div>
+                <small class="text-muted">Hab. {{ r.habitacion.numero|default:"Sin asignar" }}</small>
+              </div>
+              <div class="text-end">
+                <span class="badge badge-{{ r.estado|lower }} mb-1 d-inline-block">{{ r.estado }}</span><br>
+                <a href="/reservas/{{ r.id }}/checkin/" class="btn btn-sm btn-success px-2 py-0" style="font-size:0.75rem;">Check-in</a>
+              </div>
+            </div>
+            {% empty %}
+            <p class="text-muted small mb-0">No hay llegadas pendientes hoy.</p>
+            {% endfor %}
+            <div class="mt-3 text-center">
+              <a href="/checkin/" class="btn btn-sm btn-outline-primary w-100">Buscador de Check-In</a>
+            </div>
+          </div>
+          <!-- EN CASA -->
+          <div class="tab-pane fade p-3" id="encasa" role="tabpanel">
+            {% for e in en_casa %}
+            <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+              <div>
+                <div class="fw-semibold small">{{ e.reserva.huesped.nombres }} {{ e.reserva.huesped.apellidos }}</div>
+                <small class="text-muted">Hab. {{ e.habitacion.numero }}</small>
+              </div>
+              <div>
+                 <a href="/estancias/{{ e.id }}/folio/" class="btn btn-sm btn-outline-primary px-2 py-0" style="font-size:0.75rem;">Ver Folio</a>
+              </div>
+            </div>
+            {% empty %}
+            <p class="text-muted small mb-0">No hay huéspedes en casa.</p>
+            {% endfor %}
+          </div>
+          <!-- SALIDAS -->
+          <div class="tab-pane fade p-3" id="salidas" role="tabpanel">
+            {% for e in salidas_hoy %}
+            <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+              <div>
+                <div class="fw-semibold small">{{ e.reserva.huesped.nombres }} {{ e.reserva.huesped.apellidos }}</div>
+                <small class="text-muted">Hab. {{ e.habitacion.numero }}</small>
+              </div>
+              <div>
+                <a href="/estancias/{{ e.id }}/checkout/" onclick="return confirm('¿Confirmar check-out?')" class="btn btn-sm btn-danger px-2 py-0" style="font-size:0.75rem;">Check-out</a>
+              </div>
+            </div>
+            {% empty %}
+            <p class="text-muted small mb-0">No hay salidas programadas para hoy.</p>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

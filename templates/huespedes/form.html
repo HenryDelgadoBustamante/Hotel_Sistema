@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}{% if huesped %}Editar{% else %}Nuevo{% endif %} Huésped{% endblock %}
+{% block page_title %}{% if huesped %}Editar Huésped{% else %}Nuevo Huésped{% endif %}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-7">
+    <div class="card p-4">
+      <form method="post">
+        {% csrf_token %}
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Tipo de documento</label>
+            <select name="tipo_doc" class="form-select" required>
+              <option value="DNI" {% if huesped.tipo_doc == 'DNI' %}selected{% endif %}>DNI</option>
+              <option value="PASAPORTE" {% if huesped.tipo_doc == 'PASAPORTE' %}selected{% endif %}>Pasaporte</option>
+              <option value="CE" {% if huesped.tipo_doc == 'CE' %}selected{% endif %}>Carné de Extranjería</option>
+            </select>
+          </div>
+          <div class="col-md-8">
+            <label class="form-label">Número de documento</label>
+            <input type="text" name="num_doc" value="{{ huesped.num_doc|default:'' }}" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Nombres</label>
+            <input type="text" name="nombres" value="{{ huesped.nombres|default:'' }}" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Apellidos</label>
+            <input type="text" name="apellidos" value="{{ huesped.apellidos|default:'' }}" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" value="{{ huesped.email|default:'' }}" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Teléfono</label>
+            <input type="text" name="telefono" value="{{ huesped.telefono|default:'' }}" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Nacionalidad</label>
+            <input type="text" name="nacionalidad" value="{{ huesped.nacionalidad|default:'Peruana' }}" class="form-control">
+          </div>
+          <div class="col-12 mt-2">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Guardar</button>
+            <a href="/huespedes/" class="btn btn-outline-secondary ms-2">Cancelar</a>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

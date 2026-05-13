@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+{% block title %}Plano del Hotel{% endblock %}
+{% block page_title %}Vista General Recepción{% endblock %}
+{% block content %}
+
+<style>
+  .hab-cell {
+    width: 160px; min-height: 110px; border-radius: 10px; padding: 10px;
+    cursor: pointer; position: relative; transition: transform .15s, box-shadow .15s;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .hab-cell:hover { transform: scale(1.03); box-shadow: 0 4px 16px rgba(0,0,0,.2); }
+  .hab-cell .hab-num { font-size: 22px; font-weight: 700; }
+  .hab-cell .hab-tipo { font-size: 12px; font-weight: 500; text-transform: uppercase; opacity: .85; }
+  .hab-cell .hab-footer { font-size: 12px; font-weight: 600; padding: 4px 8px; border-radius: 6px;
+    background: rgba(255,255,255,.2); display: flex; align-items: center; gap: 5px; }
+  .hab-cell .hab-icon { font-size: 28px; position: absolute; right: 10px; top: 10px; opacity: .25; }
+  .hab-cell .badge-24 { position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,.3);
+    font-size: 10px; padding: 1px 5px; border-radius: 4px; font-weight: 600; }
+
+  /* Colores por estado */
+  .estado-disponible  { background: #16a34a; color: #fff; }
+  .estado-ocupada     { background: #ea580c; color: #fff; }
+  .estado-vencida     { background: #dc2626; color: #fff; }
+  .estado-limpieza    { background: #0ea5e9; color: #fff; }
+  .estado-reservada   { background: #2563eb; color: #fff; }
+  .estado-retraso     { background: #7c3aed; color: #fff; }
+  .estado-mantenimiento { background: #6b7280; color: #fff; }
+
+  .filtro-tab { cursor: pointer; padding: 6px 16px; border-radius: 6px; font-size: 13px;
+    font-weight: 500; border: 1px solid #dee2e6; background: #fff; }
+  .filtro-tab.active { background: #1a1f2e; color: #fff; border-color: #1a1f2e; }
+
+  .leyenda-item { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .leyenda-dot { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+
+  .piso-titulo { font-size: 13px; font-weight: 600; color: #6b7280; letter-spacing: .05em;
+    text-transform: uppercase; margin-bottom: 10px; padding-bottom: 6px;
+    border-bottom: 1px solid #e5e7eb; }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <div class="d-flex gap-2 flex-wrap" id="filtros">
+    <button class="filtro-tab active" onclick="filtrar('todos', this)">Todos</button>
+    {% for piso in pisos %}
+    <button class="filtro-tab" onclick="filtrar('piso-{{ piso }}', this)">Piso {{ piso }}</button>
+    {% endfor %}
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'habitacion_nueva' %}" class="btn btn-sm btn-primary">
+      <i class="bi bi-plus-lg me-1"></i>Nueva habitación
+    </a>
+    <a href="/habitaciones/?vista=tabla" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-list-ul me-1"></i>Vista tabla
+    </a>
+  </div>
+</div>
+
+{% if not habitaciones %}
+<div class="alert alert-info mt-4 text-center">
+  <h5>No hay habitaciones registradas en el sistema.</h5>
+  <p>Debes crear habitaciones para que aparezcan en este panel de recepción.</p>
+  <a href="{% url 'habitacion_nueva' %}" class="btn btn-primary">Agregar mi primera habitación</a>
+</div>
+{% endif %}
+
+{% regroup habitaciones by piso as pisos_list %}
+{% for piso in pisos_list %}
+<div class="piso-bloque mb-4" id="piso-{{ piso.grouper }}">
+  <div class="piso-titulo"><i class="bi bi-layers me-1"></i>Piso {{ piso.grouper }}</div>
+  <div class="d-flex flex-wrap gap-3">
+    {% for hab in piso.list %}
+
+    <div class="hab-cell {% if hab.estado_visual == 'DISPONIBLE' %}estado-disponible{% elif hab.estado_visual == 'OCUPADA' %}estado-ocupada{% elif hab.estado_visual == 'LIMPIEZA' %}estado-limpieza{% elif hab.estado_visual == 'MANTENIMIENTO' %}estado-mantenimiento{% elif hab.estado_visual == 'VENCIDA' %}estado-vencida{% elif hab.estado_visual == 'RESERVADA' %}estado-reservada{% elif hab.estado_visual == 'RETRASO' %}estado-retraso{% else %}estado-disponible{% endif %}"
+         data-bs-toggle="modal" data-bs-target="#modal-{{ hab.id }}">
+      <div>
+        <div class="hab-num">{{ hab.numero }}</div>
+        <div class="hab-tipo">{{ hab.tipo.nombre }}</div>
+      </div>
+      <i class="bi {% if hab.estado_visual == 'DISPONIBLE' %}bi-door-open{% elif hab.estado_visual == 'OCUPADA' %}bi-person-fill{% elif hab.estado_visual == 'LIMPIEZA' %}bi-stars{% elif hab.estado_visual == 'MANTENIMIENTO' %}bi-tools{% elif hab.estado_visual == 'VENCIDA' %}bi-exclamation-octagon{% elif hab.estado_visual == 'RESERVADA' %}bi-clock-history{% elif hab.estado_visual == 'RETRASO' %}bi-clock-fill{% else %}bi-door-open{% endif %} hab-icon"></i>
+      <div class="hab-footer">
+        <i class="bi {% if hab.estado_visual == 'DISPONIBLE' %}bi-door-open{% elif hab.estado_visual == 'OCUPADA' %}bi-person-fill{% elif hab.estado_visual == 'LIMPIEZA' %}bi-stars{% elif hab.estado_visual == 'MANTENIMIENTO' %}bi-tools{% elif hab.estado_visual == 'VENCIDA' %}bi-exclamation-octagon{% elif hab.estado_visual == 'RESERVADA' %}bi-clock-history{% elif hab.estado_visual == 'RETRASO' %}bi-clock-fill{% else %}bi-door-open{% endif %}" style="font-size:13px"></i>
+        {% if hab.estado_visual == 'DISPONIBLE' %}Disponible{% elif hab.estado_visual == 'OCUPADA' %}Ocupada{% elif hab.estado_visual == 'LIMPIEZA' %}Limpieza{% elif hab.estado_visual == 'MANTENIMIENTO' %}Mantenimiento{% elif hab.estado_visual == 'VENCIDA' %}Tiempo Vencido{% elif hab.estado_visual == 'RESERVADA' %}Prox. Llegada{% elif hab.estado_visual == 'RETRASO' %}Retraso Llegada{% else %}Disponible{% endif %}
+      </div>
+    </div>
+
+    <!-- Modal detalle -->
+    <div class="modal fade" id="modal-{{ hab.id }}" tabindex="-1">
+      <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+          <div class="modal-header py-2">
+            <h6 class="modal-title">Habitación {{ hab.numero }}</h6>
+            <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body small">
+            <div class="d-flex justify-content-between mb-2">
+              <span class="text-muted">Tipo</span><strong>{{ hab.tipo.nombre }}</strong>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+              <span class="text-muted">Piso</span><strong>{{ hab.piso }}</strong>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+              <span class="text-muted">Capacidad</span><strong>{{ hab.tipo.capacidad }} personas</strong>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+              <span class="text-muted">Precio</span><strong>S/. {{ hab.tipo.precio_base }}/noche</strong>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Estado</span>
+              <span class="badge px-2" style="background:
+                {% if hab.estado == 'DISPONIBLE' %}#16a34a
+                {% elif hab.estado == 'OCUPADA' %}#ea580c
+                {% elif hab.estado == 'LIMPIEZA' %}#0ea5e9
+                {% else %}#6b7280{% endif %}">
+                {{ hab.estado }}
+              </span>
+            </div>
+          </div>
+          <div class="modal-footer py-2 flex-column gap-1">
+            {% if hab.estado == 'DISPONIBLE' %}
+            <a href="/reservas/nueva/?habitacion={{ hab.id }}" class="btn btn-sm btn-success w-100">
+              <i class="bi bi-calendar-plus me-1"></i>Crear reserva
+            </a>
+            {% elif hab.estado == 'OCUPADA' %}
+            {% for e in hab.estancias.all %}
+              {% if e.estado == 'ACTIVA' %}
+              <a href="/estancias/{{ e.id }}/folio/" class="btn btn-sm btn-primary w-100">
+                <i class="bi bi-receipt me-1"></i>Ver folio
+              </a>
+              {% endif %}
+            {% endfor %}
+            {% endif %}
+            <form method="post" action="/housekeeping/{{ hab.id }}/estado/" class="w-100 d-flex gap-1">
+              {% csrf_token %}
+              <select name="estado" class="form-select form-select-sm">
+                <option value="DISPONIBLE" {% if hab.estado == 'DISPONIBLE' %}selected{% endif %}>Disponible</option>
+                <option value="LIMPIEZA" {% if hab.estado == 'LIMPIEZA' %}selected{% endif %}>Limpieza</option>
+                <option value="MANTENIMIENTO" {% if hab.estado == 'MANTENIMIENTO' %}selected{% endif %}>Mantenimiento</option>
+              </select>
+              <button type="submit" class="btn btn-sm btn-outline-secondary">OK</button>
+            </form>
+            <div class="d-flex gap-1 w-100 mt-2 pt-2 border-top">
+              <a href="{% url 'habitacion_editar' hab.id %}" class="btn btn-sm btn-outline-info w-100">
+                <i class="bi bi-pencil me-1"></i>Editar
+              </a>
+              <button class="btn btn-sm btn-outline-secondary w-100" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+
+<!-- Leyenda -->
+<div class="card p-3 mt-2">
+  <div class="d-flex flex-wrap gap-3">
+    <div class="leyenda-item"><div class="leyenda-dot" style="background:#16a34a"></div>Disponible</div>
+    <div class="leyenda-item"><div class="leyenda-dot" style="background:#ea580c"></div>Ocupada</div>
+    <div class="leyenda-item"><div class="leyenda-dot" style="background:#dc2626"></div>Tiempo vencido</div>
+    <div class="leyenda-item"><div class="leyenda-dot" style="background:#0ea5e9"></div>En limpieza</div>
+    <div class="leyenda-item"><div class="leyenda-dot" style="background:#2563eb"></div>Reservada (próx. llegada)</div>
+    <div class="leyenda-item"><div class="leyenda-dot" style="background:#7c3aed"></div>Reserva con retraso</div>
+    <div class="leyenda-item"><div class="leyenda-dot" style="background:#6b7280"></div>Mantenimiento</div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filtrar(bloque, btn) {
+  document.querySelectorAll('.filtro-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.piso-bloque').forEach(p => {
+    p.style.display = (bloque === 'todos' || p.id === bloque) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

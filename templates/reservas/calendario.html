@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}Calendario de Reservas{% endblock %}
+{% block page_title %}Calendario de Reservas{% endblock %}
+{% block content %}
+<style>
+.timeline-container { overflow-x: auto; position: relative; border: 1px solid #dee2e6; border-radius: 8px; background: #fff;}
+.timeline-header { display: flex; border-bottom: 2px solid #dee2e6; background: #f8f9fa; position: sticky; top: 0; z-index: 10; }
+.timeline-row { display: flex; border-bottom: 1px solid #dee2e6; position: relative; min-height: 50px; }
+.timeline-cell-hab { width: 150px; min-width: 150px; border-right: 2px solid #dee2e6; padding: 10px; font-weight: bold; background: #fff; position: sticky; left: 0; z-index: 5; display: flex; flex-direction: column; justify-content: center; }
+.timeline-cell-day { width: 60px; min-width: 60px; border-right: 1px solid #e9ecef; text-align: center; padding: 10px 0; font-size: 12px; }
+.timeline-event { position: absolute; top: 5px; height: 40px; border-radius: 4px; color: #fff; font-size: 12px; padding: 2px 8px; display: flex; align-items: center; overflow: hidden; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 2; cursor: pointer; transition: transform 0.2s; }
+.timeline-event:hover { transform: scale(1.02); z-index: 10; }
+</style>
+
+<div class="card p-3 mb-3">
+  <form method="get" class="row g-3 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label">Fecha de inicio</label>
+      <input type="date" name="fecha_inicio" value="{{ fecha_inicio|date:'Y-m-d' }}" class="form-control form-control-sm">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Tipo de Habitación</label>
+      <select name="tipo" class="form-select form-select-sm">
+        <option value="">Todos</option>
+        {% for t in tipos %}
+        <option value="{{ t.id }}" {% if tipo_id == t.id %}selected{% endif %}>{{ t.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <button type="submit" class="btn btn-sm btn-primary w-100">Filtrar</button>
+    </div>
+  </form>
+</div>
+
+<div class="timeline-container">
+  <div class="timeline-header">
+    <div class="timeline-cell-hab bg-light text-center align-items-center">Habitación</div>
+    {% for dia in dias %}
+    <div class="timeline-cell-day">
+      <strong>{{ dia|date:"d" }}</strong><br>
+      <span class="text-muted">{{ dia|date:"M" }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  
+  {% for hab in habitaciones %}
+  <div class="timeline-row">
+    <div class="timeline-cell-hab">
+      {{ hab.numero }}
+      <small class="text-muted fw-normal">{{ hab.tipo.nombre }}</small>
+    </div>
+    {% for dia in dias %}
+    <div class="timeline-cell-day"></div>
+    {% endfor %}
+    
+    {% for ev in eventos %}
+      {% if ev.habitacion_id == hab.id %}
+      <div class="timeline-event" style="left: calc(150px + {{ ev.offset }} * 60px); width: calc({{ ev.width }} * 60px); background-color: {{ ev.color }};" title="{{ ev.huesped }} ({{ ev.estado }})">
+        {{ ev.huesped }}
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% empty %}
+  <div class="p-4 text-center text-muted">No hay habitaciones registradas.</div>
+  {% endfor %}
+</div>
+
+<div class="d-flex gap-3 mt-3 small">
+  <span><span class="badge" style="background:#f59e0b">●</span> Pendiente</span>
+  <span><span class="badge" style="background:#3b82f6">●</span> Confirmada</span>
+  <span><span class="badge" style="background:#10b981">●</span> En casa (Check-in)</span>
+</div>
+{% endblock %}

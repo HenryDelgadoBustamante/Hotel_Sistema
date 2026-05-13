@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}Confirmar Check-In{% endblock %}
+{% block page_title %}Confirmar Check-In{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-7">
+    <div class="card p-4">
+      <h5 class="border-bottom pb-2 mb-3"><i class="bi bi-person-check me-2"></i>Confirmación de Check-In</h5>
+      
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <p class="mb-1 text-muted small">Huésped</p>
+          <h6>{{ reserva.huesped.nombres }} {{ reserva.huesped.apellidos }}</h6>
+          <p class="small">{{ reserva.huesped.tipo_doc }}: {{ reserva.huesped.num_doc }}</p>
+        </div>
+        <div class="col-md-6 text-md-end">
+          <p class="mb-1 text-muted small">Detalles de Reserva #{{ reserva.id }}</p>
+          <h6>{{ reserva.fecha_entrada }} a {{ reserva.fecha_salida }}</h6>
+          <p class="small">S/. {{ reserva.precio_total }}</p>
+        </div>
+      </div>
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-4">
+          <label class="form-label fw-bold">Asignar / Confirmar Habitación</label>
+          <select name="habitacion" class="form-select form-select-lg" required>
+            {% for hab in habitaciones %}
+            <option value="{{ hab.id }}" {% if reserva.habitacion_id == hab.id %}selected{% endif %}>
+              Habitación {{ hab.numero }} - {{ hab.tipo.nombre }} (Piso {{ hab.piso }})
+            </option>
+            {% empty %}
+            <option value="">No hay habitaciones disponibles de este tipo</option>
+            {% endfor %}
+          </select>
+          <div class="form-text">Si deseas cambiar la habitación preasignada, selecciona otra de la lista de disponibles.</div>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-success btn-lg w-100"><i class="bi bi-check-circle me-2"></i>Completar Check-In</button>
+          <a href="/checkin/" class="btn btn-outline-secondary btn-lg">Cancelar</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
