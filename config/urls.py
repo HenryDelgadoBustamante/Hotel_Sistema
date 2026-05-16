@@ -5,7 +5,7 @@ from django.conf.urls.static import static
 from django.shortcuts import redirect
 from views_frontend import (
     login_view, logout_view, dashboard, reservas_lista, reserva_nueva,
-    reserva_checkin, folio_view, agregar_cargo, checkout_view,
+    reserva_detalle, reserva_checkin, folio_view, agregar_cargo, checkout_view,
     housekeeping_view, housekeeping_estado, reportes_view,
     huespedes_lista, huesped_nuevo, huesped_editar,
     habitaciones_lista, habitacion_nueva, habitacion_editar,
@@ -64,6 +64,7 @@ urlpatterns = [
     path('habitaciones/<int:hab_id>/editar/', habitacion_editar, name='habitacion_editar'),
     path('estancias/', estancias_lista, name='estancias_lista'),
     path('reservas/', reservas_lista, name='reservas_lista'),
+    path('reservas/<int:reserva_id>/', reserva_detalle, name='reserva_detalle'),
     path('reservas/calendario/', reservas_calendario, name='reservas_calendario'),
     path('reservas/nueva/', reserva_nueva, name='reserva_nueva'),
     path('checkin/', checkin_search, name='checkin_search'),

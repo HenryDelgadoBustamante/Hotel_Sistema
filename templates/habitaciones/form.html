@@ -43,6 +43,19 @@
                         </div>
                     </div>
 
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Imagen referencial (URL)</label>
+                        <input type="url" name="imagen_url" class="form-control" value="{{ habitacion.imagen_url|default:'' }}" placeholder="https://res.cloudinary.com/...">
+                        <div class="form-text">Esta será la imagen principal. También se incluirá en la galería.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Galería de imágenes</label>
+                        <textarea name="imagenes_urls" class="form-control" rows="4" placeholder="Una URL por línea">{% if habitacion.imagenes_urls %}{% for url in habitacion.imagenes_urls %}{{ url }}{% if not forloop.last %}
+{% endif %}{% endfor %}{% endif %}</textarea>
+                        <div class="form-text">Pega enlaces de Cloudinary, uno por línea, para mostrar varias vistas de la habitación.</div>
+                    </div>
+
                     {% if habitacion %}
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Estado</label>

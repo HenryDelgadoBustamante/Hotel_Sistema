@@ -2,63 +2,118 @@
 {% block title %}Nueva Reserva{% endblock %}
 {% block page_title %}Nueva Reserva{% endblock %}
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-md-7">
-    <div class="card p-4">
-      <form method="post" id="reservaForm">
-        {% csrf_token %}
-        <div class="row g-3">
-          <div class="col-12">
-            <label class="form-label">Buscar Huésped (Documento o Nombre)</label>
-            <input class="form-control" list="huespedesList" name="huesped_doc" placeholder="Escribe para buscar..." required autocomplete="off">
-            <datalist id="huespedesList">
-              {% for h in huespedes %}
-              <option value="{{ h.num_doc }}">{{ h.nombres }} {{ h.apellidos }}</option>
-              {% endfor %}
-            </datalist>
-            <small class="text-muted">Si no existe, <a href="/huespedes/nuevo/" target="_blank">créalo aquí</a>.</small>
+<div class="form-shell">
+  <form method="post" id="reservaForm">
+    {% csrf_token %}
+    <div class="row g-3">
+      <div class="col-lg-7">
+        <div class="form-panel mb-3">
+          <div class="form-section-title">Huésped</div>
+          <label class="form-label">Buscar por documento o nombre</label>
+          <input type="hidden" name="huesped_id" id="huesped_id" value="{% if selected_huesped %}{{ selected_huesped.id }}{% endif %}">
+          <input class="form-control" name="huesped_doc" id="huesped_busqueda" value="{% if selected_huesped %}{{ selected_huesped.num_doc }} - {{ selected_huesped.nombres }} {{ selected_huesped.apellidos }}{% endif %}" placeholder="DNI, documento, nombres o apellidos" required autocomplete="off">
+          <div class="list-group mt-2 d-none" id="huesped_results"></div>
+          <div class="d-none" id="huespedesData">
+            {% for h in huespedes %}
+            <div data-id="{{ h.id }}" data-doc="{{ h.num_doc }}" data-name="{{ h.nombres }} {{ h.apellidos }}" data-tipo="{{ h.tipo_doc }}" data-email="{{ h.email|default:'' }}" data-telefono="{{ h.telefono|default:'' }}"></div>
+            {% endfor %}
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Fecha de entrada</label>
-            <input type="date" name="fecha_entrada" id="fecha_entrada" class="form-control" required>
+          <div class="d-flex justify-content-between align-items-center mt-2 gap-2 flex-wrap">
+            <div class="field-help" id="huesped_hint">Selecciona una coincidencia para asociar la reserva al huésped correcto.</div>
+            <a href="/huespedes/nuevo/" class="btn btn-sm btn-outline-primary d-none" id="registrar_huesped_btn">
+              <i class="bi bi-person-plus me-1"></i>Registrar huésped
+            </a>
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Fecha de salida</label>
-            <input type="date" name="fecha_salida" id="fecha_salida" class="form-control" required>
+        </div>
+
+        <div class="form-panel mb-3">
+          <div class="form-section-title">Horario</div>
+          <label class="form-label">Modalidad de alquiler</label>
+          <div class="btn-group w-100 mb-3" role="group" aria-label="Modalidad de reserva">
+            <input type="radio" class="btn-check" name="modalidad" id="modalidad_dia" value="DIA" checked>
+            <label class="btn btn-outline-primary" for="modalidad_dia"><i class="bi bi-calendar-day me-1"></i>Por día</label>
+            <input type="radio" class="btn-check" name="modalidad" id="modalidad_hora" value="HORA">
+            <label class="btn btn-outline-primary" for="modalidad_hora"><i class="bi bi-clock me-1"></i>Por horas</label>
           </div>
-          <div class="col-md-12">
-            <label class="form-label">Habitación (Disponibles)</label>
+
+          <div class="row g-3">
+            <div class="col-12 d-none" id="horario_hora_group">
+              <label class="form-label">Ingreso por horas</label>
+              <input type="datetime-local" name="fecha_hora_entrada" id="fecha_hora_entrada" class="form-control" value="{{ hora_actual }}">
+              <div class="field-help">Para alquiler inmediato, usa la hora real de ingreso. Ejemplo: 13:20.</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Fecha de entrada</label>
+              <input type="date" name="fecha_entrada" id="fecha_entrada" class="form-control" required>
+              <div class="field-help">Check-in operativo desde las 15:00. Si el huésped llega hoy, puedes hacer check-in inmediato.</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Fecha de salida</label>
+              <input type="date" name="fecha_salida" id="fecha_salida" class="form-control" required>
+              <div class="field-help">Check-out operativo hasta las 12:00.</div>
+            </div>
+            <div class="col-md-6 d-none" id="duracion_hora_group">
+              <label class="form-label">Duración</label>
+              <select name="duracion_horas" id="duracion_horas" class="form-select">
+                <option value="3" selected>3 horas</option>
+                <option value="6">6 horas</option>
+                <option value="9">9 horas</option>
+                <option value="12">12 horas</option>
+              </select>
+              <div class="field-help">10 min de tolerancia. Cargo extra desde 30 min de retraso.</div>
+            </div>
+            <div class="col-md-6 d-none" id="salida_hora_preview_group">
+              <label class="form-label">Salida estimada</label>
+              <input type="text" id="salida_hora_preview" class="form-control" readonly>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-5">
+        <div class="form-panel mb-3">
+          <div class="form-section-title">Habitación y tarifa</div>
+          <div class="mb-3">
+            <label class="form-label">Habitación</label>
             <select name="habitacion" id="habitacion" class="form-select" required>
               <option value="" data-precio="0">Seleccionar habitación...</option>
               {% for h in habitaciones %}
-              <option value="{{ h.id }}" data-precio="{{ h.tipo.precio_base }}">{{ h.numero }} — {{ h.tipo.nombre }} (S/. {{ h.tipo.precio_base }}/noche)</option>
+              <option value="{{ h.id }}" data-precio="{{ h.tipo.precio_base }}" {% if selected_habitacion_id == h.id|stringformat:"s" %}selected{% endif %}>{{ h.numero }} - {{ h.tipo.nombre }} - {{ h.get_estado_display }} (S/. {{ h.tipo.precio_base }}/noche)</option>
               {% endfor %}
             </select>
           </div>
-          <div class="col-md-6">
-            <label class="form-label">N° adultos</label>
-            <input type="number" name="num_adultos" class="form-control" value="1" min="1" required>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Origen</label>
-            <select name="origen" class="form-select">
-              <option value="DIRECTO">Directo</option>
-              <option value="WEB">Web</option>
-              <option value="AGENCIA">Agencia</option>
-            </select>
-          </div>
-          <div class="col-12 mt-3">
-            <div class="alert alert-info text-center fw-bold mb-0">
-              Tarifa Calculada: S/. <span id="tarifa_calculada">0.00</span>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Adultos</label>
+              <input type="number" name="num_adultos" class="form-control" value="1" min="1" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Origen</label>
+              <select name="origen" class="form-select">
+                <option value="DIRECTO">Directo</option>
+                <option value="WEB">Web</option>
+                <option value="AGENCIA">Agencia</option>
+              </select>
             </div>
           </div>
-          <div class="col-12 mt-3">
-            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-check-lg me-1"></i>Crear reserva</button>
+          <div class="summary-strip mt-3">
+            <div class="summary-label">Tarifa calculada</div>
+            <div class="summary-value fs-4">S/. <span id="tarifa_calculada">0.00</span></div>
           </div>
         </div>
-      </form>
+
+        <div class="d-grid gap-2">
+          <button type="submit" name="accion" value="guardar" class="btn btn-primary">
+            <i class="bi bi-check-lg me-1"></i>Crear reserva
+          </button>
+          <button type="submit" name="accion" value="checkin" class="btn btn-success">
+            <i class="bi bi-person-check me-1"></i>Crear y hacer check-in
+          </button>
+          <a href="/reservas/" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+      </div>
     </div>
-  </div>
+  </form>
 </div>
 {% endblock %}
 
@@ -67,31 +122,154 @@
 document.addEventListener("DOMContentLoaded", function() {
     const fEntrada = document.getElementById("fecha_entrada");
     const fSalida = document.getElementById("fecha_salida");
+    const fHoraEntrada = document.getElementById("fecha_hora_entrada");
+    const duracionHoras = document.getElementById("duracion_horas");
+    const salidaHoraPreview = document.getElementById("salida_hora_preview");
+    const horarioHoraGroup = document.getElementById("horario_hora_group");
+    const duracionHoraGroup = document.getElementById("duracion_hora_group");
+    const salidaHoraPreviewGroup = document.getElementById("salida_hora_preview_group");
+    const modalidadDia = document.getElementById("modalidad_dia");
+    const modalidadHora = document.getElementById("modalidad_hora");
     const selectHab = document.getElementById("habitacion");
     const tarifaSpan = document.getElementById("tarifa_calculada");
+    const inputHuesped = document.getElementById("huesped_busqueda");
+    const hiddenHuesped = document.getElementById("huesped_id");
+    const results = document.getElementById("huesped_results");
+    const registrarBtn = document.getElementById("registrar_huesped_btn");
+    const hint = document.getElementById("huesped_hint");
+    const huespedes = Array.from(document.querySelectorAll("#huespedesData > div")).map(el => ({
+        id: el.dataset.id,
+        doc: el.dataset.doc,
+        name: el.dataset.name,
+        tipo: el.dataset.tipo,
+        telefono: el.dataset.telefono,
+    }));
+
+    function toLocalDateInput(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+    }
+
+    function setDefaultDates() {
+        if (!fEntrada.value) fEntrada.value = toLocalDateInput(new Date());
+        if (!fSalida.value) {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            fSalida.value = toLocalDateInput(tomorrow);
+        }
+    }
+
+    function reservaUrl() {
+        const habitacionId = selectHab.value;
+        return habitacionId ? `/reservas/nueva/?habitacion=${encodeURIComponent(habitacionId)}` : "/reservas/nueva/";
+    }
+
+    function updateRegistrarLink(query) {
+        const params = new URLSearchParams();
+        params.set("next", reservaUrl());
+        if (query) params.set("q", query);
+        registrarBtn.href = `/huespedes/nuevo/?${params.toString()}`;
+    }
+
+    function renderHuespedes() {
+        const query = inputHuesped.value.trim().toLowerCase();
+        hiddenHuesped.value = "";
+        results.innerHTML = "";
+        updateRegistrarLink(inputHuesped.value.trim());
+
+        if (!query) {
+            results.classList.add("d-none");
+            registrarBtn.classList.add("d-none");
+            hint.textContent = "Selecciona una coincidencia para asociar la reserva al huésped correcto.";
+            return;
+        }
+
+        const matches = huespedes.filter(h =>
+            h.doc.toLowerCase().includes(query) ||
+            h.name.toLowerCase().includes(query)
+        ).slice(0, 6);
+
+        if (!matches.length) {
+            results.classList.add("d-none");
+            registrarBtn.classList.remove("d-none");
+            hint.textContent = "No hay coincidencias registradas. Puedes crear el huésped y volver a esta reserva.";
+            return;
+        }
+
+        results.classList.remove("d-none");
+        registrarBtn.classList.add("d-none");
+        hint.textContent = "Coincidencias encontradas:";
+        matches.forEach(h => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "list-group-item list-group-item-action d-flex justify-content-between align-items-start";
+            button.innerHTML = `<span><strong>${h.name}</strong><br><small class="text-muted">${h.tipo}: ${h.doc}${h.telefono ? " - " + h.telefono : ""}</small></span><i class="bi bi-check2 text-primary"></i>`;
+            button.addEventListener("click", () => {
+                hiddenHuesped.value = h.id;
+                inputHuesped.value = `${h.doc} - ${h.name}`;
+                results.classList.add("d-none");
+                registrarBtn.classList.add("d-none");
+                hint.textContent = "Huésped seleccionado.";
+            });
+            results.appendChild(button);
+        });
+    }
 
     function calcularTarifa() {
-        if (fEntrada.value && fSalida.value && selectHab.value) {
+        if (modalidadHora.checked && fHoraEntrada.value && selectHab.value) {
+            const selectedOption = selectHab.options[selectHab.selectedIndex];
+            const precioBase = parseFloat(selectedOption.getAttribute("data-precio")) || 0;
+            const horas = parseFloat(duracionHoras.value || "3");
+            const bloques = Math.max(1, Math.ceil(horas / 3));
+            tarifaSpan.textContent = (bloques * precioBase * 0.35).toFixed(2);
+
+            const salida = new Date(fHoraEntrada.value);
+            salida.setMinutes(salida.getMinutes() + horas * 60);
+            salidaHoraPreview.value = salida.toLocaleString("es-PE", { dateStyle: "short", timeStyle: "short" });
+            fEntrada.value = fHoraEntrada.value.slice(0, 10);
+            fSalida.value = toLocalDateInput(salida);
+        } else if (fEntrada.value && fSalida.value && selectHab.value) {
             const date1 = new Date(fEntrada.value);
             const date2 = new Date(fSalida.value);
-            const diffTime = Math.abs(date2 - date1);
+            const diffTime = date2 - date1;
             let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
             if (diffDays <= 0 || isNaN(diffDays)) diffDays = 1;
 
             const selectedOption = selectHab.options[selectHab.selectedIndex];
-            const precioBase = parseFloat(selectedOption.getAttribute('data-precio')) || 0;
-            
-            const total = diffDays * precioBase;
-            tarifaSpan.textContent = total.toFixed(2);
+            const precioBase = parseFloat(selectedOption.getAttribute("data-precio")) || 0;
+            tarifaSpan.textContent = (diffDays * precioBase).toFixed(2);
         } else {
             tarifaSpan.textContent = "0.00";
         }
     }
 
+    function toggleModalidad() {
+        const porHora = modalidadHora.checked;
+        horarioHoraGroup.classList.toggle("d-none", !porHora);
+        duracionHoraGroup.classList.toggle("d-none", !porHora);
+        salidaHoraPreviewGroup.classList.toggle("d-none", !porHora);
+        fEntrada.closest(".col-md-6").classList.toggle("d-none", porHora);
+        fSalida.closest(".col-md-6").classList.toggle("d-none", porHora);
+        fEntrada.readOnly = porHora;
+        if (!porHora) salidaHoraPreview.value = "";
+        calcularTarifa();
+    }
+
+    setDefaultDates();
+    inputHuesped.addEventListener("input", renderHuespedes);
     fEntrada.addEventListener("change", calcularTarifa);
     fSalida.addEventListener("change", calcularTarifa);
-    selectHab.addEventListener("change", calcularTarifa);
+    fHoraEntrada.addEventListener("change", calcularTarifa);
+    duracionHoras.addEventListener("change", calcularTarifa);
+    modalidadDia.addEventListener("change", toggleModalidad);
+    modalidadHora.addEventListener("change", toggleModalidad);
+    selectHab.addEventListener("change", () => {
+        calcularTarifa();
+        updateRegistrarLink(inputHuesped.value.trim());
+    });
+    toggleModalidad();
 });
 </script>
 {% endblock %}

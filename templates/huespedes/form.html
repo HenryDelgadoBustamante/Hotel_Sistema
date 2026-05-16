@@ -7,6 +7,7 @@
     <div class="card p-4">
       <form method="post">
         {% csrf_token %}
+        {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
         <div class="row g-3">
           <div class="col-md-4">
             <label class="form-label">Tipo de documento</label>
@@ -18,7 +19,7 @@
           </div>
           <div class="col-md-8">
             <label class="form-label">Número de documento</label>
-            <input type="text" name="num_doc" value="{{ huesped.num_doc|default:'' }}" class="form-control" required>
+            <input type="text" name="num_doc" value="{{ huesped.num_doc|default:initial_query }}" class="form-control" required>
           </div>
           <div class="col-md-6">
             <label class="form-label">Nombres</label>
@@ -42,7 +43,7 @@
           </div>
           <div class="col-12 mt-2">
             <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Guardar</button>
-            <a href="/huespedes/" class="btn btn-outline-secondary ms-2">Cancelar</a>
+            <a href="{% if next %}{{ next }}{% else %}/huespedes/{% endif %}" class="btn btn-outline-secondary ms-2">Cancelar</a>
           </div>
         </div>
       </form>

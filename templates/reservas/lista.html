@@ -29,8 +29,11 @@
           <td>{{ r.id }}</td>
           <td>{{ r.huesped.nombres }} {{ r.huesped.apellidos }}</td>
           <td>{{ r.habitacion.numero|default:"—" }}</td>
-          <td>{{ r.fecha_entrada }}</td>
-          <td>{{ r.fecha_salida }}</td>
+          <td>
+            {{ r.fecha_hora_entrada|date:"d/m/Y H:i" }}
+            <div class="small text-muted">{{ r.get_modalidad_display }}</div>
+          </td>
+          <td>{{ r.fecha_hora_salida|date:"d/m/Y H:i" }}</td>
           <td>S/. {{ r.precio_total }}</td>
           <td><span class="badge badge-{{ r.estado|lower }} px-2 py-1">{{ r.estado }}</span></td>
           <td>

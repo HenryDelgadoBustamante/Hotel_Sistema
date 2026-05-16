@@ -23,7 +23,7 @@ class HabitacionDisponibleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Habitacion
-        fields = ['id', 'numero', 'piso', 'estado', 'tipo', 'tipo_nombre', 'precio_base', 'capacidad']
+        fields = ['id', 'numero', 'piso', 'estado', 'imagen_url', 'imagenes_urls', 'tipo', 'tipo_nombre', 'precio_base', 'capacidad']
 
 
 class HotelSerializer(serializers.ModelSerializer):

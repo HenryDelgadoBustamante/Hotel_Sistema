@@ -51,6 +51,8 @@ class Habitacion(models.Model):
     numero = models.CharField(max_length=10)
     piso = models.IntegerField()
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default=DISPONIBLE)
+    imagen_url = models.URLField(blank=True, null=True)
+    imagenes_urls = models.JSONField(default=list, blank=True)
 
     class Meta:
         verbose_name = 'Habitación'

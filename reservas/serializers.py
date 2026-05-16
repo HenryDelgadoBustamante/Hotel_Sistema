@@ -20,12 +20,15 @@ class ReservaSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def get_noches(self, obj):
+        if obj.modalidad == Reserva.POR_HORA:
+            return 0
         return (obj.fecha_salida - obj.fecha_entrada).days
 
     def validate(self, data):
         fecha_entrada = data.get('fecha_entrada')
         fecha_salida = data.get('fecha_salida')
-        if fecha_entrada and fecha_salida:
+        modalidad = data.get('modalidad', Reserva.POR_DIA)
+        if modalidad == Reserva.POR_DIA and fecha_entrada and fecha_salida:
             if fecha_salida <= fecha_entrada:
                 raise serializers.ValidationError('La fecha de salida debe ser posterior a la de entrada.')
         return data

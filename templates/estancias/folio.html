@@ -9,6 +9,7 @@
         <div>
           <h5>{{ estancia.reserva.huesped.nombres }} {{ estancia.reserva.huesped.apellidos }}</h5>
           <small class="text-muted">Hab. {{ estancia.habitacion.numero }} · Check-in: {{ estancia.fecha_checkin|date:"d/m/Y H:i" }}</small>
+          <div class="small text-muted">Salida programada: {{ estancia.reserva.fecha_hora_salida|date:"d/m/Y H:i" }} · {{ estancia.reserva.get_modalidad_display }}</div>
         </div>
         <span class="badge bg-{{ estancia.estado|lower == 'activa'|yesno:'success,secondary' }} fs-6">{{ estancia.estado }}</span>
       </div>
@@ -33,6 +34,12 @@
           <tr class="fw-bold"><td colspan="2">Total</td><td class="text-end fs-5">S/. {{ folio.total }}</td></tr>
         </tfoot>
       </table>
+
+      {% if cargo_tardanza %}
+      <div class="alert alert-warning">
+        Salida tardía detectada: {{ minutos_tarde }} min. Cargo sugerido: S/. {{ cargo_tardanza }}.
+      </div>
+      {% endif %}
 
       {% if estancia.estado == 'ACTIVA' %}
       <div class="border-top pt-3 mt-2">

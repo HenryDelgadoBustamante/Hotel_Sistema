@@ -2,6 +2,24 @@
 {% block title %}Dashboard{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
 {% block content %}
+<style>
+  .dashboard-room-button { border: 0; background: transparent; padding: 0; }
+  .room-detail-photo {
+    aspect-ratio: 16 / 10;
+    width: 100%;
+    object-fit: cover;
+    background: #eef2f7;
+    border-radius: 8px;
+  }
+  .room-detail-placeholder {
+    aspect-ratio: 16 / 10;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #eef2f7, #d9e2ec);
+    color: #64748b;
+    display: grid;
+    place-items: center;
+  }
+</style>
 <div class="row g-3 mb-4">
   <div class="col-md-3">
     <div class="stat-card" style="background: #10b981;">
@@ -35,13 +53,102 @@
       <h6 class="mb-3"><i class="bi bi-grid-3x3-gap me-2"></i>Plano del hotel</h6>
       <div class="d-flex flex-wrap gap-2">
         {% for hab in habitaciones %}
-        <a href="/reservas/nueva/?habitacion={{ hab.id }}" class="text-decoration-none">
+        <button type="button" class="dashboard-room-button" data-bs-toggle="modal" data-bs-target="#dashboard-room-{{ hab.id }}" aria-label="Ver detalle de habitación {{ hab.numero }}">
           <div class="hab-card hab-{{ hab.estado|lower }}">
             <i class="bi bi-door-closed fs-5"></i>
             <span>{{ hab.numero }}</span>
             <small>P{{ hab.piso }}</small>
           </div>
-        </a>
+        </button>
+
+        <div class="modal fade" id="dashboard-room-{{ hab.id }}" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header">
+                <div>
+                  <h5 class="modal-title mb-0">Habitación {{ hab.numero }}</h5>
+                  <small class="text-muted">{{ hab.tipo.nombre }} · Piso {{ hab.piso }}</small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+              </div>
+              <div class="modal-body">
+                <div class="row g-4">
+                  <div class="col-md-6">
+                    {% if hab.imagenes_urls %}
+                    <div id="gallery-room-{{ hab.id }}" class="carousel slide" data-bs-ride="false">
+                      <div class="carousel-inner rounded-3">
+                        {% for image_url in hab.imagenes_urls %}
+                        <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                          <img src="{{ image_url }}" alt="Imagen {{ forloop.counter }} de la habitación {{ hab.numero }}" class="room-detail-photo">
+                        </div>
+                        {% endfor %}
+                      </div>
+                      {% if hab.imagenes_urls|length > 1 %}
+                      <button class="carousel-control-prev" type="button" data-bs-target="#gallery-room-{{ hab.id }}" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Anterior</span>
+                      </button>
+                      <button class="carousel-control-next" type="button" data-bs-target="#gallery-room-{{ hab.id }}" data-bs-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Siguiente</span>
+                      </button>
+                      <div class="small text-muted mt-2">{{ hab.imagenes_urls|length }} imágenes referenciales</div>
+                      {% endif %}
+                    </div>
+                    {% elif hab.imagen_url %}
+                    <img src="{{ hab.imagen_url }}" alt="Imagen referencial de la habitación {{ hab.numero }}" class="room-detail-photo">
+                    {% else %}
+                    <div class="room-detail-placeholder">
+                      <div class="text-center">
+                        <i class="bi bi-image fs-1 d-block mb-2"></i>
+                        <span class="small">Sin imagen referencial</span>
+                      </div>
+                    </div>
+                    {% endif %}
+                  </div>
+                  <div class="col-md-6">
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                      <span class="text-muted">Estado</span>
+                      <span class="badge {% if hab.estado == 'DISPONIBLE' %}bg-success{% elif hab.estado == 'OCUPADA' %}bg-danger{% elif hab.estado == 'LIMPIEZA' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ hab.get_estado_display }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                      <span class="text-muted">Tipo</span><strong>{{ hab.tipo.nombre }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                      <span class="text-muted">Capacidad</span><strong>{{ hab.tipo.capacidad }} personas</strong>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                      <span class="text-muted">Tarifa base</span><strong>S/. {{ hab.tipo.precio_base }}/noche</strong>
+                    </div>
+                    <div class="d-flex justify-content-between py-2">
+                      <span class="text-muted">Hotel</span><strong class="text-end">{{ hab.hotel.nombre }}</strong>
+                    </div>
+                    {% if hab.tipo.amenidades %}
+                    <div class="mt-3">
+                      <div class="text-muted small mb-2">Amenidades</div>
+                      <div class="d-flex flex-wrap gap-2">
+                        {% for amenidad in hab.tipo.amenidades %}
+                        <span class="badge text-bg-light border">{{ amenidad }}</span>
+                        {% endfor %}
+                      </div>
+                    </div>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <a href="{% url 'habitacion_editar' hab.id %}" class="btn btn-outline-secondary">
+                  <i class="bi bi-pencil me-1"></i>Editar habitación
+                </a>
+                {% if hab.estado == 'DISPONIBLE' %}
+                <a href="/reservas/nueva/?habitacion={{ hab.id }}" class="btn btn-primary">
+                  <i class="bi bi-calendar-plus me-1"></i>Reservar esta habitación
+                </a>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
         {% empty %}
         <p class="text-muted">No hay habitaciones registradas.</p>
         {% endfor %}

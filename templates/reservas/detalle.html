@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}Reserva #{{ reserva.id }}{% endblock %}
+{% block page_title %}Detalle de Reserva #{{ reserva.id }}{% endblock %}
+{% block content %}
+<div class="form-shell">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <a href="/reservas/" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Volver</a>
+    <div class="d-flex gap-2">
+      {% if reserva.estado == 'PENDIENTE' or reserva.estado == 'CONFIRMADA' %}
+      <a href="/reservas/{{ reserva.id }}/checkin/" class="btn btn-sm btn-success"><i class="bi bi-person-check me-1"></i>Check-in</a>
+      {% elif estancia %}
+      <a href="/estancias/{{ estancia.id }}/folio/" class="btn btn-sm btn-primary"><i class="bi bi-receipt me-1"></i>Folio</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-7">
+      <div class="form-panel h-100">
+        <div class="form-section-title">Reserva</div>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="summary-label">Huésped</div>
+            <div class="summary-value">{{ reserva.huesped.nombres }} {{ reserva.huesped.apellidos }}</div>
+            <div class="text-muted small">{{ reserva.huesped.tipo_doc }}: {{ reserva.huesped.num_doc }}</div>
+          </div>
+          <div class="col-md-6">
+            <div class="summary-label">Habitación</div>
+            <div class="summary-value">Hab. {{ reserva.habitacion.numero|default:"Sin asignar" }}</div>
+            <div class="text-muted small">{{ reserva.habitacion.tipo.nombre|default:"" }}</div>
+          </div>
+          <div class="col-md-6">
+            <div class="summary-label">Entrada</div>
+            <div class="summary-value">{{ reserva.fecha_hora_entrada|date:"d/m/Y H:i" }}</div>
+          </div>
+          <div class="col-md-6">
+            <div class="summary-label">Salida</div>
+            <div class="summary-value">{{ reserva.fecha_hora_salida|date:"d/m/Y H:i" }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="form-panel h-100">
+        <div class="form-section-title">Estado y cobro</div>
+        <div class="d-flex justify-content-between py-2 border-bottom">
+          <span class="text-muted">Estado</span>
+          <span class="badge badge-{{ reserva.estado|lower }}">{{ reserva.estado }}</span>
+        </div>
+        <div class="d-flex justify-content-between py-2 border-bottom">
+          <span class="text-muted">Modalidad</span>
+          <strong>{{ reserva.get_modalidad_display }}</strong>
+        </div>
+        <div class="d-flex justify-content-between py-2 border-bottom">
+          <span class="text-muted">Origen</span>
+          <strong>{{ reserva.get_origen_display }}</strong>
+        </div>
+        <div class="d-flex justify-content-between py-2">
+          <span class="text-muted">Total</span>
+          <strong class="fs-5">S/. {{ reserva.precio_total }}</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,7 +1,12 @@
-from django.db import models
+from datetime import datetime, time, timedelta
+from decimal import Decimal
+
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
-from hotel.models import Hotel, Habitacion, TipoHabitacion
+from django.db import models
+from django.utils import timezone
+
+from hotel.models import Habitacion, Hotel, TipoHabitacion
 from huespedes.models import Huesped
 
 
@@ -21,6 +26,14 @@ class Tarifa(models.Model):
 
 
 class Reserva(models.Model):
+    POR_DIA = 'DIA'
+    POR_HORA = 'HORA'
+
+    MODALIDAD_CHOICES = [
+        (POR_DIA, 'Por dia'),
+        (POR_HORA, 'Por horas'),
+    ]
+
     PENDIENTE = 'PENDIENTE'
     CONFIRMADA = 'CONFIRMADA'
     CHECKIN = 'CHECKIN'
@@ -50,6 +63,12 @@ class Reserva(models.Model):
     habitacion = models.ForeignKey(Habitacion, on_delete=models.SET_NULL, null=True, blank=True, related_name='reservas')
     fecha_entrada = models.DateField()
     fecha_salida = models.DateField()
+    fecha_hora_entrada = models.DateTimeField(null=True, blank=True)
+    fecha_hora_salida = models.DateTimeField(null=True, blank=True)
+    modalidad = models.CharField(max_length=10, choices=MODALIDAD_CHOICES, default=POR_DIA)
+    duracion_horas = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    tolerancia_minutos = models.PositiveIntegerField(default=10)
+    cargo_extra_desde_minutos = models.PositiveIntegerField(default=30)
     num_adultos = models.IntegerField(default=1, validators=[MinValueValidator(1)])
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default=PENDIENTE)
     precio_total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -61,34 +80,80 @@ class Reserva(models.Model):
         verbose_name_plural = 'Reservas'
 
     def __str__(self):
-        return f"Reserva #{self.id} - {self.huesped} ({self.fecha_entrada} → {self.fecha_salida})"
+        return f"Reserva #{self.id} - {self.huesped} ({self.fecha_entrada} -> {self.fecha_salida})"
+
+    def normalizar_horario(self):
+        if not self.fecha_entrada or not self.fecha_salida:
+            return
+
+        if self.modalidad == self.POR_HORA:
+            if not self.fecha_hora_entrada:
+                entrada = datetime.combine(self.fecha_entrada, time(15, 0))
+                self.fecha_hora_entrada = timezone.make_aware(entrada)
+
+            horas = float(self.duracion_horas or 3)
+            if horas <= 0:
+                horas = 3
+
+            self.duracion_horas = horas
+            self.fecha_hora_salida = self.fecha_hora_entrada + timedelta(hours=horas)
+            self.fecha_entrada = self.fecha_hora_entrada.date()
+            self.fecha_salida = self.fecha_hora_salida.date()
+            return
+
+        entrada = datetime.combine(self.fecha_entrada, time(15, 0))
+        salida = datetime.combine(self.fecha_salida, time(12, 0))
+        self.fecha_hora_entrada = timezone.make_aware(entrada)
+        self.fecha_hora_salida = timezone.make_aware(salida)
+        self.duracion_horas = 0
 
     def clean(self):
+        self.normalizar_horario()
+        if self.fecha_hora_entrada and self.fecha_hora_salida and self.fecha_hora_salida <= self.fecha_hora_entrada:
+            raise ValidationError('La salida debe ser posterior a la entrada.')
+
         if self.habitacion:
             estados_activos = [self.PENDIENTE, self.CONFIRMADA, self.CHECKIN]
             solapadas = Reserva.objects.filter(
                 habitacion=self.habitacion,
                 estado__in=estados_activos,
-                fecha_entrada__lt=self.fecha_salida,
-                fecha_salida__gt=self.fecha_entrada,
             ).exclude(pk=self.pk)
+
+            if self.fecha_hora_entrada and self.fecha_hora_salida:
+                solapadas = solapadas.filter(
+                    fecha_hora_entrada__lt=self.fecha_hora_salida,
+                    fecha_hora_salida__gt=self.fecha_hora_entrada,
+                )
+            else:
+                solapadas = solapadas.filter(
+                    fecha_entrada__lt=self.fecha_salida,
+                    fecha_salida__gt=self.fecha_entrada,
+                )
+
             if solapadas.exists():
-                raise ValidationError('Esta habitación ya tiene una reserva activa en esas fechas.')
+                raise ValidationError('Esta habitacion ya tiene una reserva activa en ese horario.')
 
     def calcular_precio(self):
         if not self.habitacion:
             return 0
+
+        if self.modalidad == self.POR_HORA:
+            horas = float(self.duracion_horas or 3)
+            bloques = max(1, int((horas + 2.99) // 3))
+            tarifa_bloque = self.habitacion.tipo.precio_base * Decimal('0.35')
+            return round(tarifa_bloque * bloques, 2)
+
         tarifa = Tarifa.objects.filter(
             tipo_habitacion=self.habitacion.tipo,
             fecha_inicio__lte=self.fecha_entrada,
             fecha_fin__gte=self.fecha_salida,
         ).first()
-        if tarifa:
-            noches = (self.fecha_salida - self.fecha_entrada).days
-            return tarifa.precio_noche * noches
         noches = (self.fecha_salida - self.fecha_entrada).days
+        if tarifa:
+            return tarifa.precio_noche * noches
         return self.habitacion.tipo.precio_base * noches
 
     def save(self, *args, **kwargs):
+        self.normalizar_horario()
         self.full_clean()
         super().save(*args, **kwargs)
