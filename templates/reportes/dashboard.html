@@ -1,77 +1,235 @@
 {% extends 'base.html' %}
 {% block title %}Reportes{% endblock %}
 {% block page_title %}Reportes y Estadísticas{% endblock %}
+
+{# Chart data as JSON — avoids VS Code JS linter warnings #}
 {% block content %}
-<div class="row g-3 mb-4">
-  <div class="col-md-3">
-    <div class="card p-3 text-center h-100">
-      <div class="fs-2 fw-bold text-success">{{ reporte.tasa_ocupacion }}%</div>
-      <div class="text-muted small">Tasa de ocupación (Hoy)</div>
+<script id="chart-data" type="application/json">
+{"labels": {{ reporte.tipos_labels_json|safe }}, "data": {{ reporte.tipos_data_json|safe }}}
+</script>
+
+{# ══ KPI strip — compact single row ══ #}
+<div class="kpi-strip mb-4">
+  <div class="kpi-item">
+    <div class="kpi-value text-success">{{ reporte.tasa_ocupacion }}<span class="kpi-unit">%</span></div>
+    <div class="kpi-label">Ocupación hoy</div>
+  </div>
+  <div class="kpi-divider"></div>
+  <div class="kpi-item">
+    <div class="kpi-value text-info">{{ reporte.tasa_semanal }}<span class="kpi-unit">%</span></div>
+    <div class="kpi-label">Ocup. semanal est.</div>
+  </div>
+  <div class="kpi-divider"></div>
+  <div class="kpi-item">
+    <div class="kpi-value text-danger">{{ reporte.habitaciones_ocupadas }}</div>
+    <div class="kpi-label">Hab. ocupadas</div>
+  </div>
+  <div class="kpi-divider"></div>
+  <div class="kpi-item">
+    <div class="kpi-value" style="color:#64748b">{{ reporte.total_habitaciones }}</div>
+    <div class="kpi-label">Total habitaciones</div>
+  </div>
+  <div class="kpi-divider"></div>
+  <div class="kpi-item">
+    <div class="kpi-value text-primary">{{ reporte.reservas_hoy }}</div>
+    <div class="kpi-label">Reservas hoy</div>
+  </div>
+  <div class="kpi-divider"></div>
+  <div class="kpi-item">
+    <div class="kpi-value text-warning">{{ reporte.estancias_activas }}</div>
+    <div class="kpi-label">Estancias activas</div>
+  </div>
+  <div class="kpi-divider"></div>
+  <div class="kpi-item">
+    <div class="kpi-value" style="color:#8b5cf6">{{ reporte.reservas_pendientes }}</div>
+    <div class="kpi-label">Reservas pendientes</div>
+  </div>
+  <div class="kpi-divider"></div>
+  <div class="kpi-item">
+    <div class="kpi-value text-success">S/<span style="font-size:.85em">{{ reporte.revenue_total|floatformat:0 }}</span></div>
+    <div class="kpi-label">Revenue activas</div>
+  </div>
+</div>
+
+{# ══ Chart + Revenue breakdown ══ #}
+<div class="row g-3 mb-3">
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-body p-3">
+        <div class="section-header">
+          <i class="bi bi-bar-chart-line"></i>Ocupación por tipo de habitación
+        </div>
+        <canvas id="ocupacionChart" style="max-height:200px"></canvas>
+      </div>
     </div>
   </div>
-  <div class="col-md-3">
-    <div class="card p-3 text-center h-100">
-      <div class="fs-2 fw-bold text-info">{{ reporte.tasa_semanal }}%</div>
-      <div class="text-muted small">Tasa de ocupación (Estimado Semanal)</div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card p-3 text-center h-100">
-      <div class="fs-2 fw-bold text-primary">{{ reporte.habitaciones_ocupadas }}</div>
-      <div class="text-muted small">Habitaciones ocupadas</div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card p-3 text-center h-100">
-      <div class="fs-2 fw-bold text-warning">{{ reporte.total_habitaciones }}</div>
-      <div class="text-muted small">Total habitaciones</div>
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-body p-3">
+        <div class="section-header">
+          <i class="bi bi-cash-stack"></i>Revenue por tipo
+        </div>
+        <div class="revenue-list">
+          {% for tipo, monto in reporte.revenue_por_tipo.items %}
+          <div class="revenue-row">
+            <span class="revenue-tipo">{{ tipo }}</span>
+            <span class="revenue-monto">S/. {{ monto|floatformat:2 }}</span>
+          </div>
+          {% empty %}
+          <div class="text-muted small text-center pt-3">
+            <i class="bi bi-inbox d-block fs-5 mb-1"></i>Sin estancias activas
+          </div>
+          {% endfor %}
+          {% if reporte.revenue_por_tipo %}
+          <div class="revenue-row revenue-total">
+            <span>Total</span>
+            <span>S/. {{ reporte.revenue_total|floatformat:2 }}</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
-<div class="row g-3">
-  <div class="col-md-8">
-    <div class="card p-3 h-100">
-      <h6 class="mb-3">Ocupación por Tipo de Habitación</h6>
-      <canvas id="ocupacionChart" height="100"></canvas>
+{# ══ Active stays table ══ #}
+{% if reporte.estancias_detalle %}
+<div class="card">
+  <div class="card-body p-0">
+    <div class="section-header px-3 pt-3 pb-2">
+      <i class="bi bi-door-open"></i>Estancias activas
+      <span class="badge bg-light text-dark border ms-1" style="font-size:11px">{{ reporte.estancias_activas }}</span>
     </div>
-  </div>
-  <div class="col-md-4">
-    <div class="card p-3 h-100">
-      <h6 class="mb-3">Revenue Estimado (Estancias Activas)</h6>
-      {% for tipo, monto in reporte.revenue_por_tipo.items %}
-      <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-        <span>{{ tipo }}</span>
-        <strong class="text-success">S/. {{ monto|floatformat:2 }}</strong>
-      </div>
-      {% empty %}
-      <p class="text-muted small">No hay estancias activas generando revenue hoy.</p>
-      {% endfor %}
+    <div class="table-responsive">
+      <table class="table table-hover table-sm mb-0" style="font-size:13px">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-3" style="width:40px">#</th>
+            <th>Huésped</th>
+            <th>Habitación</th>
+            <th>Check-in</th>
+            <th>Modalidad</th>
+            <th class="text-end pe-3">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in reporte.estancias_detalle %}
+          <tr>
+            <td class="ps-3 text-muted">{{ e.id }}</td>
+            <td><span class="fw-medium">{{ e.reserva.huesped.nombres }} {{ e.reserva.huesped.apellidos }}</span></td>
+            <td class="text-muted">Hab. {{ e.habitacion.numero }} <span class="text-muted">— {{ e.habitacion.tipo.nombre }}</span></td>
+            <td class="text-muted">{{ e.fecha_checkin|date:"d/m/Y H:i" }}</td>
+            <td>
+              {% if e.reserva.modalidad == 'HORA' %}
+              <span class="badge" style="background:#ede9fe;color:#6d28d9;font-weight:500">Por horas</span>
+              {% else %}
+              <span class="badge" style="background:#dbeafe;color:#1d4ed8;font-weight:500">Por día</span>
+              {% endif %}
+            </td>
+            <td class="text-end pe-3 fw-semibold text-success">S/. {{ e.precio_final }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   </div>
 </div>
+{% endif %}
+
+<style>
+  /* KPI strip */
+  .kpi-strip {
+    display: flex; align-items: stretch;
+    background: #fff; border: 1px solid #e2e8f0;
+    border-radius: 10px; overflow: hidden;
+    box-shadow: 0 1px 3px rgba(15,23,42,.05);
+  }
+  .kpi-item {
+    flex: 1; padding: 14px 18px; text-align: center;
+    min-width: 0;
+  }
+  .kpi-value {
+    font-size: 24px; font-weight: 700; line-height: 1.2;
+    letter-spacing: -.02em;
+  }
+  .kpi-unit { font-size: 16px; font-weight: 600; }
+  .kpi-label {
+    font-size: 10.5px; color: #94a3b8; margin-top: 3px;
+    font-weight: 500; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .kpi-divider {
+    width: 1px; background: #f1f5f9; flex-shrink: 0;
+    margin: 10px 0;
+  }
+
+  /* Section header */
+  .section-header {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 12px; font-weight: 700; color: #374151;
+    text-transform: uppercase; letter-spacing: .05em;
+    margin-bottom: 12px;
+  }
+  .section-header i { color: #3b82f6; font-size: 13px; }
+
+  /* Revenue list */
+  .revenue-list { display: flex; flex-direction: column; gap: 2px; }
+  .revenue-row {
+    display: flex; justify-content: space-between;
+    align-items: center; padding: 7px 0;
+    border-bottom: 1px solid #f8fafc; font-size: 13px;
+  }
+  .revenue-tipo { color: #374151; }
+  .revenue-monto { font-weight: 600; color: #059669; }
+  .revenue-total {
+    border-top: 1px solid #e2e8f0; border-bottom: none;
+    margin-top: 4px; padding-top: 8px;
+    font-weight: 700; font-size: 13.5px; color: #0f172a;
+  }
+  .revenue-total .revenue-monto { color: #059669; }
+
+  /* Table */
+  .fw-medium { font-weight: 500; }
+</style>
 {% endblock %}
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-    const ctx = document.getElementById('ocupacionChart').getContext('2d');
-    new Chart(ctx, {
-        type: 'bar',
+document.addEventListener("DOMContentLoaded", function () {
+    var raw  = document.getElementById("chart-data");
+    var info = raw ? JSON.parse(raw.textContent) : { labels: [], data: [] };
+    var ctx  = document.getElementById("ocupacionChart");
+    if (!ctx || !info.labels.length) {
+        ctx && (ctx.parentElement.innerHTML += '<p class="text-muted text-center small pt-3">Sin datos de ocupación.</p>');
+        ctx && ctx.remove();
+        return;
+    }
+    new Chart(ctx.getContext("2d"), {
+        type: "bar",
         data: {
-            labels: {{ reporte.tipos_labels|safe }},
+            labels: info.labels,
             datasets: [{
-                label: 'Habitaciones Ocupadas',
-                data: {{ reporte.tipos_data|safe }},
-                backgroundColor: 'rgba(59, 130, 246, 0.5)',
-                borderColor: 'rgba(59, 130, 246, 1)',
-                borderWidth: 1
+                label: "Hab. ocupadas",
+                data: info.data,
+                backgroundColor: "rgba(59,130,246,.18)",
+                borderColor: "rgba(59,130,246,.8)",
+                borderWidth: 1.5,
+                borderRadius: 5
             }]
         },
         options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: {
+                    label: function(c) { return " " + c.parsed.y + " habitación" + (c.parsed.y !== 1 ? "es" : ""); }
+                }}
+            },
             scales: {
-                y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                x: { grid: { display: false }, ticks: { font: { size: 12 } } },
+                y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 12 } },
+                     grid: { color: "#f1f5f9" } }
             }
         }
     });

@@ -212,17 +212,34 @@ def reserva_checkin(request, reserva_id):
         hab_id = request.POST.get('habitacion')
         if hab_id:
             reserva.habitacion = Habitacion.objects.get(id=hab_id)
-            
+
         habitacion = reserva.habitacion
         habitacion.estado = 'OCUPADA'
         habitacion.save()
-        
+
         reserva.estado = 'CHECKIN'
         reserva.save()
         estancia = Estancia.objects.create(
             reserva=reserva, habitacion=habitacion, precio_final=reserva.precio_total
         )
-        Folio.objects.create(estancia=estancia)
+        folio = Folio.objects.create(estancia=estancia)
+
+        # Agregar automáticamente el cargo base de habitación al folio
+        if reserva.precio_total and reserva.precio_total > 0:
+            if reserva.modalidad == 'HORA':
+                horas = int(reserva.duracion_horas or 3)
+                concepto = f'Alquiler por horas – Hab. {habitacion.numero} ({horas}h)'
+            else:
+                from datetime import date as date_cls
+                noches = (reserva.fecha_salida - reserva.fecha_entrada).days or 1
+                concepto = f'Alquiler por {noches} noche{"s" if noches != 1 else ""} – Hab. {habitacion.numero}'
+            CargoEstancia.objects.create(
+                estancia=estancia,
+                concepto=concepto,
+                monto=reserva.precio_total,
+                tipo='HABITACION',
+            )
+            folio.calcular_totales()
         messages.success(request, f'Check-in realizado. Estancia #{estancia.id} creada.')
         return redirect('folio', estancia_id=estancia.id)
 
@@ -243,6 +260,24 @@ def reserva_checkin(request, reserva_id):
 def folio_view(request, estancia_id):
     estancia = get_object_or_404(Estancia, id=estancia_id)
     folio, _ = Folio.objects.get_or_create(estancia=estancia)
+
+    # Auto-seed room charge for estancias that existed before the auto-charge logic.
+    # If the folio has no cargos but there IS a precio_final, create the cargo now.
+    if not estancia.cargos.exists() and estancia.precio_final and estancia.precio_final > 0:
+        reserva = estancia.reserva
+        if reserva.modalidad == 'HORA':
+            horas = int(reserva.duracion_horas or 3)
+            concepto = f'Alquiler por horas \u2013 Hab. {estancia.habitacion.numero} ({horas}h)'
+        else:
+            noches = (reserva.fecha_salida - reserva.fecha_entrada).days or 1
+            concepto = f'Alquiler por {noches} noche{"s" if noches != 1 else ""} \u2013 Hab. {estancia.habitacion.numero}'
+        CargoEstancia.objects.create(
+            estancia=estancia,
+            concepto=concepto,
+            monto=estancia.precio_final,
+            tipo='HABITACION',
+        )
+
     folio.calcular_totales()
     cargo_tardanza, minutos_tarde = calcular_cargo_salida_tardia(estancia)
     return render(request, 'estancias/folio.html', {
@@ -325,6 +360,7 @@ def housekeeping_estado(request, hab_id):
 
 @login_required
 def reportes_view(request):
+    import json
     from django.utils import timezone
     hoy = timezone.now().date()
     total = Habitacion.objects.count()
@@ -341,7 +377,7 @@ def reportes_view(request):
     habitaciones_ocupadas_tipos = {}
     for h in Habitacion.objects.filter(estado='OCUPADA').select_related('tipo'):
         habitaciones_ocupadas_tipos[h.tipo.nombre] = habitaciones_ocupadas_tipos.get(h.tipo.nombre, 0) + 1
-        
+
     for k, v in habitaciones_ocupadas_tipos.items():
         tipos_labels.append(k)
         tipos_data.append(v)
@@ -353,8 +389,16 @@ def reportes_view(request):
         'tasa_ocupacion': round(ocupadas / total * 100, 1) if total else 0,
         'tasa_semanal': round((ocupadas / total * 100) * 0.85, 1) if total else 0,
         'revenue_por_tipo': revenue,
-        'tipos_labels': tipos_labels,
-        'tipos_data': tipos_data,
+        'revenue_total': round(sum(revenue.values()), 2),
+        'reservas_hoy': Reserva.objects.filter(fecha_entrada=hoy).count(),
+        'estancias_activas': estancias.count(),
+        'reservas_pendientes': Reserva.objects.filter(estado__in=['PENDIENTE', 'CONFIRMADA']).count(),
+        'estancias_detalle': Estancia.objects.filter(estado='ACTIVA').select_related(
+            'reserva__huesped', 'habitacion__tipo'
+        ).order_by('-fecha_checkin'),
+        # Serialized as JSON for Chart.js — no Django template tags inside <script> blocks
+        'tipos_labels_json': json.dumps(tipos_labels),
+        'tipos_data_json': json.dumps(tipos_data),
     }
     return render(request, 'reportes/dashboard.html', {'reporte': reporte})
 
@@ -479,7 +523,11 @@ def huesped_editar(request, huesped_id):
             return redirect('huespedes_lista')
         except Exception as e:
             messages.error(request, f'Error: {str(e)}')
-    return render(request, 'huespedes/form.html', {'huesped': huesped})
+    return render(request, 'huespedes/form.html', {
+        'huesped': huesped,
+        'initial_query': '',
+        'next': '',
+    })
 
 
 

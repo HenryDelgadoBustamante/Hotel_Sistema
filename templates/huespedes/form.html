@@ -1,53 +1,159 @@
 {% extends 'base.html' %}
-{% block title %}{% if huesped %}Editar{% else %}Nuevo{% endif %} Huésped{% endblock %}
+{% block title %}{% if huesped %}Editar Huésped{% else %}Nuevo Huésped{% endif %}{% endblock %}
 {% block page_title %}{% if huesped %}Editar Huésped{% else %}Nuevo Huésped{% endif %}{% endblock %}
+
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-md-7">
-    <div class="card p-4">
-      <form method="post">
-        {% csrf_token %}
-        {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
-        <div class="row g-3">
-          <div class="col-md-4">
-            <label class="form-label">Tipo de documento</label>
-            <select name="tipo_doc" class="form-select" required>
-              <option value="DNI" {% if huesped.tipo_doc == 'DNI' %}selected{% endif %}>DNI</option>
-              <option value="PASAPORTE" {% if huesped.tipo_doc == 'PASAPORTE' %}selected{% endif %}>Pasaporte</option>
-              <option value="CE" {% if huesped.tipo_doc == 'CE' %}selected{% endif %}>Carné de Extranjería</option>
-            </select>
+{# ── Breadcrumb + header ── #}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <div class="text-muted small mb-1">
+      <a href="/huespedes/" class="text-muted text-decoration-none">
+        <i class="bi bi-people me-1"></i>Huéspedes
+      </a>
+      <span class="mx-1 text-muted">›</span>
+      {% if huesped %}Editar{% else %}Nuevo{% endif %}
+    </div>
+    <h5 class="mb-0 fw-semibold">
+      {% if huesped %}Editar: {{ huesped.nombres }} {{ huesped.apellidos }}
+      {% else %}Registrar nuevo huésped{% endif %}
+    </h5>
+  </div>
+  <a href="/huespedes/" class="btn btn-outline-secondary btn-sm px-3">
+    <i class="bi bi-arrow-left me-1"></i>Volver
+  </a>
+</div>
+
+{# ── Single-card form using full width ── #}
+<div class="card">
+  <form method="post">
+    {% csrf_token %}
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+
+    <div class="card-body p-4">
+      <div class="row g-4">
+
+        {# LEFT column — Document + Personal #}
+        <div class="col-lg-6">
+
+          {# Document #}
+          <div class="field-group mb-4">
+            <div class="field-group-title">
+              <i class="bi bi-credit-card"></i>Documento de identidad
+            </div>
+            <div class="row g-3">
+              <div class="col-5">
+                <label class="form-label">Tipo</label>
+                <select name="tipo_doc" class="form-select" required>
+                  <option value="DNI"       {% if huesped.tipo_doc == 'DNI'       %}selected{% endif %}>DNI</option>
+                  <option value="PASAPORTE" {% if huesped.tipo_doc == 'PASAPORTE' %}selected{% endif %}>Pasaporte</option>
+                  <option value="CE"        {% if huesped.tipo_doc == 'CE'        %}selected{% endif %}>Carné de Extranjería</option>
+                </select>
+              </div>
+              <div class="col-7">
+                <label class="form-label">Número</label>
+                <input type="text" name="num_doc"
+                       value="{{ huesped.num_doc|default:initial_query|default:'' }}"
+                       class="form-control" required placeholder="Ej: 72345678">
+              </div>
+            </div>
           </div>
-          <div class="col-md-8">
-            <label class="form-label">Número de documento</label>
-            <input type="text" name="num_doc" value="{{ huesped.num_doc|default:initial_query }}" class="form-control" required>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Nombres</label>
-            <input type="text" name="nombres" value="{{ huesped.nombres|default:'' }}" class="form-control" required>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Apellidos</label>
-            <input type="text" name="apellidos" value="{{ huesped.apellidos|default:'' }}" class="form-control" required>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Email</label>
-            <input type="email" name="email" value="{{ huesped.email|default:'' }}" class="form-control">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Teléfono</label>
-            <input type="text" name="telefono" value="{{ huesped.telefono|default:'' }}" class="form-control">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Nacionalidad</label>
-            <input type="text" name="nacionalidad" value="{{ huesped.nacionalidad|default:'Peruana' }}" class="form-control">
-          </div>
-          <div class="col-12 mt-2">
-            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Guardar</button>
-            <a href="{% if next %}{{ next }}{% else %}/huespedes/{% endif %}" class="btn btn-outline-secondary ms-2">Cancelar</a>
+
+          {# Personal data #}
+          <div class="field-group">
+            <div class="field-group-title">
+              <i class="bi bi-person"></i>Datos personales
+            </div>
+            <div class="row g-3">
+              <div class="col-6">
+                <label class="form-label">Nombres</label>
+                <input type="text" name="nombres"
+                       value="{{ huesped.nombres|default:'' }}"
+                       class="form-control" required placeholder="Ej: María Elena">
+              </div>
+              <div class="col-6">
+                <label class="form-label">Apellidos</label>
+                <input type="text" name="apellidos"
+                       value="{{ huesped.apellidos|default:'' }}"
+                       class="form-control" required placeholder="Ej: Torres Ruiz">
+              </div>
+              <div class="col-6">
+                <label class="form-label">Nacionalidad</label>
+                <input type="text" name="nacionalidad"
+                       value="{{ huesped.nacionalidad|default:'Peruana' }}"
+                       class="form-control" placeholder="Ej: Peruana">
+              </div>
+            </div>
           </div>
         </div>
-      </form>
+
+        {# RIGHT column — Contact + Actions #}
+        <div class="col-lg-6">
+
+          {# Vertical divider on desktop #}
+          <div class="field-group mb-4">
+            <div class="field-group-title">
+              <i class="bi bi-envelope"></i>Contacto
+              <span class="text-muted fw-normal ms-1" style="font-size:10px;text-transform:none;letter-spacing:0">(opcional)</span>
+            </div>
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">Email</label>
+                <input type="email" name="email"
+                       value="{{ huesped.email|default:'' }}"
+                       class="form-control" placeholder="correo@ejemplo.com">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Teléfono</label>
+                <input type="text" name="telefono"
+                       value="{{ huesped.telefono|default:'' }}"
+                       class="form-control" placeholder="Ej: 987 654 321">
+              </div>
+            </div>
+          </div>
+
+          {# Info box #}
+          <div class="info-box">
+            <i class="bi bi-info-circle text-primary me-2"></i>
+            <div class="small text-muted">
+              El documento de identidad es único por huésped. Si el número ya está registrado, el sistema lo asociará automáticamente.
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
+
+    {# Footer with actions #}
+    <div class="card-footer bg-white border-top px-4 py-3 d-flex justify-content-end gap-2">
+      <a href="{% if next %}{{ next }}{% else %}/huespedes/{% endif %}"
+         class="btn btn-outline-secondary px-4">Cancelar</a>
+      <button type="submit" class="btn btn-primary px-4">
+        <i class="bi bi-check-lg me-1"></i>
+        {% if huesped %}Guardar cambios{% else %}Registrar huésped{% endif %}
+      </button>
+    </div>
+  </form>
 </div>
+
+<style>
+  .field-group-title {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 10.5px; font-weight: 700; color: #64748b;
+    text-transform: uppercase; letter-spacing: .07em;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .field-group-title i { color: #3b82f6; font-size: 13px; }
+  .info-box {
+    display: flex; align-items: flex-start; gap: 4px;
+    background: #f8fafc; border: 1px solid #e2e8f0;
+    border-radius: 8px; padding: 12px 14px;
+  }
+  .col-lg-6 + .col-lg-6 {
+    border-left: 1px solid #f1f5f9;
+  }
+  @media (max-width: 991px) {
+    .col-lg-6 + .col-lg-6 { border-left: none; border-top: 1px solid #f1f5f9; padding-top: 1.5rem; }
+  }
+</style>
 {% endblock %}

@@ -3,80 +3,275 @@
 {% block page_title %}{% if habitacion %}Editar Habitación{% else %}Nueva Habitación{% endif %}{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card shadow-sm">
-            <div class="card-body p-4">
-                <form method="post">
-                    {% csrf_token %}
-                    
-                    <div class="mb-3">
-                        <label class="form-label fw-bold small">Hotel</label>
-                        <select name="hotel" class="form-select" required>
-                            {% for h in hoteles %}
-                            <option value="{{ h.id }}" {% if habitacion and habitacion.hotel.id == h.id %}selected{% endif %}>
-                                {{ h.nombre }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold small">Tipo de Habitación</label>
-                        <select name="tipo" class="form-select" required>
-                            {% for t in tipos %}
-                            <option value="{{ t.id }}" {% if habitacion and habitacion.tipo.id == t.id %}selected{% endif %}>
-                                {{ t.nombre }} - S/. {{ t.precio_base }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold small">Número de Habitación</label>
-                            <input type="text" name="numero" class="form-control" value="{{ habitacion.numero|default:'' }}" required placeholder="Ej: 101">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold small">Piso</label>
-                            <input type="number" name="piso" class="form-control" value="{{ habitacion.piso|default:'' }}" required placeholder="Ej: 1">
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold small">Imagen referencial (URL)</label>
-                        <input type="url" name="imagen_url" class="form-control" value="{{ habitacion.imagen_url|default:'' }}" placeholder="https://res.cloudinary.com/...">
-                        <div class="form-text">Esta será la imagen principal. También se incluirá en la galería.</div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold small">Galería de imágenes</label>
-                        <textarea name="imagenes_urls" class="form-control" rows="4" placeholder="Una URL por línea">{% if habitacion.imagenes_urls %}{% for url in habitacion.imagenes_urls %}{{ url }}{% if not forloop.last %}
-{% endif %}{% endfor %}{% endif %}</textarea>
-                        <div class="form-text">Pega enlaces de Cloudinary, uno por línea, para mostrar varias vistas de la habitación.</div>
-                    </div>
-
-                    {% if habitacion %}
-                    <div class="mb-3">
-                        <label class="form-label fw-bold small">Estado</label>
-                        <select name="estado" class="form-select">
-                            <option value="DISPONIBLE" {% if habitacion.estado == 'DISPONIBLE' %}selected{% endif %}>Disponible</option>
-                            <option value="OCUPADA" {% if habitacion.estado == 'OCUPADA' %}selected{% endif %}>Ocupada</option>
-                            <option value="LIMPIEZA" {% if habitacion.estado == 'LIMPIEZA' %}selected{% endif %}>En Limpieza</option>
-                            <option value="MANTENIMIENTO" {% if habitacion.estado == 'MANTENIMIENTO' %}selected{% endif %}>En Mantenimiento</option>
-                        </select>
-                    </div>
-                    {% endif %}
-
-                    <div class="d-flex gap-2 mt-4">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="bi bi-check-lg me-1"></i>Guardar Habitación
-                        </button>
-                        <a href="{% url 'habitaciones_lista' %}" class="btn btn-outline-secondary w-100">Cancelar</a>
-                    </div>
-                </form>
-            </div>
-        </div>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <div class="text-muted small mb-1">
+      <a href="/habitaciones/" class="text-muted text-decoration-none">
+        <i class="bi bi-grid-3x3-gap me-1"></i>Habitaciones
+      </a>
+      <span class="mx-1 text-muted">›</span>
+      {% if habitacion %}Editar #{{ habitacion.numero }}{% else %}Nueva{% endif %}
     </div>
+    <h5 class="mb-0 fw-semibold">
+      {% if habitacion %}Editar Hab. {{ habitacion.numero }}{% else %}Nueva habitación{% endif %}
+    </h5>
+  </div>
+  <a href="/habitaciones/" class="btn btn-outline-secondary btn-sm px-3">
+    <i class="bi bi-arrow-left me-1"></i>Volver
+  </a>
 </div>
+
+<div class="card">
+  <form method="post" id="habForm">
+    {% csrf_token %}
+    <div class="card-body p-4">
+      <div class="row g-4">
+
+        {# ── LEFT — Config ── #}
+        <div class="col-lg-4">
+
+          <div class="field-group-title"><i class="bi bi-building"></i>Asignación</div>
+          <div class="mb-3">
+            <label class="form-label">Hotel</label>
+            <select name="hotel" class="form-select" required>
+              {% for h in hoteles %}
+              <option value="{{ h.id }}" {% if habitacion and habitacion.hotel.id == h.id %}selected{% endif %}>{{ h.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-4">
+            <label class="form-label">Tipo de habitación</label>
+            <select name="tipo" class="form-select" required>
+              {% for t in tipos %}
+              <option value="{{ t.id }}" {% if habitacion and habitacion.tipo.id == t.id %}selected{% endif %}>
+                {{ t.nombre }} — S/. {{ t.precio_base }}/noche
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="field-group-title"><i class="bi bi-layers"></i>Ubicación</div>
+          <div class="row g-3 mb-4">
+            <div class="col-6">
+              <label class="form-label">Número</label>
+              <input type="text" name="numero" class="form-control"
+                     value="{{ habitacion.numero|default:'' }}" required placeholder="Ej: 101">
+            </div>
+            <div class="col-6">
+              <label class="form-label">Piso</label>
+              <input type="number" name="piso" class="form-control"
+                     value="{{ habitacion.piso|default:'' }}" required placeholder="Ej: 1" min="0">
+            </div>
+          </div>
+
+          {% if habitacion %}
+          <div class="field-group-title"><i class="bi bi-toggle-on"></i>Estado</div>
+          <select name="estado" class="form-select">
+            <option value="DISPONIBLE"    {% if habitacion.estado == 'DISPONIBLE' %}selected{% endif %}>✅ Disponible</option>
+            <option value="OCUPADA"       {% if habitacion.estado == 'OCUPADA' %}selected{% endif %}>🔴 Ocupada</option>
+            <option value="LIMPIEZA"      {% if habitacion.estado == 'LIMPIEZA' %}selected{% endif %}>🧹 En Limpieza</option>
+            <option value="MANTENIMIENTO" {% if habitacion.estado == 'MANTENIMIENTO' %}selected{% endif %}>🔧 En Mantenimiento</option>
+          </select>
+          {% endif %}
+        </div>
+
+        {# ── RIGHT — Images ── #}
+        <div class="col-lg-8" style="border-left:1px solid #f1f5f9">
+
+          <div class="field-group-title">
+            <i class="bi bi-images"></i>Galería de imágenes
+            <span class="text-muted fw-normal ms-1" style="font-size:10px;text-transform:none;letter-spacing:0">(opcional)</span>
+          </div>
+
+          {# URL inputs #}
+          <div class="row g-3 mb-3">
+            <div class="col-12">
+              <label class="form-label">URL imagen principal</label>
+              <input type="url" name="imagen_url" id="mainUrlInput" class="form-control"
+                     value="{{ habitacion.imagen_url|default:'' }}"
+                     placeholder="https://res.cloudinary.com/...">
+              <div class="form-text">Primera imagen del carrusel y la que aparece en el plano del hotel.</div>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Imágenes adicionales</label>
+              <textarea name="imagenes_urls" id="galleryUrlInput" class="form-control" rows="3"
+                        placeholder="Una URL por línea&#10;https://res.cloudinary.com/foto2&#10;https://res.cloudinary.com/foto3">{% if habitacion.imagenes_urls %}{% for url in habitacion.imagenes_urls %}{{ url }}{% if not forloop.last %}
+{% endif %}{% endfor %}{% endif %}</textarea>
+              <div class="form-text">Una URL por línea. Se muestran como carrusel al hacer clic en la habitación.</div>
+            </div>
+          </div>
+
+          {# ── Live gallery preview ── #}
+          <div class="preview-header">
+            <span class="field-group-title mb-0" style="border:none;padding:0">
+              <i class="bi bi-eye"></i>Vista previa de galería
+            </span>
+            <span class="preview-count badge" id="previewCount">0 imágenes</span>
+          </div>
+
+          <div id="galleryPreview" class="gallery-preview-grid mt-2">
+            {# Populated by JS; initially shows existing images on edit #}
+          </div>
+
+          {# Empty state (shown when no images) #}
+          <div id="galleryEmpty" class="gallery-empty">
+            <i class="bi bi-image"></i>
+            <span>Las imágenes aparecerán aquí mientras las agregas</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-footer bg-white border-top px-4 py-3 d-flex justify-content-end gap-2">
+      <a href="/habitaciones/" class="btn btn-outline-secondary px-4">Cancelar</a>
+      <button type="submit" class="btn btn-primary px-4">
+        <i class="bi bi-check-lg me-1"></i>
+        {% if habitacion %}Guardar cambios{% else %}Crear habitación{% endif %}
+      </button>
+    </div>
+  </form>
+</div>
+
+<style>
+  .field-group-title {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 10.5px; font-weight: 700; color: #64748b;
+    text-transform: uppercase; letter-spacing: .07em;
+    margin-bottom: 14px; padding-bottom: 8px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .field-group-title i { color: #3b82f6; font-size: 13px; }
+
+  /* Preview header */
+  .preview-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .preview-count {
+    background: #eff6ff; color: #2563eb;
+    font-size: 10.5px; font-weight: 600;
+    padding: 2px 8px; border-radius: 12px;
+  }
+
+  /* Gallery grid */
+  .gallery-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+  }
+  .gallery-thumb {
+    position: relative;
+    aspect-ratio: 16 / 10;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f1f5f9;
+    border: 1.5px solid #e2e8f0;
+    transition: border-color .15s, transform .15s;
+  }
+  .gallery-thumb:hover { border-color: #3b82f6; transform: scale(1.02); }
+  .gallery-thumb.is-main { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,.2); }
+  .gallery-thumb img {
+    width: 100%; height: 100%;
+    object-fit: cover; display: block;
+  }
+  .gallery-thumb .thumb-badge {
+    position: absolute; top: 5px; left: 5px;
+    background: rgba(37,99,235,.85); color: #fff;
+    font-size: 9px; font-weight: 700; padding: 1px 6px;
+    border-radius: 4px; backdrop-filter: blur(4px);
+  }
+  .gallery-thumb .thumb-error {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; width: 100%; height: 100%;
+    color: #94a3b8; font-size: 11px; gap: 4px;
+  }
+  .gallery-thumb .thumb-error i { font-size: 22px; }
+
+  /* Placeholder / empty */
+  .gallery-empty {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 8px;
+    border: 1.5px dashed #e2e8f0; border-radius: 10px;
+    color: #94a3b8; font-size: 12px;
+    padding: 32px 16px; text-align: center;
+  }
+  .gallery-empty i { font-size: 28px; }
+  .gallery-empty.d-none { display: none !important; }
+
+  @media (max-width: 991px) {
+    [style*="border-left"] { border-left: none !important; border-top: 1px solid #f1f5f9; padding-top: 1.5rem; }
+  }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var mainInput   = document.getElementById("mainUrlInput");
+  var galleryInput = document.getElementById("galleryUrlInput");
+  var previewGrid = document.getElementById("galleryPreview");
+  var emptyState  = document.getElementById("galleryEmpty");
+  var countBadge  = document.getElementById("previewCount");
+
+  function collectUrls() {
+    var urls = [];
+    var main = (mainInput.value || "").trim();
+    if (main) urls.push({ url: main, isMain: true });
+
+    (galleryInput.value || "").split("\n").forEach(function (line) {
+      var u = line.trim();
+      if (u && u !== main) urls.push({ url: u, isMain: false });
+    });
+    return urls;
+  }
+
+  function renderGallery() {
+    var urls = collectUrls();
+    previewGrid.innerHTML = "";
+
+    if (!urls.length) {
+      emptyState.classList.remove("d-none");
+      countBadge.textContent = "0 imágenes";
+      return;
+    }
+
+    emptyState.classList.add("d-none");
+    countBadge.textContent = urls.length + " imagen" + (urls.length !== 1 ? "es" : "");
+
+    urls.forEach(function (item, idx) {
+      var thumb = document.createElement("div");
+      thumb.className = "gallery-thumb" + (item.isMain ? " is-main" : "");
+
+      var img = document.createElement("img");
+      img.alt = "Imagen " + (idx + 1);
+      img.src = item.url;
+
+      img.addEventListener("error", function () {
+        img.remove();
+        var err = document.createElement("div");
+        err.className = "thumb-error";
+        err.innerHTML = '<i class="bi bi-image-alt"></i><span>URL inválida</span>';
+        thumb.appendChild(err);
+      });
+
+      thumb.appendChild(img);
+
+      if (item.isMain) {
+        var badge = document.createElement("span");
+        badge.className = "thumb-badge";
+        badge.textContent = "Principal";
+        thumb.appendChild(badge);
+      }
+
+      previewGrid.appendChild(thumb);
+    });
+  }
+
+  mainInput.addEventListener("input", renderGallery);
+  galleryInput.addEventListener("input", renderGallery);
+
+  // Render on load (edit mode — existing images)
+  renderGallery();
+})();
+</script>
 {% endblock %}

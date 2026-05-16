@@ -40,7 +40,9 @@
             {% if r.estado == 'PENDIENTE' or r.estado == 'CONFIRMADA' %}
             <a href="/reservas/{{ r.id }}/checkin/" class="btn btn-sm btn-success">Check-in</a>
             {% elif r.estado == 'CHECKIN' %}
+            {% if r.estancia %}
             <a href="/estancias/{{ r.estancia.id }}/folio/" class="btn btn-sm btn-primary">Folio</a>
+            {% endif %}
             {% endif %}
             <a href="/reservas/{{ r.id }}/" class="btn btn-sm btn-outline-secondary">Ver</a>
           </td>
