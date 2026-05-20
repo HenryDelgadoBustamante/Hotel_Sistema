@@ -11,7 +11,7 @@ from decimal import Decimal
 from hotel.models import Habitacion, Hotel, TipoHabitacion
 from huespedes.models import Huesped
 from reservas.models import Reserva
-from estancias.models import Estancia, CargoEstancia, Folio
+from estancias.models import Estancia, CargoEstancia, Folio, Pago
 import requests
 
 
@@ -322,6 +322,28 @@ def agregar_cargo(request, estancia_id):
         folio, _ = Folio.objects.get_or_create(estancia=estancia)
         folio.calcular_totales()
         messages.success(request, 'Cargo agregado correctamente.')
+    return redirect('folio', estancia_id=estancia_id)
+
+
+@login_required
+def registrar_pago(request, estancia_id):
+    if request.method == 'POST':
+        estancia = get_object_or_404(Estancia, id=estancia_id)
+        folio, _ = Folio.objects.get_or_create(estancia=estancia)
+        monto = request.POST.get('monto')
+        metodo_pago = request.POST.get('metodo_pago', Pago.EFECTIVO)
+        transaccion_id = request.POST.get('transaccion_id') or None
+
+        if monto:
+            Pago.objects.create(
+                folio=folio,
+                monto=monto,
+                metodo_pago=metodo_pago,
+                transaccion_id=transaccion_id
+            )
+            messages.success(request, 'Pago registrado correctamente.')
+        else:
+            messages.error(request, 'Monto inválido para el pago.')
     return redirect('folio', estancia_id=estancia_id)
 
 

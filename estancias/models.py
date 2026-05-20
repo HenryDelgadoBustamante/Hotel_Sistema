@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+from decimal import Decimal
 from reservas.models import Reserva
 from hotel.models import Habitacion
 
@@ -32,8 +33,10 @@ class Estancia(models.Model):
         folio = getattr(self, 'folio', None)
         if folio:
             folio.calcular_totales()
-            if folio.total > 0 and folio.estado == Folio.ABIERTO:
+            if folio.saldo_pendiente > 0 and folio.estado == Folio.ABIERTO:
                 raise ValidationError('No se puede hacer checkout: el folio tiene saldo pendiente.')
+            folio.estado = Folio.CERRADO
+            folio.save()
         self.fecha_checkout = timezone.now()
         self.estado = self.FINALIZADA
         self.habitacion.estado = Habitacion.LIMPIEZA
@@ -94,7 +97,42 @@ class Folio(models.Model):
 
     def calcular_totales(self):
         cargos = self.estancia.cargos.all()
-        self.subtotal = sum(c.monto for c in cargos)
-        self.igv = round(self.subtotal * 18 / 100, 2)
-        self.total = self.subtotal + self.igv
+        self.total = sum(c.monto for c in cargos)
+        self.subtotal = round(self.total / Decimal('1.18'), 2)
+        self.igv = self.total - self.subtotal
         self.save()
+
+    @property
+    def total_pagado(self):
+        return sum(p.monto for p in self.pagos.all())
+
+    @property
+    def saldo_pendiente(self):
+        return max(Decimal('0.00'), self.total - self.total_pagado)
+
+
+class Pago(models.Model):
+    EFECTIVO = 'EFECTIVO'
+    TARJETA = 'TARJETA'
+    TRANSFERENCIA = 'TRANSFERENCIA'
+    YAPE_PLIN = 'YAPE_PLIN'
+
+    METODO_PAGO_CHOICES = [
+        (EFECTIVO, 'Efectivo'),
+        (TARJETA, 'Tarjeta de Crédito/Débito'),
+        (TRANSFERENCIA, 'Transferencia Bancaria'),
+        (YAPE_PLIN, 'Yape / Plin'),
+    ]
+
+    folio = models.ForeignKey(Folio, on_delete=models.CASCADE, related_name='pagos')
+    monto = models.DecimalField(max_digits=10, decimal_places=2)
+    metodo_pago = models.CharField(max_length=20, choices=METODO_PAGO_CHOICES, default=EFECTIVO)
+    fecha = models.DateTimeField(auto_now_add=True)
+    transaccion_id = models.CharField(max_length=100, blank=True, null=True, verbose_name='ID Transacción')
+
+    class Meta:
+        verbose_name = 'Pago'
+        verbose_name_plural = 'Pagos'
+
+    def __str__(self):
+        return f"Pago #{self.id} - Folio #{self.folio.id} - S/.{self.monto} ({self.metodo_pago})"

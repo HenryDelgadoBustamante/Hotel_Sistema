@@ -125,23 +125,85 @@
           <tfoot class="border-top">
             <tr class="table-light">
               <td colspan="2" class="ps-3 text-muted">Subtotal</td>
-              <td class="text-end pe-3">S/. {{ folio.subtotal }}</td>
+              <td class="text-end pe-3 text-muted">S/. {{ folio.subtotal }}</td>
             </tr>
-            <tr class="table-light">
+            <tr class="table-light border-bottom">
               <td colspan="2" class="ps-3 text-muted">IGV (18%)</td>
-              <td class="text-end pe-3">S/. {{ folio.igv }}</td>
+              <td class="text-end pe-3 text-muted">S/. {{ folio.igv }}</td>
             </tr>
-            <tr class="fw-bold">
-              <td colspan="2" class="ps-3 fs-6">Total a cobrar</td>
-              <td class="text-end pe-3 fs-5 text-success">S/. {{ folio.total }}</td>
+            <tr class="table-warning fw-bold">
+              <td colspan="2" class="ps-3">Total Cargos</td>
+              <td class="text-end pe-3 text-dark">S/. {{ folio.total }}</td>
+            </tr>
+            <tr class="table-info fw-semibold text-primary">
+              <td colspan="2" class="ps-3"><i class="bi bi-wallet2 me-1"></i>Total Pagado</td>
+              <td class="text-end pe-3 text-primary">S/. {{ folio.total_pagado }}</td>
+            </tr>
+            <tr class="{% if folio.saldo_pendiente > 0 %}table-danger{% else %}table-success{% endif %} fs-6 fw-bold">
+              <td colspan="2" class="ps-3">Saldo Pendiente</td>
+              <td class="text-end pe-3 fs-5 {% if folio.saldo_pendiente > 0 %}text-danger{% else %}text-success{% endif %}">S/. {{ folio.saldo_pendiente }}</td>
             </tr>
           </tfoot>
         </table>
       </div>
     </div>
 
+    {# ── Historial de pagos ── #}
+    <div class="card mb-3 border-0 shadow-sm overflow-hidden">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
+        <span class="fw-semibold text-primary"><i class="bi bi-credit-card-2-back-fill me-2"></i>Historial de pagos</span>
+        <span class="badge bg-light text-dark border">{{ folio.pagos.count }} pago{{ folio.pagos.count|pluralize:"s" }}</span>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th class="ps-3">Método de Pago</th>
+              <th>Referencia / ID Transacción</th>
+              <th>Fecha y Hora</th>
+              <th class="text-end pe-3">Monto</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for pago in folio.pagos.all %}
+            <tr>
+              <td class="ps-3 fw-semibold">
+                {% if pago.metodo_pago == 'EFECTIVO' %}
+                  <span class="text-success"><i class="bi bi-cash-coin me-1"></i>Efectivo</span>
+                {% elif pago.metodo_pago == 'TARJETA' %}
+                  <span class="text-primary"><i class="bi bi-credit-card me-1"></i>Tarjeta</span>
+                {% elif pago.metodo_pago == 'TRANSFERENCIA' %}
+                  <span class="text-info"><i class="bi bi-bank me-1"></i>Transferencia</span>
+                {% elif pago.metodo_pago == 'YAPE_PLIN' %}
+                  <span class="text-purple" style="color: #6f42c1;"><i class="bi bi-phone-vibrate me-1"></i>Yape / Plin</span>
+                {% else %}
+                  <span class="text-secondary"><i class="bi bi-wallet2 me-1"></i>{{ pago.get_metodo_pago_display }}</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if pago.transaccion_id %}
+                  <code class="text-dark bg-light px-2 py-0.5 rounded" style="font-size: .85rem;">{{ pago.transaccion_id }}</code>
+                {% else %}
+                  <span class="text-muted small">—</span>
+                {% endif %}
+              </td>
+              <td class="text-muted small">{{ pago.fecha|date:"d/m/Y H:i" }}</td>
+              <td class="text-end pe-3 fw-bold text-success">S/. {{ pago.monto }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="4" class="text-center text-muted py-3">
+                <i class="bi bi-cash-stack fs-4 d-block mb-1"></i>No hay pagos registrados.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     {% if cargo_tardanza %}
-    <div class="alert alert-warning d-flex align-items-center gap-2">
+    <div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
       <i class="bi bi-alarm fs-5"></i>
       <div>
         <strong>Salida tardía detectada:</strong> {{ minutos_tarde }} min de retraso.
@@ -152,10 +214,61 @@
     {% endif %}
 
     {% if estancia.estado == 'ACTIVA' %}
-    {# ── Agregar cargo ── #}
-    <div class="card mb-3">
+    {# ── Registrar Pago ── #}
+    {% if folio.saldo_pendiente > 0 %}
+    <div class="card mb-3 border-0 shadow-sm">
       <div class="card-header bg-white py-2">
-        <span class="fw-semibold"><i class="bi bi-plus-circle me-2"></i>Agregar cargo extra</span>
+        <span class="fw-semibold text-success"><i class="bi bi-cash-stack me-2"></i>Registrar Pago</span>
+      </div>
+      <div class="card-body">
+        <form method="post" action="/estancias/{{ estancia.id }}/pago/">
+          {% csrf_token %}
+          <div class="row g-2 align-items-end">
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Método de Pago</label>
+              <select name="metodo_pago" id="id_metodo_pago" class="form-select form-select-sm" onchange="toggleTransaccionInput()">
+                <option value="EFECTIVO">💵 Efectivo</option>
+                <option value="TARJETA">💳 Tarjeta (C/D)</option>
+                <option value="TRANSFERENCIA">🏦 Transferencia</option>
+                <option value="YAPE_PLIN">📱 Yape / Plin</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Monto a pagar (S/.)</label>
+              <input type="number" name="monto" step="0.01" min="0.01" max="{{ folio.saldo_pendiente }}" 
+                     value="{{ folio.saldo_pendiente }}" 
+                     class="form-control form-control-sm fw-bold text-success" required>
+            </div>
+            <div class="col-md-4" id="div_transaccion" style="display: none;">
+              <label class="form-label small fw-semibold">ID / Ref. de Transacción</label>
+              <input type="text" name="transaccion_id" class="form-control form-control-sm" placeholder="Ej: TXN-98742">
+            </div>
+            <div class="col-md-2 flex-grow-1">
+              <button type="submit" class="btn btn-sm btn-success w-100 fw-semibold">
+                <i class="bi bi-check-circle-fill me-1"></i>Abonar
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+    <script>
+      function toggleTransaccionInput() {
+        var metodo = document.getElementById("id_metodo_metodo_pago" ? "id_metodo_pago" : "id_metodo_pago").value;
+        var divTrans = document.getElementById("div_transaccion");
+        if (metodo === "EFECTIVO") {
+          divTrans.style.display = "none";
+        } else {
+          divTrans.style.display = "block";
+        }
+      }
+    </script>
+    {% endif %}
+
+    {# ── Agregar cargo ── #}
+    <div class="card mb-3 border-0 shadow-sm">
+      <div class="card-header bg-white py-2">
+        <span class="fw-semibold text-secondary"><i class="bi bi-plus-circle me-2"></i>Agregar cargo extra</span>
       </div>
       <div class="card-body">
         <form method="post" action="/estancias/{{ estancia.id }}/cargo/">
@@ -193,11 +306,17 @@
       <a href="/reservas/" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left me-1"></i>Volver a reservas
       </a>
+      {% if folio.saldo_pendiente > 0 %}
+      <button class="btn btn-secondary flex-grow-1 cursor-not-allowed text-light" style="opacity: 0.8;" disabled title="Debe saldar la cuenta pendiente para poder hacer checkout.">
+        <i class="bi bi-lock-fill me-1"></i>Check-out bloqueado: Folio con saldo pendiente
+      </button>
+      {% else %}
       <a href="/estancias/{{ estancia.id }}/checkout/"
-         class="btn btn-danger flex-grow-1"
+         class="btn btn-success flex-grow-1 fw-bold shadow"
          onclick="return confirm('¿Confirmar check-out? Esta acción cerrará la estancia.')">
         <i class="bi bi-box-arrow-right me-1"></i>Confirmar Check-out
       </a>
+      {% endif %}
     </div>
     {% else %}
     {# ── Folio cerrado ── #}
@@ -213,4 +332,5 @@
 
   </div>
 </div>
+
 {% endblock %}
