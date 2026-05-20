@@ -6,7 +6,7 @@ from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.db.models import Q
 from django.core.exceptions import ValidationError
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from hotel.models import Habitacion, Hotel, TipoHabitacion
 from huespedes.models import Huesped
@@ -29,6 +29,22 @@ def parse_datetime_local(value):
         return None
     parsed = datetime.strptime(value, '%Y-%m-%dT%H:%M')
     return timezone.make_aware(parsed)
+
+
+def parse_date_local(value):
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    value = str(value).strip()
+    for fmt in ('%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y'):
+        try:
+            return datetime.strptime(value, fmt).date()
+        except ValueError:
+            continue
+    raise ValidationError(f'Fecha inválida: {value}')
 
 
 def calcular_cargo_salida_tardia(estancia):
@@ -133,8 +149,6 @@ def reserva_nueva(request):
             habitacion = Habitacion.objects.get(id=request.POST['habitacion'])
             modalidad = request.POST.get('modalidad', Reserva.POR_DIA)
             fecha_hora_entrada = None
-            fecha_entrada = request.POST['fecha_entrada']
-            fecha_salida = request.POST.get('fecha_salida') or fecha_entrada
             duracion_horas = request.POST.get('duracion_horas') or 0
 
             if modalidad == Reserva.POR_HORA:
@@ -143,6 +157,13 @@ def reserva_nueva(request):
                     raise ValidationError('Debes indicar la fecha y hora de ingreso.')
                 fecha_entrada = fecha_hora_entrada.date()
                 fecha_salida = (fecha_hora_entrada + timedelta(hours=float(duracion_horas or 3))).date()
+            else:
+                fecha_entrada = parse_date_local(request.POST.get('fecha_entrada'))
+                fecha_salida = parse_date_local(
+                    request.POST.get('fecha_salida') or request.POST.get('fecha_entrada')
+                )
+                if not fecha_entrada or not fecha_salida:
+                    raise ValidationError('Debes indicar las fechas de entrada y salida.')
 
             reserva = Reserva.objects.create(
                 hotel=habitacion.hotel,
