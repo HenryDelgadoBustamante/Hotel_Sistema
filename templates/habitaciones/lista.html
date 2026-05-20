@@ -6,73 +6,240 @@
 <style>
   /* ── Estilos Rediseñados ── */
   .hab-cell {
-    width: 120px; height: 140px; border-radius: 12px;
-    background: #fff; border: 1.5px solid transparent;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-    cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease;
-    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
-    padding: 12px 8px; text-align: center;
+    width: 120px;
+    height: 140px;
+    border-radius: 12px;
+    background: #fff;
+    border: 1.5px solid transparent;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 8px;
+    text-align: center;
   }
-  .hab-cell:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
 
-  .hab-num { font-size: 1.4rem; font-weight: 700; color: #1f2937; line-height: 1; margin-bottom: 2px; }
-  .hab-tipo { font-size: 0.7rem; color: #6b7280; text-transform: uppercase; line-height: 1; }
-  
-  .hab-icon-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; }
-  .hab-icon { font-size: 20px; }
+  .hab-cell:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .hab-num {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #1f2937;
+    line-height: 1;
+    margin-bottom: 2px;
+  }
+
+  .hab-tipo {
+    font-size: 0.7rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+
+  .hab-icon-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .hab-icon {
+    font-size: 20px;
+  }
 
   .hab-badge {
-    font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 50rem;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 50rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
   }
 
   /* Estados */
-  .estado-disponible { border-color: #10b981; }
-  .estado-disponible .hab-icon { color: #10b981; }
-  .estado-disponible .hab-badge { background: #ecfdf5; color: #065f46; }
+  .estado-disponible {
+    border-color: #10b981;
+  }
 
-  .estado-ocupada, .estado-vencida { border-color: #ef4444; background: #fef9f9; }
-  .estado-ocupada .hab-icon, .estado-vencida .hab-icon { color: #ef4444; }
-  .estado-ocupada .hab-badge, .estado-vencida .hab-badge { background: #fee2e2; color: #991b1b; }
+  .estado-disponible .hab-icon {
+    color: #10b981;
+  }
 
-  .estado-limpieza { border-color: #f59e0b; background: #fffdf5; }
-  .estado-limpieza .hab-icon { color: #f59e0b; }
-  .estado-limpieza .hab-badge { background: #fef3c7; color: #92400e; }
+  .estado-disponible .hab-badge {
+    background: #ecfdf5;
+    color: #065f46;
+  }
 
-  .estado-mantenimiento { border-color: #8b5cf6; background: #fdfbff; }
-  .estado-mantenimiento .hab-icon { color: #8b5cf6; }
-  .estado-mantenimiento .hab-badge { background: #ede9fe; color: #5b21b6; }
+  .estado-ocupada,
+  .estado-vencida {
+    border-color: #ef4444;
+    background: #fef9f9;
+  }
 
-  .estado-reservada { border-color: #3b82f6; background: #f8fbff; }
-  .estado-reservada .hab-icon { color: #3b82f6; }
-  .estado-reservada .hab-badge { background: #dbeafe; color: #1e40af; }
+  .estado-ocupada .hab-icon,
+  .estado-vencida .hab-icon {
+    color: #ef4444;
+  }
 
-  .estado-retraso { border-color: #ef4444; border-style: dashed; background: #fff; }
-  .estado-retraso .hab-icon { color: #ef4444; }
-  .estado-retraso .hab-badge { background: #fee2e2; color: #991b1b; }
+  .estado-ocupada .hab-badge,
+  .estado-vencida .hab-badge {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  .estado-limpieza {
+    border-color: #f59e0b;
+    background: #fffdf5;
+  }
+
+  .estado-limpieza .hab-icon {
+    color: #f59e0b;
+  }
+
+  .estado-limpieza .hab-badge {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  .estado-mantenimiento {
+    border-color: #8b5cf6;
+    background: #fdfbff;
+  }
+
+  .estado-mantenimiento .hab-icon {
+    color: #8b5cf6;
+  }
+
+  .estado-mantenimiento .hab-badge {
+    background: #ede9fe;
+    color: #5b21b6;
+  }
+
+  .estado-reservada {
+    border-color: #3b82f6;
+    background: #f8fbff;
+  }
+
+  .estado-reservada .hab-icon {
+    color: #3b82f6;
+  }
+
+  .estado-reservada .hab-badge {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+
+  .estado-retraso {
+    border-color: #ef4444;
+    border-style: dashed;
+    background: #fff;
+  }
+
+  .estado-retraso .hab-icon {
+    color: #ef4444;
+  }
+
+  .estado-retraso .hab-badge {
+    background: #fee2e2;
+    color: #991b1b;
+  }
 
   /* Filtros y UI Superior */
   .filtro-tab {
-    cursor: pointer; padding: 6px 16px; border-radius: 20px; font-size: 13px;
-    font-weight: 500; background: #f1f5f9; color: #64748b; border: none; transition: all .2s;
+    cursor: pointer;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    background: #f1f5f9;
+    color: #64748b;
+    border: none;
+    transition: all .2s;
   }
-  .filtro-tab:hover { background: #e2e8f0; }
-  .filtro-tab.active { background: #6366f1; color: #ffffff; }
 
-  .btn-nueva-hab { background: #6366f1; color: #fff; border-radius: 8px; border: none; font-weight: 500; padding: 6px 12px; transition: background .2s;}
-  .btn-nueva-hab:hover { background: #4f46e5; color: #fff; }
-  .btn-vista-tabla { background: transparent; border: 1px solid #e5e7eb; color: #374151; border-radius: 8px; font-weight: 500; padding: 6px 12px; transition: background .2s;}
-  .btn-vista-tabla:hover { background: #f9fafb; color: #374151; }
+  .filtro-tab:hover {
+    background: #e2e8f0;
+  }
+
+  .filtro-tab.active {
+    background: #6366f1;
+    color: #ffffff;
+  }
+
+  .btn-nueva-hab {
+    background: #6366f1;
+    color: #fff;
+    border-radius: 8px;
+    border: none;
+    font-weight: 500;
+    padding: 6px 12px;
+    transition: background .2s;
+  }
+
+  .btn-nueva-hab:hover {
+    background: #4f46e5;
+    color: #fff;
+  }
+
+  .btn-vista-tabla {
+    background: transparent;
+    border: 1px solid #e5e7eb;
+    color: #374151;
+    border-radius: 8px;
+    font-weight: 500;
+    padding: 6px 12px;
+    transition: background .2s;
+  }
+
+  .btn-vista-tabla:hover {
+    background: #f9fafb;
+    color: #374151;
+  }
 
   /* Pisos y Leyenda */
   .piso-titulo {
-    font-size: 11px; font-weight: 600; color: #9ca3af; letter-spacing: 0.1em;
-    text-transform: uppercase; margin-bottom: 16px; padding-bottom: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #9ca3af;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
     border-bottom: 1px solid #f1f5f9;
   }
-  .leyenda-container { display: flex; flex-wrap: wrap; gap: 16px; padding: 16px; background: #fff; border-radius: 8px; border: 1px solid #e2e8f0; }
-  .leyenda-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #6b7280; }
-  .leyenda-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  .leyenda-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 16px;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+  }
+
+  .leyenda-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  .leyenda-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
@@ -107,17 +274,22 @@
   <div class="d-flex flex-wrap gap-3">
     {% for hab in piso.list %}
 
-    <div class="hab-cell {% if hab.estado_visual == 'DISPONIBLE' %}estado-disponible{% elif hab.estado_visual == 'OCUPADA' %}estado-ocupada{% elif hab.estado_visual == 'LIMPIEZA' %}estado-limpieza{% elif hab.estado_visual == 'MANTENIMIENTO' %}estado-mantenimiento{% elif hab.estado_visual == 'VENCIDA' %}estado-vencida{% elif hab.estado_visual == 'RESERVADA' %}estado-reservada{% elif hab.estado_visual == 'RETRASO' %}estado-retraso{% else %}estado-disponible{% endif %}"
-         data-bs-toggle="modal" data-bs-target="#modal-{{ hab.id }}">
+    <div
+      class="hab-cell {% if hab.estado_visual == 'DISPONIBLE' %}estado-disponible{% elif hab.estado_visual == 'OCUPADA' %}estado-ocupada{% elif hab.estado_visual == 'LIMPIEZA' %}estado-limpieza{% elif hab.estado_visual == 'MANTENIMIENTO' %}estado-mantenimiento{% elif hab.estado_visual == 'VENCIDA' %}estado-vencida{% elif hab.estado_visual == 'RESERVADA' %}estado-reservada{% elif hab.estado_visual == 'RETRASO' %}estado-retraso{% else %}estado-disponible{% endif %}"
+      data-bs-toggle="modal" data-bs-target="#modal-{{ hab.id }}">
       <div>
         <div class="hab-num">{{ hab.numero }}</div>
         <div class="hab-tipo">{{ hab.tipo.nombre }}</div>
       </div>
       <div class="hab-icon-wrapper">
-        <i class="bi {% if hab.estado_visual == 'DISPONIBLE' %}bi-door-open{% elif hab.estado_visual == 'OCUPADA' %}bi-person-fill{% elif hab.estado_visual == 'LIMPIEZA' %}bi-stars{% elif hab.estado_visual == 'MANTENIMIENTO' %}bi-tools{% elif hab.estado_visual == 'VENCIDA' %}bi-exclamation-octagon{% elif hab.estado_visual == 'RESERVADA' %}bi-clock-history{% elif hab.estado_visual == 'RETRASO' %}bi-clock-fill{% else %}bi-door-open{% endif %} hab-icon"></i>
+        <i
+          class="bi {% if hab.estado_visual == 'DISPONIBLE' %}bi-door-open{% elif hab.estado_visual == 'OCUPADA' %}bi-person-fill{% elif hab.estado_visual == 'LIMPIEZA' %}bi-stars{% elif hab.estado_visual == 'MANTENIMIENTO' %}bi-tools{% elif hab.estado_visual == 'VENCIDA' %}bi-exclamation-octagon{% elif hab.estado_visual == 'RESERVADA' %}bi-clock-history{% elif hab.estado_visual == 'RETRASO' %}bi-clock-fill{% else %}bi-door-open{% endif %} hab-icon"></i>
       </div>
       <div class="hab-badge">
-        {% if hab.estado_visual == 'DISPONIBLE' %}Disponible{% elif hab.estado_visual == 'OCUPADA' %}Ocupada{% elif hab.estado_visual == 'LIMPIEZA' %}Limpieza{% elif hab.estado_visual == 'MANTENIMIENTO' %}Mantenimiento{% elif hab.estado_visual == 'VENCIDA' %}Vencida{% elif hab.estado_visual == 'RESERVADA' %}Reservada{% elif hab.estado_visual == 'RETRASO' %}Retraso{% else %}Disponible{% endif %}
+        {% if hab.estado_visual == 'DISPONIBLE' %}Disponible{% elif hab.estado_visual == 'OCUPADA' %}Ocupada{% elif
+        hab.estado_visual == 'LIMPIEZA' %}Limpieza{% elif hab.estado_visual == 'MANTENIMIENTO' %}Mantenimiento{% elif
+        hab.estado_visual == 'VENCIDA' %}Vencida{% elif hab.estado_visual == 'RESERVADA' %}Reservada{% elif
+        hab.estado_visual == 'RETRASO' %}Retraso{% else %}Disponible{% endif %}
       </div>
     </div>
 
@@ -144,11 +316,8 @@
             </div>
             <div class="d-flex justify-content-between">
               <span class="text-muted">Estado</span>
-              <span class="badge px-2" style="background:
-                {% if hab.estado == 'DISPONIBLE' %}#16a34a
-                {% elif hab.estado == 'OCUPADA' %}#ea580c
-                {% elif hab.estado == 'LIMPIEZA' %}#0ea5e9
-                {% else %}#6b7280{% endif %}">
+              <span class="badge px-2"
+                style="background: {% if hab.estado == 'DISPONIBLE' %}#16a34a{% elif hab.estado == 'OCUPADA' %}#ea580c{% elif hab.estado == 'LIMPIEZA' %}#0ea5e9{% else %}#6b7280{% endif %};">
                 {{ hab.estado }}
               </span>
             </div>
@@ -160,11 +329,11 @@
             </a>
             {% elif hab.estado == 'OCUPADA' %}
             {% for e in hab.estancias.all %}
-              {% if e.estado == 'ACTIVA' %}
-              <a href="/estancias/{{ e.id }}/folio/" class="btn btn-sm btn-primary w-100">
-                <i class="bi bi-receipt me-1"></i>Ver folio
-              </a>
-              {% endif %}
+            {% if e.estado == 'ACTIVA' %}
+            <a href="/estancias/{{ e.id }}/folio/" class="btn btn-sm btn-primary w-100">
+              <i class="bi bi-receipt me-1"></i>Ver folio
+            </a>
+            {% endif %}
             {% endfor %}
             {% endif %}
             <form method="post" action="/housekeeping/{{ hab.id }}/estado/" class="w-100 d-flex gap-1">
@@ -172,7 +341,8 @@
               <select name="estado" class="form-select form-select-sm">
                 <option value="DISPONIBLE" {% if hab.estado == 'DISPONIBLE' %}selected{% endif %}>Disponible</option>
                 <option value="LIMPIEZA" {% if hab.estado == 'LIMPIEZA' %}selected{% endif %}>Limpieza</option>
-                <option value="MANTENIMIENTO" {% if hab.estado == 'MANTENIMIENTO' %}selected{% endif %}>Mantenimiento</option>
+                <option value="MANTENIMIENTO" {% if hab.estado == 'MANTENIMIENTO' %}selected{% endif %}>Mantenimiento
+                </option>
               </select>
               <button type="submit" class="btn btn-sm btn-outline-secondary">OK</button>
             </form>
@@ -194,24 +364,36 @@
 
 <!-- Leyenda -->
 <div class="leyenda-container mt-4">
-  <div class="leyenda-item"><div class="leyenda-dot" style="background:#10b981"></div>Disponible</div>
-  <div class="leyenda-item"><div class="leyenda-dot" style="background:#ef4444"></div>Ocupada / Vencida</div>
-  <div class="leyenda-item"><div class="leyenda-dot" style="background:#f59e0b"></div>En limpieza</div>
-  <div class="leyenda-item"><div class="leyenda-dot" style="background:#3b82f6"></div>Reservada (próx. llegada)</div>
-  <div class="leyenda-item"><div class="leyenda-dot" style="border: 1.5px dashed #ef4444"></div>Reserva con retraso</div>
-  <div class="leyenda-item"><div class="leyenda-dot" style="background:#8b5cf6"></div>Mantenimiento</div>
+  <div class="leyenda-item">
+    <div class="leyenda-dot" style="background:#10b981"></div>Disponible
+  </div>
+  <div class="leyenda-item">
+    <div class="leyenda-dot" style="background:#ef4444"></div>Ocupada / Vencida
+  </div>
+  <div class="leyenda-item">
+    <div class="leyenda-dot" style="background:#f59e0b"></div>En limpieza
+  </div>
+  <div class="leyenda-item">
+    <div class="leyenda-dot" style="background:#3b82f6"></div>Reservada (próx. llegada)
+  </div>
+  <div class="leyenda-item">
+    <div class="leyenda-dot" style="border: 1.5px dashed #ef4444"></div>Reserva con retraso
+  </div>
+  <div class="leyenda-item">
+    <div class="leyenda-dot" style="background:#8b5cf6"></div>Mantenimiento
+  </div>
 </div>
 
 {% endblock %}
 
 {% block scripts %}
 <script>
-function filtrar(bloque, btn) {
-  document.querySelectorAll('.filtro-tab').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.querySelectorAll('.piso-bloque').forEach(p => {
-    p.style.display = (bloque === 'todos' || p.id === bloque) ? '' : 'none';
-  });
-}
+  function filtrar(bloque, btn) {
+    document.querySelectorAll('.filtro-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.piso-bloque').forEach(p => {
+      p.style.display = (bloque === 'todos' || p.id === bloque) ? '' : 'none';
+    });
+  }
 </script>
 {% endblock %}
