@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}Editar Usuario y Permisos{% endblock %}
+{% block page_title %}Editar Rol: {{ usuario_edit.username }}{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-6 mx-auto">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-bold">Nombre de usuario</label>
+            <input type="text" class="form-control" value="{{ usuario_edit.username }}" disabled>
+          </div>
+          
+          <div class="row mb-3">
+            <div class="col">
+              <label class="form-label text-muted small fw-bold">Nombres</label>
+              <input type="text" name="nombres" class="form-control" value="{{ usuario_edit.first_name }}">
+            </div>
+            <div class="col">
+              <label class="form-label text-muted small fw-bold">Apellidos</label>
+              <input type="text" name="apellidos" class="form-control" value="{{ usuario_edit.last_name }}">
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-bold">Correo electrónico</label>
+            <input type="email" name="email" class="form-control" value="{{ usuario_edit.email }}">
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label text-muted small fw-bold text-primary"><i class="bi bi-shield-lock me-1"></i>Asignación de Rol</label>
+            <select name="rol" class="form-select">
+              <option value="">-- Sin Rol Específico --</option>
+              {% for g in grupos_disponibles %}
+              <option value="{{ g.id }}" {% if rol_actual and rol_actual.id == g.id %}selected{% endif %}>
+                {{ g.name|title }}
+              </option>
+              {% endfor %}
+            </select>
+            <div class="form-text mt-2">
+              <ul class="mb-0 small text-muted">
+                <li><strong>Admin:</strong> Acceso total al sistema.</li>
+                <li><strong>Recepcionista:</strong> Gestión de huéspedes, reservas, check-in, folios.</li>
+                <li><strong>Housekeeping:</strong> Solo ver y cambiar estados de limpieza de habitaciones.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="form-check form-switch mb-4">
+            <input class="form-check-input" type="checkbox" name="is_active" id="isActive" {% if usuario_edit.is_active %}checked{% endif %}>
+            <label class="form-check-label" for="isActive">Usuario activo (puede iniciar sesión)</label>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save me-1"></i>Guardar Cambios</button>
+            <a href="{% url 'usuarios_lista' %}" class="btn btn-outline-secondary">Cancelar</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

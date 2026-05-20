@@ -16,6 +16,31 @@ from estancias.models import Estancia, CargoEstancia, Folio, Pago
 import requests
 
 
+# ── Helpers de Rol ─────────────────────────────────────────────────────────────
+def _es_admin(user):
+    return user.is_superuser or user.groups.filter(name='admin').exists()
+
+def _es_recepcionista(user):
+    return _es_admin(user) or user.groups.filter(name='recepcionista').exists()
+
+def _es_housekeeping(user):
+    return _es_admin(user) or user.groups.filter(name='housekeeping').exists()
+
+def _solo_housekeeping(user):
+    """True si el usuario es SOLO housekeeping (sin admin ni recepcionista)."""
+    return (
+        user.groups.filter(name='housekeeping').exists()
+        and not user.is_superuser
+        and not user.groups.filter(name__in=['admin', 'recepcionista']).exists()
+    )
+
+def _acceso_denegado(request, msg='No tienes permisos para acceder a esta sección.'):
+    messages.error(request, msg)
+    if _solo_housekeeping(request.user):
+        return redirect('housekeeping')
+    return redirect('dashboard')
+
+
 def parse_room_gallery(raw_urls, main_url=''):
     urls = []
     for raw_url in (main_url, *raw_urls.splitlines()):
@@ -66,11 +91,15 @@ def calcular_cargo_salida_tardia(estancia):
 
 def login_view(request):
     if request.user.is_authenticated:
+        if request.user.groups.filter(name='housekeeping').exists() and not request.user.is_superuser and not request.user.groups.filter(name='admin').exists():
+            return redirect('housekeeping')
         return redirect('dashboard')
     if request.method == 'POST':
         user = authenticate(request, username=request.POST['username'], password=request.POST['password'])
         if user:
             login(request, user)
+            if user.groups.filter(name='housekeeping').exists() and not user.is_superuser and not user.groups.filter(name='admin').exists():
+                return redirect('housekeeping')
             return redirect('dashboard')
         messages.error(request, 'Usuario o contraseña incorrectos.')
     return render(request, 'login.html')
@@ -83,6 +112,9 @@ def logout_view(request):
 
 @login_required
 def dashboard(request):
+    if request.user.groups.filter(name='housekeeping').exists() and not request.user.is_superuser and not request.user.groups.filter(name='admin').exists():
+        return redirect('housekeeping')
+
     habitaciones = Habitacion.objects.select_related('tipo', 'hotel').all().order_by('piso', 'numero')
     hoy = timezone.now().date()
     total = habitaciones.count()
@@ -118,6 +150,8 @@ def dashboard(request):
 
 @login_required
 def reservas_lista(request):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
     estado = request.GET.get('estado')
     reservas = Reserva.objects.select_related('huesped', 'habitacion').all().order_by('-created_at')
     if estado:
@@ -127,6 +161,8 @@ def reservas_lista(request):
 
 @login_required
 def reserva_detalle(request, reserva_id):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
     reserva = get_object_or_404(
         Reserva.objects.select_related('huesped', 'habitacion__tipo', 'hotel'),
         id=reserva_id,
@@ -140,6 +176,8 @@ def reserva_detalle(request, reserva_id):
 
 @login_required
 def reserva_nueva(request):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
     if request.method == 'POST':
         try:
             huesped_id = request.POST.get('huesped_id')
@@ -205,6 +243,8 @@ def reserva_nueva(request):
 
 @login_required
 def reserva_checkin(request, reserva_id):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
     reserva = get_object_or_404(Reserva, id=reserva_id)
     if reserva.estado not in ['PENDIENTE', 'CONFIRMADA']:
         messages.error(request, 'Esta reserva no puede hacer check-in.')
@@ -266,6 +306,8 @@ def reserva_checkin(request, reserva_id):
 
 @login_required
 def folio_view(request, estancia_id):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
     estancia = get_object_or_404(Estancia, id=estancia_id)
     folio, _ = Folio.objects.get_or_create(estancia=estancia)
 
@@ -298,6 +340,8 @@ def folio_view(request, estancia_id):
 
 @login_required
 def agregar_cargo(request, estancia_id):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
     if request.method == 'POST':
         estancia = get_object_or_404(Estancia, id=estancia_id)
         CargoEstancia.objects.create(
@@ -314,6 +358,8 @@ def agregar_cargo(request, estancia_id):
 
 @login_required
 def registrar_pago(request, estancia_id):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
     if request.method == 'POST':
         estancia = get_object_or_404(Estancia, id=estancia_id)
         folio, _ = Folio.objects.get_or_create(estancia=estancia)
@@ -336,6 +382,8 @@ def registrar_pago(request, estancia_id):
 
 @login_required
 def checkout_view(request, estancia_id):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
     estancia = get_object_or_404(Estancia, id=estancia_id)
     try:
         cargo_tardanza, minutos_tarde = calcular_cargo_salida_tardia(estancia)
@@ -361,6 +409,8 @@ def checkout_view(request, estancia_id):
 
 @login_required
 def housekeeping_view(request):
+    if not _es_housekeeping(request.user):
+        return _acceso_denegado(request)
     piso = request.GET.get('piso', '')
     habitaciones = Habitacion.objects.filter(estado='LIMPIEZA').select_related('tipo').order_by('piso', 'numero')
     
@@ -378,6 +428,8 @@ def housekeeping_view(request):
 
 @login_required
 def housekeeping_estado(request, hab_id):
+    if not _es_housekeeping(request.user):
+        return _acceso_denegado(request)
     if request.method == 'POST':
         hab = get_object_or_404(Habitacion, id=hab_id)
         nuevo_estado = request.POST.get('estado')
@@ -390,6 +442,8 @@ def housekeeping_estado(request, hab_id):
 
 @login_required
 def reportes_view(request):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
     import json
     from django.utils import timezone
     from django.db import models
@@ -451,6 +505,8 @@ def reportes_view(request):
 
 @login_required
 def reservas_calendario(request):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
     from datetime import timedelta
     from django.utils import timezone
     
@@ -514,6 +570,8 @@ def reservas_calendario(request):
 
 @login_required
 def huespedes_lista(request):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
     query = request.GET.get('q', '')
     huespedes = Huesped.objects.all().order_by('-created_at')
     if query:
@@ -527,6 +585,8 @@ def huespedes_lista(request):
 
 @login_required
 def huesped_nuevo(request):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
     next_url = request.GET.get('next') or request.POST.get('next') or ''
     if request.method == 'POST':
         try:
@@ -554,6 +614,8 @@ def huesped_nuevo(request):
 
 @login_required
 def huesped_editar(request, huesped_id):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
     huesped = get_object_or_404(Huesped, id=huesped_id)
     if request.method == 'POST':
         try:
@@ -578,6 +640,8 @@ def huesped_editar(request, huesped_id):
 
 @login_required
 def exportar_huespedes_excel(request):
+    if not _es_admin(request.user):
+        return _acceso_denegado(request, 'Solo los administradores pueden exportar datos.')
     import openpyxl
     from openpyxl.styles import Font, PatternFill, Alignment
     from django.http import HttpResponse
@@ -637,6 +701,8 @@ def exportar_huespedes_excel(request):
 
 @login_required
 def habitaciones_lista(request):
+    if not _es_recepcionista(request.user) and not _es_housekeeping(request.user):
+        return _acceso_denegado(request)
     from django.utils import timezone
     from datetime import datetime, time
     hoy = timezone.now().date()
@@ -694,6 +760,10 @@ def habitaciones_lista(request):
 
 @login_required
 def habitacion_nueva(request):
+    if not request.user.is_superuser and not request.user.groups.filter(name='admin').exists():
+        messages.error(request, 'No tienes permisos para crear habitaciones.')
+        return redirect('habitaciones_lista')
+
     if request.method == 'POST':
         try:
             hotel = Hotel.objects.get(id=request.POST['hotel'])
@@ -723,6 +793,10 @@ def habitacion_nueva(request):
 
 @login_required
 def habitacion_editar(request, hab_id):
+    if not request.user.is_superuser and not request.user.groups.filter(name='admin').exists():
+        messages.error(request, 'No tienes permisos para editar habitaciones.')
+        return redirect('habitaciones_lista')
+
     hab = get_object_or_404(Habitacion, id=hab_id)
     if request.method == 'POST':
         try:
@@ -751,6 +825,8 @@ def habitacion_editar(request, hab_id):
 
 @login_required
 def estancias_lista(request):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
     from django.utils import timezone
     estancias = Estancia.objects.select_related(
         'reserva__huesped', 'habitacion__tipo'
@@ -765,3 +841,126 @@ def estancias_lista(request):
     return render(request, 'estancias/lista.html', {'estancias': estancias})
 
 
+@login_required
+def usuarios_lista(request):
+    from django.contrib.auth.models import User, Group
+    if not request.user.is_superuser and not request.user.groups.filter(name='admin').exists():
+        messages.error(request, 'No tienes permisos para acceder a la gestión de usuarios.')
+        return redirect('dashboard')
+    
+    query = request.GET.get('q', '')
+    usuarios = User.objects.prefetch_related('groups').all().order_by('-date_joined')
+    if query:
+        usuarios = usuarios.filter(
+            Q(username__icontains=query) |
+            Q(first_name__icontains=query) |
+            Q(last_name__icontains=query) |
+            Q(email__icontains=query)
+        )
+    
+    return render(request, 'usuarios/lista.html', {'usuarios': usuarios, 'query': query})
+
+
+@login_required
+def usuario_editar(request, user_id):
+    from django.contrib.auth.models import User, Group
+    if not request.user.is_superuser and not request.user.groups.filter(name='admin').exists():
+        messages.error(request, 'No tienes permisos para editar usuarios.')
+        return redirect('dashboard')
+        
+    usuario_edit = get_object_or_404(User, id=user_id)
+    grupos_disponibles = Group.objects.all()
+    
+    if request.method == 'POST':
+        try:
+            usuario_edit.first_name = request.POST.get('nombres', usuario_edit.first_name)
+            usuario_edit.last_name = request.POST.get('apellidos', usuario_edit.last_name)
+            usuario_edit.email = request.POST.get('email', usuario_edit.email)
+            usuario_edit.is_active = request.POST.get('is_active') == 'on'
+            
+            # Gestión de roles
+            rol_id = request.POST.get('rol')
+            usuario_edit.groups.clear()
+            if rol_id:
+                grupo = Group.objects.get(id=rol_id)
+                usuario_edit.groups.add(grupo)
+                
+            usuario_edit.save()
+            messages.success(request, f'Usuario {usuario_edit.username} actualizado correctamente.')
+            return redirect('usuarios_lista')
+        except Exception as e:
+            messages.error(request, f'Error al actualizar: {str(e)}')
+            
+    # Obtener el rol actual
+    rol_actual = usuario_edit.groups.first()
+    
+    return render(request, 'usuarios/form.html', {
+        'usuario_edit': usuario_edit,
+        'grupos_disponibles': grupos_disponibles,
+        'rol_actual': rol_actual,
+    })
+
+
+@login_required
+def usuario_nuevo(request):
+    from django.contrib.auth.models import User, Group
+    if not request.user.is_superuser and not request.user.groups.filter(name='admin').exists():
+        messages.error(request, 'No tienes permisos para crear usuarios.')
+        return redirect('dashboard')
+        
+    grupos_disponibles = Group.objects.all()
+    
+    if request.method == 'POST':
+        try:
+            username = request.POST.get('username')
+            password = request.POST.get('password')
+            
+            if User.objects.filter(username=username).exists():
+                raise Exception('Ese nombre de usuario ya está en uso.')
+                
+            nuevo_user = User.objects.create_user(
+                username=username,
+                password=password,
+                first_name=request.POST.get('nombres', ''),
+                last_name=request.POST.get('apellidos', ''),
+                email=request.POST.get('email', ''),
+            )
+            nuevo_user.is_active = request.POST.get('is_active') == 'on'
+            
+            rol_id = request.POST.get('rol')
+            if rol_id:
+                grupo = Group.objects.get(id=rol_id)
+                nuevo_user.groups.add(grupo)
+                
+            nuevo_user.save()
+            messages.success(request, f'Usuario {nuevo_user.username} creado correctamente.')
+            return redirect('usuarios_lista')
+        except Exception as e:
+            messages.error(request, f'Error al crear: {str(e)}')
+            
+    return render(request, 'usuarios/nuevo.html', {
+        'grupos_disponibles': grupos_disponibles,
+    })
+
+
+@login_required
+def usuario_eliminar(request, user_id):
+    from django.contrib.auth.models import User
+    if not request.user.is_superuser and not request.user.groups.filter(name='admin').exists():
+        messages.error(request, 'No tienes permisos para eliminar usuarios.')
+        return redirect('dashboard')
+        
+    usuario = get_object_or_404(User, id=user_id)
+    if usuario == request.user:
+        messages.error(request, 'No puedes eliminar tu propia cuenta.')
+        return redirect('usuarios_lista')
+        
+    if request.method == 'POST':
+        try:
+            username = usuario.username
+            usuario.delete()
+            messages.success(request, f'Usuario {username} eliminado.')
+        except Exception as e:
+            messages.error(request, f'Error al eliminar: {str(e)}')
+            
+    return redirect('usuarios_lista')

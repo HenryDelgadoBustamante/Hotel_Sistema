@@ -250,9 +250,13 @@
     {% endfor %}
   </div>
   <div class="d-flex gap-2">
+    {% with groups=request.user.groups.all|stringformat:"s" %}
+    {% if request.user.is_superuser or 'admin' in groups %}
     <a href="{% url 'habitacion_nueva' %}" class="btn-nueva-hab text-decoration-none">
       <i class="bi bi-plus-lg me-1"></i>Nueva habitación
     </a>
+    {% endif %}
+    {% endwith %}
     <a href="/habitaciones/?vista=tabla" class="btn-vista-tabla text-decoration-none">
       <i class="bi bi-list-ul me-1"></i>Vista tabla
     </a>
@@ -263,7 +267,11 @@
 <div class="alert alert-info mt-4 text-center">
   <h5>No hay habitaciones registradas en el sistema.</h5>
   <p>Debes crear habitaciones para que aparezcan en este panel de recepción.</p>
+  {% with groups=request.user.groups.all|stringformat:"s" %}
+  {% if request.user.is_superuser or 'admin' in groups %}
   <a href="{% url 'habitacion_nueva' %}" class="btn btn-primary">Agregar mi primera habitación</a>
+  {% endif %}
+  {% endwith %}
 </div>
 {% endif %}
 
@@ -323,6 +331,8 @@
             </div>
           </div>
           <div class="modal-footer py-2 flex-column gap-1">
+            {% with groups=request.user.groups.all|stringformat:"s" %}
+            {% if request.user.is_superuser or 'admin' in groups or 'recepcionista' in groups %}
             {% if hab.estado == 'DISPONIBLE' %}
             <a href="/reservas/nueva/?habitacion={{ hab.id }}" class="btn btn-sm btn-success w-100">
               <i class="bi bi-calendar-plus me-1"></i>Crear reserva
@@ -336,20 +346,25 @@
             {% endif %}
             {% endfor %}
             {% endif %}
+            {% endif %}
+            {% if request.user.is_superuser or 'admin' in groups or 'housekeeping' in groups %}
             <form method="post" action="/housekeeping/{{ hab.id }}/estado/" class="w-100 d-flex gap-1">
               {% csrf_token %}
               <select name="estado" class="form-select form-select-sm">
                 <option value="DISPONIBLE" {% if hab.estado == 'DISPONIBLE' %}selected{% endif %}>Disponible</option>
                 <option value="LIMPIEZA" {% if hab.estado == 'LIMPIEZA' %}selected{% endif %}>Limpieza</option>
-                <option value="MANTENIMIENTO" {% if hab.estado == 'MANTENIMIENTO' %}selected{% endif %}>Mantenimiento
-                </option>
+                <option value="MANTENIMIENTO" {% if hab.estado == 'MANTENIMIENTO' %}selected{% endif %}>Mantenimiento</option>
               </select>
               <button type="submit" class="btn btn-sm btn-outline-secondary">OK</button>
             </form>
+            {% endif %}
             <div class="d-flex gap-1 w-100 mt-2 pt-2 border-top">
+              {% if request.user.is_superuser or 'admin' in groups %}
               <a href="{% url 'habitacion_editar' hab.id %}" class="btn btn-sm btn-outline-info w-100">
                 <i class="bi bi-pencil me-1"></i>Editar
               </a>
+              {% endif %}
+              {% endwith %}
               <button class="btn btn-sm btn-outline-secondary w-100" data-bs-dismiss="modal">Cerrar</button>
             </div>
           </div>

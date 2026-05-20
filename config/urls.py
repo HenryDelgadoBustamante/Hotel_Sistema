@@ -9,7 +9,8 @@ from views_frontend import (
     housekeeping_view, housekeeping_estado, reportes_view,
     huespedes_lista, huesped_nuevo, huesped_editar, exportar_huespedes_excel,
     habitaciones_lista, habitacion_nueva, habitacion_editar,
-    estancias_lista, reservas_calendario
+    estancias_lista, reservas_calendario,
+    usuarios_lista, usuario_editar, usuario_nuevo, usuario_eliminar
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_yasg.views import get_schema_view
@@ -76,5 +77,9 @@ urlpatterns = [
     path('housekeeping/', housekeeping_view, name='housekeeping'),
     path('housekeeping/<int:hab_id>/estado/', housekeeping_estado, name='housekeeping_estado'),
     path('reportes/', reportes_view, name='reportes'),
+    path('usuarios/', usuarios_lista, name='usuarios_lista'),
+    path('usuarios/nuevo/', usuario_nuevo, name='usuario_nuevo'),
+    path('usuarios/<int:user_id>/editar/', usuario_editar, name='usuario_editar'),
+    path('usuarios/<int:user_id>/eliminar/', usuario_eliminar, name='usuario_eliminar'),
     path('', lambda request: redirect('dashboard'), name='home'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

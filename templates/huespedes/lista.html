@@ -9,10 +9,16 @@
     {% if query %}<a href="/huespedes/" class="btn btn-sm btn-outline-secondary">Limpiar</a>{% endif %}
   </form>
   <div class="d-flex gap-2">
+    {% with groups=request.user.groups.all|stringformat:"s" %}
+    {% if request.user.is_superuser or 'admin' in groups %}
     <a href="{% url 'exportar_huespedes_excel' %}" class="btn btn-exportar-excel text-white" style="background-color: #22c55e;">
       <i class="bi bi-file-earmark-spreadsheet me-1"></i> Exportar Excel
     </a>
+    {% endif %}
+    {% if request.user.is_superuser or 'admin' in groups or 'recepcionista' in groups %}
     <a href="/huespedes/nuevo/" class="btn btn-primary"><i class="bi bi-person-plus me-1"></i>Nuevo huésped</a>
+    {% endif %}
+    {% endwith %}
   </div>
 </div>
 <div class="card">

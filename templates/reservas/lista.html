@@ -11,7 +11,11 @@
   </div>
   <div>
     <a href="/reservas/calendario/" class="btn btn-outline-info me-2"><i class="bi bi-calendar3 me-1"></i>Calendario</a>
+    {% with groups=request.user.groups.all|stringformat:"s" %}
+    {% if request.user.is_superuser or 'admin' in groups or 'recepcionista' in groups %}
     <a href="/reservas/nueva/" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nueva reserva</a>
+    {% endif %}
+    {% endwith %}
   </div>
 </div>
 <div class="card">
