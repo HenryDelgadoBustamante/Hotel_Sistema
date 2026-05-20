@@ -16,4 +16,6 @@ db.sqlite3
 .vscode/
 
 # Archivos estáticos
-staticfiles/
+staticfiles/__pycache__/
+*.pyc
+db.sqlite3
