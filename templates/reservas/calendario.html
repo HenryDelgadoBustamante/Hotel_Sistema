@@ -3,73 +3,251 @@
 {% block page_title %}Calendario de Reservas{% endblock %}
 {% block content %}
 <style>
-.timeline-container { overflow-x: auto; position: relative; border: 1px solid #dee2e6; border-radius: 8px; background: #fff;}
-.timeline-header { display: flex; border-bottom: 2px solid #dee2e6; background: #f8f9fa; position: sticky; top: 0; z-index: 10; }
-.timeline-row { display: flex; border-bottom: 1px solid #dee2e6; position: relative; min-height: 50px; }
-.timeline-cell-hab { width: 150px; min-width: 150px; border-right: 2px solid #dee2e6; padding: 10px; font-weight: bold; background: #fff; position: sticky; left: 0; z-index: 5; display: flex; flex-direction: column; justify-content: center; }
-.timeline-cell-day { width: 60px; min-width: 60px; border-right: 1px solid #e9ecef; text-align: center; padding: 10px 0; font-size: 12px; }
-.timeline-event { position: absolute; top: 5px; height: 40px; border-radius: 4px; color: #fff; font-size: 12px; padding: 2px 8px; display: flex; align-items: center; overflow: hidden; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 2; cursor: pointer; transition: transform 0.2s; }
-.timeline-event:hover { transform: scale(1.02); z-index: 10; }
+/* Contenedor General */
+.calendario-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Barra de Filtros */
+.cal-filters {
+  background: #f8faff;
+  border-bottom: 1px solid #f1f5f9;
+  padding: 12px 16px;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+.cal-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cal-filter-group label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  margin: 0;
+}
+.cal-filters input, .cal-filters select {
+  height: 36px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 13px;
+  padding: 0 12px;
+  background: #fff;
+  color: #1e293b;
+}
+.cal-btn-filtrar {
+  background: #6366f1;
+  color: #fff;
+  border-radius: 8px;
+  padding: 0 20px;
+  height: 36px;
+  border: none;
+  font-weight: 500;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+.cal-btn-filtrar:hover { background: #4f46e5; }
+
+/* Grid / Timeline */
+.timeline-container {
+  overflow-x: auto;
+  position: relative;
+  background: #fff;
+}
+.timeline-header {
+  display: flex;
+  height: 48px;
+  background: #f8faff;
+  border-bottom: 1px solid #f1f5f9;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+.timeline-row {
+  display: flex;
+  height: 40px;
+  border-bottom: 0.5px solid #f1f5f9;
+  position: relative;
+  background: #fff;
+  transition: background-color 0.1s;
+}
+.timeline-row:hover {
+  background: #fafbff;
+}
+.timeline-cell-hab {
+  width: 110px;
+  min-width: 110px;
+  background: #fff;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 12px;
+  border-right: 1px solid #f1f5f9;
+}
+.timeline-header .timeline-cell-hab {
+  background: #f8faff;
+  z-index: 4;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+}
+.hab-num { font-size: 13px; font-weight: 600; color: #1f2937; line-height: 1.1; }
+.hab-type { font-size: 10px; color: #9ca3af; line-height: 1.1; margin-top: 2px;}
+
+.timeline-cell-day {
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  border-right: 0.5px solid #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.timeline-header .timeline-cell-day {
+  background: #f8faff;
+}
+.day-num { font-size: 13px; font-weight: 600; color: #1f2937; line-height: 1.1; }
+.day-month { font-size: 10px; color: #9ca3af; line-height: 1.1; margin-top: 1px; }
+
+/* Separador de piso */
+.piso-separador {
+  display: flex;
+  background: #f8faff;
+  height: 28px;
+  align-items: center;
+  padding-left: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 0.5px solid #f1f5f9;
+  position: sticky;
+  left: 0;
+  width: 100%;
+  z-index: 1;
+}
+
+/* Eventos / Píldoras */
+.timeline-event {
+  position: absolute;
+  top: 8px; /* Centrado vertical en fila de 40px */
+  height: 24px;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+  z-index: 1;
+  cursor: pointer;
+  transition: transform 0.15s, opacity 0.15s;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+.timeline-event:hover {
+  transform: scale(1.02);
+  z-index: 10;
+  opacity: 0.95;
+}
+
+/* Leyenda */
+.leyenda-container {
+  display: flex;
+  gap: 16px;
+  padding: 10px 16px;
+  border-top: 1px solid #f1f5f9;
+  background: #fff;
+}
+.leyenda-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #6b7280;
+}
+.leyenda-box {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
 </style>
 
-<div class="card p-3 mb-3">
-  <form method="get" class="row g-3 align-items-end">
-    <div class="col-md-3">
-      <label class="form-label">Fecha de inicio</label>
-      <input type="date" name="fecha_inicio" value="{{ fecha_inicio|date:'Y-m-d' }}" class="form-control form-control-sm">
+<div class="calendario-card mb-4 mt-2">
+  <form method="get" class="cal-filters">
+    <div class="cal-filter-group">
+      <label>Fecha de inicio</label>
+      <input type="date" name="fecha_inicio" value="{{ fecha_inicio|date:'Y-m-d' }}">
     </div>
-    <div class="col-md-3">
-      <label class="form-label">Tipo de Habitación</label>
-      <select name="tipo" class="form-select form-select-sm">
+    <div class="cal-filter-group">
+      <label>Tipo de Habitación</label>
+      <select name="tipo">
         <option value="">Todos</option>
         {% for t in tipos %}
         <option value="{{ t.id }}" {% if tipo_id == t.id %}selected{% endif %}>{{ t.nombre }}</option>
         {% endfor %}
       </select>
     </div>
-    <div class="col-md-2">
-      <button type="submit" class="btn btn-sm btn-primary w-100">Filtrar</button>
-    </div>
+    <button type="submit" class="cal-btn-filtrar">Filtrar</button>
   </form>
-</div>
 
-<div class="timeline-container">
-  <div class="timeline-header">
-    <div class="timeline-cell-hab bg-light text-center align-items-center">Habitación</div>
-    {% for dia in dias %}
-    <div class="timeline-cell-day">
-      <strong>{{ dia|date:"d" }}</strong><br>
-      <span class="text-muted">{{ dia|date:"M" }}</span>
-    </div>
-    {% endfor %}
-  </div>
-  
-  {% for hab in habitaciones %}
-  <div class="timeline-row">
-    <div class="timeline-cell-hab">
-      {{ hab.numero }}
-      <small class="text-muted fw-normal">{{ hab.tipo.nombre }}</small>
-    </div>
-    {% for dia in dias %}
-    <div class="timeline-cell-day"></div>
-    {% endfor %}
-    
-    {% for ev in eventos %}
-      {% if ev.habitacion_id == hab.id %}
-      <div class="timeline-event" style="left: calc(150px + {{ ev.offset }} * 60px); width: calc({{ ev.width }} * 60px); background-color: {{ ev.color }};" title="{{ ev.huesped }} ({{ ev.estado }})">
-        {{ ev.huesped }}
+  <div class="timeline-container">
+    <div class="timeline-header">
+      <div class="timeline-cell-hab">Habitación</div>
+      {% for dia in dias %}
+      <div class="timeline-cell-day">
+        <span class="day-num">{{ dia|date:"d" }}</span>
+        <span class="day-month">{{ dia|date:"M" }}</span>
       </div>
-      {% endif %}
+      {% endfor %}
+    </div>
+    
+    {% regroup habitaciones by piso as pisos_list %}
+    {% for piso in pisos_list %}
+      <div class="piso-separador">PISO {{ piso.grouper }}</div>
+      {% for hab in piso.list %}
+      <div class="timeline-row">
+        <div class="timeline-cell-hab">
+          <span class="hab-num">{{ hab.numero }}</span>
+          <span class="hab-type">{{ hab.tipo.nombre }}</span>
+        </div>
+        {% for dia in dias %}
+        <div class="timeline-cell-day"></div>
+        {% endfor %}
+        
+        {% for ev in eventos %}
+          {% if ev.habitacion_id == hab.id %}
+          <div class="timeline-event" style="left: calc(110px + {{ ev.offset }} * 44px); width: calc({{ ev.width }} * 44px); background-color: {{ ev.color }};" title="{{ ev.huesped }} ({{ ev.estado }})">
+            {{ ev.huesped }}
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% endfor %}
+    {% empty %}
+      <div class="p-4 text-center text-muted" style="font-size:13px;">No hay habitaciones registradas.</div>
     {% endfor %}
   </div>
-  {% empty %}
-  <div class="p-4 text-center text-muted">No hay habitaciones registradas.</div>
-  {% endfor %}
-</div>
 
-<div class="d-flex gap-3 mt-3 small">
-  <span><span class="badge" style="background:#f59e0b">●</span> Pendiente</span>
-  <span><span class="badge" style="background:#3b82f6">●</span> Confirmada</span>
-  <span><span class="badge" style="background:#10b981">●</span> En casa (Check-in)</span>
+  <div class="leyenda-container">
+    <div class="leyenda-item"><div class="leyenda-box" style="background:#f0fdf4; border: 1px solid #dcfce7;"></div> Disponible</div>
+    <div class="leyenda-item"><div class="leyenda-box" style="background:#dbeafe;"></div> Reservada</div>
+    <div class="leyenda-item"><div class="leyenda-box" style="background:#fee2e2;"></div> Ocupada</div>
+    <div class="leyenda-item"><div class="leyenda-box" style="background:#fef3c7;"></div> Limpieza</div>
+  </div>
 </div>
 {% endblock %}

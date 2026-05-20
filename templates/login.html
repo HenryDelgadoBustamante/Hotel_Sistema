@@ -1,58 +1,208 @@
 {% extends 'base.html' %}
 {% block title %}Iniciar Sesión — HotelSystem{% endblock %}
+
 {% block auth_content %}
-<div class="min-vh-100 d-flex align-items-center justify-content-center"
-     style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #0f172a 100%);">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=DM+Sans:wght@400;500;600&display=swap');
 
-  <div style="width:380px;">
+  .login-wrapper {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    font-family: 'DM Sans', sans-serif;
+    overflow: hidden;
+  }
 
-    {# Brand ── #}
-    <div class="text-center mb-4">
-      <div style="width:52px;height:52px;border-radius:14px;
-                  background:linear-gradient(135deg,#3b82f6,#6366f1);
-                  display:flex;align-items:center;justify-content:center;
-                  margin:0 auto 14px;box-shadow:0 8px 24px rgba(59,130,246,.35);">
-        <i class="bi bi-building text-white" style="font-size:22px;"></i>
+  /* Left Panel */
+  .left-panel {
+    flex: 1;
+    background-color: #0f1c2e;
+    background-image: 
+      linear-gradient(rgba(99,102,241,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(99,102,241,0.04) 1px, transparent 1px);
+    background-size: 30px 30px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 60px;
+    color: #ffffff;
+    overflow: hidden;
+  }
+
+  /* Glow effects */
+  .glow-1 {
+    position: absolute;
+    top: -10%; left: -10%;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(59,130,246,0.15) 0%, rgba(15,28,46,0) 70%);
+    border-radius: 50%;
+    z-index: 0;
+  }
+  .glow-2 {
+    position: absolute;
+    bottom: -15%; right: -10%;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(139,92,246,0.10) 0%, rgba(15,28,46,0) 70%);
+    border-radius: 50%;
+    z-index: 0;
+  }
+
+  .left-content { position: relative; z-index: 1; }
+
+  .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 80px; }
+  .brand-icon { width: 36px; height: 36px; background: #ffffff; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #0f1c2e; font-size: 18px; }
+  .brand-name { font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 600; letter-spacing: 0.02em; }
+
+  .tag-pill { display: inline-flex; align-items: center; gap: 6px; background: rgba(99,102,241,0.1); color: #a5b4fc; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid rgba(99,102,241,0.2); margin-bottom: 24px; }
+  
+  .hero-title { font-family: 'Cormorant Garamond', serif; font-size: 52px; font-weight: 300; line-height: 1.15; margin-bottom: 20px; max-width: 500px; color: #ffffff; text-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+  .hero-title i { color: #a5b4fc; font-style: italic; }
+  .hero-subtitle { color: #94a3b8; font-size: 16px; max-width: 400px; line-height: 1.6; }
+
+  .metrics-box { display: flex; align-items: center; border-top: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.1); padding: 20px 0; margin-bottom: 40px; }
+  .metric-item { flex: 1; border-right: 1px solid rgba(255,255,255,0.1); padding-right: 20px; }
+  .metric-item:last-child { border-right: none; padding-right: 0; padding-left: 20px; }
+  .metric-item:nth-child(2) { padding-left: 20px; }
+  .metric-val { font-size: 20px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+  .metric-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  .left-footer { color: #475569; font-size: 13px; position: relative; z-index: 1; }
+
+  /* Right Panel */
+  .right-panel {
+    flex: 1;
+    background-color: #f8fafc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .login-box {
+    width: 100%;
+    max-width: 360px;
+  }
+  
+  .security-badge { display: inline-flex; align-items: center; gap: 6px; background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; margin-bottom: 40px; }
+  
+  .welcome-label { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; display: block; }
+  .login-title { font-family: 'Cormorant Garamond', serif; font-size: 36px; font-weight: 600; color: #1e293b; margin-bottom: 8px; line-height: 1; }
+  .login-subtitle { font-size: 14px; color: #64748b; margin-bottom: 32px; }
+
+  .form-group { margin-bottom: 20px; position: relative; }
+  .form-label { font-size: 13px; font-weight: 500; color: #334155; margin-bottom: 6px; display: block; }
+  .input-icon-wrap { position: relative; }
+  .input-icon-wrap i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 16px; }
+  .form-control-custom { box-sizing: border-box; width: 100%; padding: 12px 14px 12px 40px; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 14px; color: #1e293b; transition: all 0.2s; font-family: inherit; }
+  .form-control-custom::placeholder { color: #94a3b8; }
+  .form-control-custom:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+  
+  .forgot-link { font-size: 12px; font-weight: 500; color: #6366f1; text-decoration: none; margin-top: 4px; }
+  .forgot-link:hover { text-decoration: underline; }
+
+  .btn-submit { width: 100%; padding: 14px; background: #1e2433; color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: background 0.2s; margin-top: 32px; }
+  .btn-submit:hover { background: #2d3748; }
+
+  .login-footer-note { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; color: #94a3b8; margin-top: 24px; }
+
+  /* Django Alerts override */
+  .alert-custom { background: #fee2e2; border: 1px solid #f87171; color: #991b1b; padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 24px; display: flex; align-items: center; gap: 8px; }
+
+  @media (max-width: 900px) {
+    .left-panel { display: none; }
+    .right-panel { padding: 40px; }
+  }
+</style>
+
+<div class="login-wrapper">
+  <!-- Panel Izquierdo (Oscuro) -->
+  <div class="left-panel">
+    <div class="glow-1"></div>
+    <div class="glow-2"></div>
+    
+    <div class="left-content">
+      <div class="brand">
+        <div class="brand-icon"><i class="bi bi-building"></i></div>
+        <div class="brand-name">HotelSystem</div>
       </div>
-      <h5 class="text-white mb-1 fw-semibold">HotelSystem</h5>
-      <p class="text-secondary small mb-0">Sistema de Gestión Hotelera</p>
+
+      <div class="tag-pill">
+        <i class="bi bi-stars"></i> Gestión Hotelera
+      </div>
+      
+      <h1 class="hero-title">Administra tu hotel con <i>total</i> control.</h1>
+      <p class="hero-subtitle">La plataforma más avanzada para recepcionistas y gerentes. Minimiza errores, optimiza tu ocupación y mejora la experiencia de tus huéspedes.</p>
     </div>
 
-    {# Card ── #}
-    <div class="card p-4" style="border:1px solid rgba(255,255,255,.08);
-                                  background:rgba(255,255,255,.04);
-                                  backdrop-filter:blur(12px);">
+    <div class="left-content">
+      <div class="metrics-box">
+        <div class="metric-item">
+          <div class="metric-val">100+</div>
+          <div class="metric-label">Habitaciones</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-val" style="color: #22c55e;">99.9%</div>
+          <div class="metric-label">Operativo</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-val" style="color: #a5b4fc;">v6.0.5</div>
+          <div class="metric-label">Versión</div>
+        </div>
+      </div>
+      <div class="left-footer">
+        © 2026 HotelSystem. Todos los derechos reservados.
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel Derecho (Claro) -->
+  <div class="right-panel">
+    <div class="login-box">
+      <div class="security-badge">
+        <i class="bi bi-shield-check"></i> Acceso seguro y verificado
+      </div>
+
+      <span class="welcome-label">Bienvenido de nuevo</span>
+      <h2 class="login-title">Inicia sesión</h2>
+      <p class="login-subtitle">Ingresa tus credenciales para acceder al panel</p>
+
       {% if messages %}
         {% for msg in messages %}
-          <div class="alert alert-danger d-flex align-items-center gap-2 mb-3 py-2">
-            <i class="bi bi-exclamation-circle-fill"></i>{{ msg }}
+          <div class="alert-custom">
+            <i class="bi bi-exclamation-triangle-fill"></i> {{ msg }}
           </div>
         {% endfor %}
       {% endif %}
 
-      <form method="post">
+      <form method="POST" action="">
         {% csrf_token %}
-        <div class="mb-3">
-          <label class="form-label" style="color:#94a3b8;">Usuario</label>
-          <input type="text" name="username" class="form-control"
-                 style="background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.1);color:#f8fafc;"
-                 placeholder="Ingresa tu usuario" required autofocus autocomplete="username">
+        <div class="form-group">
+          <label class="form-label">Usuario</label>
+          <div class="input-icon-wrap">
+            <i class="bi bi-person"></i>
+            <input type="text" name="username" class="form-control-custom" placeholder="Ingresa tu usuario" required autofocus autocomplete="username">
+          </div>
         </div>
-        <div class="mb-4">
-          <label class="form-label" style="color:#94a3b8;">Contraseña</label>
-          <input type="password" name="password" class="form-control"
-                 style="background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.1);color:#f8fafc;"
-                 placeholder="••••••••" required autocomplete="current-password">
+
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
+            <label class="form-label" style="margin-bottom: 0;">Contraseña</label>
+            <a href="#" class="forgot-link">¿Olvidaste tu contraseña?</a>
+          </div>
+          <div class="input-icon-wrap">
+            <i class="bi bi-lock"></i>
+            <input type="password" name="password" class="form-control-custom" placeholder="••••••••" required autocomplete="current-password">
+          </div>
         </div>
-        <button type="submit" class="btn btn-primary w-100 py-2">
-          Ingresar al sistema
+
+        <button type="submit" class="btn-submit">
+          Ingresar al sistema <i class="bi bi-arrow-right"></i>
         </button>
       </form>
-    </div>
 
-    <p class="text-center text-secondary small mt-3" style="opacity:.5;">
-      © 2026 HotelSystem
-    </p>
+      <div class="login-footer-note">
+        <i class="bi bi-lock-fill"></i> Conexión cifrada · Solo personal autorizado
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}

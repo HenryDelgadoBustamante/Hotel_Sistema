@@ -8,7 +8,12 @@
     <button type="submit" class="btn btn-sm btn-outline-primary">Buscar</button>
     {% if query %}<a href="/huespedes/" class="btn btn-sm btn-outline-secondary">Limpiar</a>{% endif %}
   </form>
-  <a href="/huespedes/nuevo/" class="btn btn-primary"><i class="bi bi-person-plus me-1"></i>Nuevo huésped</a>
+  <div class="d-flex gap-2">
+    <a href="{% url 'exportar_huespedes_excel' %}" class="btn btn-exportar-excel text-white" style="background-color: #22c55e;">
+      <i class="bi bi-file-earmark-spreadsheet me-1"></i> Exportar Excel
+    </a>
+    <a href="/huespedes/nuevo/" class="btn btn-primary"><i class="bi bi-person-plus me-1"></i>Nuevo huésped</a>
+  </div>
 </div>
 <div class="card">
   <div class="table-responsive">

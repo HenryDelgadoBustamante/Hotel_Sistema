@@ -5,11 +5,11 @@ from django.conf.urls.static import static
 from django.shortcuts import redirect
 from views_frontend import (
     login_view, logout_view, dashboard, reservas_lista, reserva_nueva,
-    reserva_detalle, reserva_checkin, folio_view, agregar_cargo, checkout_view,
+    reserva_detalle, reserva_checkin, folio_view, agregar_cargo, registrar_pago, checkout_view,
     housekeeping_view, housekeeping_estado, reportes_view,
-    huespedes_lista, huesped_nuevo, huesped_editar,
+    huespedes_lista, huesped_nuevo, huesped_editar, exportar_huespedes_excel,
     habitaciones_lista, habitacion_nueva, habitacion_editar,
-    estancias_lista, reservas_calendario, checkin_search
+    estancias_lista, reservas_calendario
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_yasg.views import get_schema_view
@@ -59,6 +59,7 @@ urlpatterns = [
     path('huespedes/', huespedes_lista, name='huespedes_lista'),
     path('huespedes/nuevo/', huesped_nuevo, name='huesped_nuevo'),
     path('huespedes/<int:huesped_id>/editar/', huesped_editar, name='huesped_editar'),
+    path('huespedes/exportar-excel/', exportar_huespedes_excel, name='exportar_huespedes_excel'),
     path('habitaciones/', habitaciones_lista, name='habitaciones_lista'),
     path('habitaciones/nueva/', habitacion_nueva, name='habitacion_nueva'),
     path('habitaciones/<int:hab_id>/editar/', habitacion_editar, name='habitacion_editar'),
@@ -67,10 +68,10 @@ urlpatterns = [
     path('reservas/<int:reserva_id>/', reserva_detalle, name='reserva_detalle'),
     path('reservas/calendario/', reservas_calendario, name='reservas_calendario'),
     path('reservas/nueva/', reserva_nueva, name='reserva_nueva'),
-    path('checkin/', checkin_search, name='checkin_search'),
     path('reservas/<int:reserva_id>/checkin/', reserva_checkin, name='reserva_checkin'),
     path('estancias/<int:estancia_id>/folio/', folio_view, name='folio'),
     path('estancias/<int:estancia_id>/cargo/', agregar_cargo, name='agregar_cargo'),
+    path('estancias/<int:estancia_id>/pago/', registrar_pago, name='registrar_pago'),
     path('estancias/<int:estancia_id>/checkout/', checkout_view, name='checkout'),
     path('housekeeping/', housekeeping_view, name='housekeeping'),
     path('housekeeping/<int:hab_id>/estado/', housekeeping_estado, name='housekeeping_estado'),

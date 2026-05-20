@@ -2,40 +2,106 @@
 {% block title %}Estancias{% endblock %}
 {% block page_title %}Estancias activas{% endblock %}
 {% block content %}
-<div class="card">
+<style>
+  .estancias-filters {
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;
+    background: #fff; padding: 16px 20px; border-radius: 12px 12px 0 0;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .estancias-tabs { display: flex; gap: 8px; }
+  .estancias-tab {
+    padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 500;
+    color: #64748b; background: #f1f5f9; text-decoration: none; transition: all 0.2s;
+  }
+  .estancias-tab.active { background: #6366f1; color: #fff; }
+  .estancias-tab:hover:not(.active) { background: #e2e8f0; }
+  
+  .search-wrapper { position: relative; width: 260px; }
+  .search-input { width: 100%; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px 8px 36px; font-size: 13px; outline: none; transition: border 0.2s; }
+  .search-input:focus { border-color: #6366f1; }
+  .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; }
+
+  .table-estancias th { text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; color: #64748b; padding: 14px 20px; border-bottom: 1px solid #f1f5f9; background: #f8faff; font-weight: 600; }
+  .table-estancias td { padding: 16px 20px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; color: #374151; font-size: 14px; }
+  .table-estancias tr:hover { background-color: #f8faff; }
+  
+  .badge-activa { background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; border: 1px solid #bbf7d0;}
+  .badge-finalizada { background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; border: 1px solid #e2e8f0; }
+
+  .btn-folio { background: #eef2ff; color: #4f46e5; border: none; font-weight: 600; padding: 6px 12px; border-radius: 6px; font-size: 12px; transition: all 0.2s; display: inline-flex; align-items: center; }
+  .btn-folio:hover { background: #e0e7ff; color: #4338ca; }
+  .btn-checkout { background: transparent; color: #ef4444; border: 1px solid #fecaca; font-weight: 600; padding: 6px 12px; border-radius: 6px; font-size: 12px; transition: all 0.2s; }
+  .btn-checkout:hover { background: #fef2f2; border-color: #fca5a5; }
+</style>
+
+<div class="card border-0 shadow-sm" style="border-radius: 12px; background: #fff;">
+  <div class="estancias-filters">
+    <div class="estancias-tabs">
+      <a href="?estado=ACTIVA" class="estancias-tab {% if request.GET.estado == 'ACTIVA' or not request.GET.estado %}active{% endif %}">Activas</a>
+      <a href="?estado=FINALIZADA" class="estancias-tab {% if request.GET.estado == 'FINALIZADA' %}active{% endif %}">Finalizadas</a>
+      <a href="?estado=TODAS" class="estancias-tab {% if request.GET.estado == 'TODAS' %}active{% endif %}">Todas</a>
+    </div>
+    <div class="search-wrapper">
+      <i class="bi bi-search search-icon"></i>
+      <form method="get">
+        <input type="text" name="q" value="{{ request.GET.q }}" class="search-input" placeholder="Buscar huésped...">
+        {% if request.GET.estado %}<input type="hidden" name="estado" value="{{ request.GET.estado }}">{% endif %}
+      </form>
+    </div>
+  </div>
+  
   <div class="table-responsive">
-    <table class="table table-hover mb-0">
-      <thead class="table-light">
-        <tr><th>#</th><th>Huésped</th><th>Habitación</th><th>Check-in</th><th>Días</th><th>Total estimado</th><th>Estado</th><th>Acciones</th></tr>
+    <table class="table table-estancias table-hover mb-0" style="width: 100%; border-collapse: collapse;">
+      <thead>
+        <tr><th>#</th><th>Huésped</th><th>Habitación</th><th>Check-in</th><th>Días</th>{% if not request.user.groups.all|join:',' == 'Recepcionista' %}<th>Total estimado</th>{% endif %}<th>Estado</th><th class="text-end">Acciones</th></tr>
       </thead>
       <tbody>
         {% for e in estancias %}
         <tr>
-          <td>{{ e.id }}</td>
-          <td><strong>{{ e.reserva.huesped.nombres }} {{ e.reserva.huesped.apellidos }}</strong></td>
-          <td>Hab. {{ e.habitacion.numero }} — {{ e.habitacion.tipo.nombre }}</td>
-          <td>{{ e.fecha_checkin|date:"d/m/Y H:i" }}</td>
-          <td>{{ e.dias_estancia }} días</td>
-          <td>S/. {{ e.precio_final }}</td>
+          <td class="text-muted fw-medium">#{{ e.id }}</td>
           <td>
-            {% if e.estado == 'ACTIVA' %}
-            <span class="badge bg-success">ACTIVA</span>
-            {% else %}
-            <span class="badge bg-secondary">FINALIZADA</span>
-            {% endif %}
+            <div class="fw-bold" style="color: #1e293b;">{{ e.reserva.huesped.nombres }} {{ e.reserva.huesped.apellidos }}</div>
           </td>
           <td>
-            <a href="/estancias/{{ e.id }}/folio/" class="btn btn-sm btn-primary">
-              <i class="bi bi-receipt me-1"></i>Folio
-            </a>
+            <div class="fw-semibold text-dark">Hab. {{ e.habitacion.numero }}</div>
+            <div style="font-size: 11px; color: #64748b;">{{ e.habitacion.tipo.nombre }}</div>
+          </td>
+          <td>
+            <div class="fw-medium text-dark">{{ e.fecha_checkin|date:"d/m/Y" }}</div>
+            <div style="font-size: 11px; color: #64748b;">{{ e.fecha_checkin|date:"H:i" }}</div>
+          </td>
+          <td class="fw-medium text-dark">{{ e.dias_estancia }} días</td>
+          {% with user_groups=request.user.groups.all|join:',' %}
+          {% if 'Recepcionista' not in user_groups or request.user.is_superuser %}
+          <td class="fw-bold text-dark">S/. {{ e.precio_final }}</td>
+          {% endif %}
+          {% endwith %}
+          <td>
             {% if e.estado == 'ACTIVA' %}
-            <a href="/estancias/{{ e.id }}/checkout/" class="btn btn-sm btn-outline-danger"
-               onclick="return confirm('¿Confirmar check-out?')">Check-out</a>
+            <span class="badge-activa">ACTIVA</span>
+            {% else %}
+            <span class="badge-finalizada">FINALIZADA</span>
             {% endif %}
+          </td>
+          <td class="text-end">
+            <div class="d-flex gap-2 justify-content-end">
+              <a href="/estancias/{{ e.id }}/folio/" class="btn-folio text-decoration-none">
+                <i class="bi bi-receipt me-1"></i>Folio
+              </a>
+              {% if e.estado == 'ACTIVA' %}
+              <a href="/estancias/{{ e.id }}/checkout/" class="btn-checkout text-decoration-none"
+                 onclick="return confirm('¿Confirmar check-out?')">Check-out</a>
+              {% endif %}
+            </div>
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="8" class="text-center text-muted py-4">No hay estancias registradas.</td></tr>
+        <tr>
+          <td colspan="{% with user_groups=request.user.groups.all|join:',' %}{% if 'Recepcionista' in user_groups and not request.user.is_superuser %}7{% else %}8{% endif %}{% endwith %}" class="text-center py-5">
+            <i class="bi bi-inbox fs-1 text-muted opacity-50 mb-3 d-block"></i>
+            <h6 class="text-muted fw-medium">No hay estancias que mostrar</h6>
+          </td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>

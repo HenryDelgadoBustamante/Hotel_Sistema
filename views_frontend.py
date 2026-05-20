@@ -1,17 +1,18 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.db.models import Q
 from django.core.exceptions import ValidationError
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from hotel.models import Habitacion, Hotel, TipoHabitacion
 from huespedes.models import Huesped
 from reservas.models import Reserva
-from estancias.models import Estancia, CargoEstancia, Folio
+from estancias.models import Estancia, CargoEstancia, Folio, Pago
 import requests
 
 
@@ -29,6 +30,22 @@ def parse_datetime_local(value):
         return None
     parsed = datetime.strptime(value, '%Y-%m-%dT%H:%M')
     return timezone.make_aware(parsed)
+
+
+def parse_date_local(value):
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    value = str(value).strip()
+    for fmt in ('%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y'):
+        try:
+            return datetime.strptime(value, fmt).date()
+        except ValueError:
+            continue
+    raise ValidationError(f'Fecha inválida: {value}')
 
 
 def calcular_cargo_salida_tardia(estancia):
@@ -80,11 +97,11 @@ def dashboard(request):
         fecha_entrada=hoy,
         estado__in=['PENDIENTE', 'CONFIRMADA']
     ).select_related('huesped', 'habitacion')[:15]
-    
+
     en_casa = Estancia.objects.filter(
         estado='ACTIVA'
     ).select_related('reserva__huesped', 'habitacion')[:15]
-    
+
     salidas_hoy = Estancia.objects.filter(
         estado='ACTIVA',
         reserva__fecha_salida=hoy
@@ -133,8 +150,6 @@ def reserva_nueva(request):
             habitacion = Habitacion.objects.get(id=request.POST['habitacion'])
             modalidad = request.POST.get('modalidad', Reserva.POR_DIA)
             fecha_hora_entrada = None
-            fecha_entrada = request.POST['fecha_entrada']
-            fecha_salida = request.POST.get('fecha_salida') or fecha_entrada
             duracion_horas = request.POST.get('duracion_horas') or 0
 
             if modalidad == Reserva.POR_HORA:
@@ -143,6 +158,13 @@ def reserva_nueva(request):
                     raise ValidationError('Debes indicar la fecha y hora de ingreso.')
                 fecha_entrada = fecha_hora_entrada.date()
                 fecha_salida = (fecha_hora_entrada + timedelta(hours=float(duracion_horas or 3))).date()
+            else:
+                fecha_entrada = parse_date_local(request.POST.get('fecha_entrada'))
+                fecha_salida = parse_date_local(
+                    request.POST.get('fecha_salida') or request.POST.get('fecha_entrada')
+                )
+                if not fecha_entrada or not fecha_salida:
+                    raise ValidationError('Debes indicar las fechas de entrada y salida.')
 
             reserva = Reserva.objects.create(
                 hotel=habitacion.hotel,
@@ -179,20 +201,6 @@ def reserva_nueva(request):
         'hora_actual': timezone.localtime().strftime('%Y-%m-%dT%H:%M'),
     })
 
-
-@login_required
-def checkin_search(request):
-    query = request.GET.get('q', '')
-    reservas = []
-    if query:
-        reservas = Reserva.objects.filter(
-            Q(id__icontains=query) |
-            Q(huesped__nombres__icontains=query) |
-            Q(huesped__apellidos__icontains=query) |
-            Q(huesped__num_doc__icontains=query),
-            estado__in=['PENDIENTE', 'CONFIRMADA']
-        ).select_related('huesped', 'habitacion')
-    return render(request, 'reservas/checkin_search.html', {'reservas': reservas, 'query': query})
 
 
 @login_required
@@ -305,6 +313,28 @@ def agregar_cargo(request, estancia_id):
 
 
 @login_required
+def registrar_pago(request, estancia_id):
+    if request.method == 'POST':
+        estancia = get_object_or_404(Estancia, id=estancia_id)
+        folio, _ = Folio.objects.get_or_create(estancia=estancia)
+        monto = request.POST.get('monto')
+        metodo_pago = request.POST.get('metodo_pago', Pago.EFECTIVO)
+        transaccion_id = request.POST.get('transaccion_id') or None
+
+        if monto:
+            Pago.objects.create(
+                folio=folio,
+                monto=monto,
+                metodo_pago=metodo_pago,
+                transaccion_id=transaccion_id
+            )
+            messages.success(request, 'Pago registrado correctamente.')
+        else:
+            messages.error(request, 'Monto inválido para el pago.')
+    return redirect('folio', estancia_id=estancia_id)
+
+
+@login_required
 def checkout_view(request, estancia_id):
     estancia = get_object_or_404(Estancia, id=estancia_id)
     try:
@@ -362,45 +392,61 @@ def housekeeping_estado(request, hab_id):
 def reportes_view(request):
     import json
     from django.utils import timezone
+    from django.db import models
+    from estancias.models import Estancia, CargoEstancia
+    from reservas.models import Reserva
+    from hotel.models import Habitacion
+    
     hoy = timezone.now().date()
-    total = Habitacion.objects.count()
-    ocupadas = Habitacion.objects.filter(estado='OCUPADA').count()
-    estancias = Estancia.objects.filter(estado='ACTIVA').select_related('habitacion__tipo')
-    revenue = {}
-    tipos_labels = []
-    tipos_data = []
-
-    for e in estancias:
+    
+    total_habitaciones = Habitacion.objects.count()
+    
+    estancias_activas_qs = Estancia.objects.filter(estado='ACTIVA').select_related('reserva__huesped', 'habitacion__tipo')
+    estancias_activas_count = estancias_activas_qs.count()
+    
+    # hab_ocupadas: count distinct de habitaciones con estancia ACTIVA
+    hab_ocupadas = estancias_activas_qs.values('habitacion').distinct().count()
+    
+    ocupacion_hoy = round((hab_ocupadas / total_habitaciones * 100), 1) if total_habitaciones > 0 else 0
+    ocupacion_semanal = round((ocupacion_hoy) * 0.85, 1) if total_habitaciones > 0 else 0
+    
+    reservas_hoy = Reserva.objects.filter(created_at__date=hoy).count()
+    reservas_pendientes = Reserva.objects.filter(estado__in=['PENDIENTE', 'CONFIRMADA']).count()
+    
+    # revenue_activas: sum of cargos de estancias activas
+    revenue_activas = CargoEstancia.objects.filter(estancia__estado='ACTIVA').aggregate(total=models.Sum('monto'))['total'] or 0.0
+    
+    # agrupaciones
+    revenue_por_tipo = {}
+    ocupacion_por_tipo = {}
+    
+    for e in estancias_activas_qs:
         tipo = e.habitacion.tipo.nombre
-        revenue[tipo] = revenue.get(tipo, 0) + float(e.precio_final)
+        monto_estancia = CargoEstancia.objects.filter(estancia=e).aggregate(total=models.Sum('monto'))['total'] or 0.0
+        revenue_por_tipo[tipo] = revenue_por_tipo.get(tipo, 0.0) + float(monto_estancia)
+        ocupacion_por_tipo[tipo] = ocupacion_por_tipo.get(tipo, 0) + 1
+        
+    ultimas_estancias = Estancia.objects.all().select_related('reserva__huesped', 'habitacion__tipo').order_by('-fecha_checkin')[:5]
 
-    habitaciones_ocupadas_tipos = {}
-    for h in Habitacion.objects.filter(estado='OCUPADA').select_related('tipo'):
-        habitaciones_ocupadas_tipos[h.tipo.nombre] = habitaciones_ocupadas_tipos.get(h.tipo.nombre, 0) + 1
-
-    for k, v in habitaciones_ocupadas_tipos.items():
-        tipos_labels.append(k)
-        tipos_data.append(v)
-
-    reporte = {
-        'fecha': hoy,
-        'total_habitaciones': total,
-        'habitaciones_ocupadas': ocupadas,
-        'tasa_ocupacion': round(ocupadas / total * 100, 1) if total else 0,
-        'tasa_semanal': round((ocupadas / total * 100) * 0.85, 1) if total else 0,
-        'revenue_por_tipo': revenue,
-        'revenue_total': round(sum(revenue.values()), 2),
-        'reservas_hoy': Reserva.objects.filter(fecha_entrada=hoy).count(),
-        'estancias_activas': estancias.count(),
-        'reservas_pendientes': Reserva.objects.filter(estado__in=['PENDIENTE', 'CONFIRMADA']).count(),
-        'estancias_detalle': Estancia.objects.filter(estado='ACTIVA').select_related(
-            'reserva__huesped', 'habitacion__tipo'
-        ).order_by('-fecha_checkin'),
-        # Serialized as JSON for Chart.js — no Django template tags inside <script> blocks
-        'tipos_labels_json': json.dumps(tipos_labels),
-        'tipos_data_json': json.dumps(tipos_data),
+    context = {
+        'ocupacion_hoy': ocupacion_hoy,
+        'ocupacion_semanal': ocupacion_semanal,
+        'hab_ocupadas': hab_ocupadas,
+        'total_habitaciones': total_habitaciones,
+        'reservas_hoy': reservas_hoy,
+        'estancias_activas': estancias_activas_count,
+        'reservas_pendientes': reservas_pendientes,
+        'revenue_activas': revenue_activas,
+        'ocupacion_por_tipo': ocupacion_por_tipo,
+        'revenue_por_tipo': revenue_por_tipo,
+        'ultimas_estancias': ultimas_estancias,
+        
+        # Para el Chart.js (que requiere JSON válido)
+        'tipos_labels_json': json.dumps(list(ocupacion_por_tipo.keys())),
+        'tipos_data_json': json.dumps(list(ocupacion_por_tipo.values())),
     }
-    return render(request, 'reportes/dashboard.html', {'reporte': reporte})
+    
+    return render(request, 'reportes/dashboard.html', context)
 
 
 @login_required
@@ -529,6 +575,64 @@ def huesped_editar(request, huesped_id):
         'next': '',
     })
 
+
+@login_required
+def exportar_huespedes_excel(request):
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment
+    from django.http import HttpResponse
+    from huespedes.models import Huesped
+    from django.db.models import Count, Sum
+    
+    huespedes = Huesped.objects.annotate(
+        total_estancias=Count('reservas__estancia', distinct=True),
+        total_pagado=Sum('reservas__estancia__folio__pagos__monto')
+    ).order_by('id')
+    
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Huéspedes"
+    
+    headers = ["#", "Nombre completo", "DNI", "Teléfono", "Email", "Fecha de registro", "Total estancias", "Total pagado"]
+    ws.append(headers)
+    
+    header_font = Font(color="FFFFFF", bold=True)
+    header_fill = PatternFill(start_color="1E2433", end_color="1E2433", fill_type="solid")
+    
+    for col_num, cell in enumerate(ws[1], 1):
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        
+    for h in huespedes:
+        fecha_reg = h.created_at.strftime('%Y-%m-%d') if hasattr(h, 'created_at') and h.created_at else "N/A"
+        total_p = h.total_pagado or 0.0
+        ws.append([
+            h.id,
+            f"{h.nombres} {h.apellidos}",
+            h.num_doc,
+            h.telefono or "-",
+            h.email or "-",
+            fecha_reg,
+            h.total_estancias,
+            float(total_p)
+        ])
+        
+    for col in ws.columns:
+        max_length = 0
+        col_letter = col[0].column_letter
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        ws.column_dimensions[col_letter].width = (max_length + 2)
+        
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="huespedes_hotelsystem.xlsx"'
+    wb.save(response)
+    return response
 
 
 @login_required
@@ -659,3 +763,5 @@ def estancias_lista(request):
             e.dias_estancia = (timezone.now().date() - e.fecha_checkin.date()).days or 1
 
     return render(request, 'estancias/lista.html', {'estancias': estancias})
+
+
