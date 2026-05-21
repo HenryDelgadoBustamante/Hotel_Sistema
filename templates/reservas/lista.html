@@ -2,12 +2,22 @@
 {% block title %}Reservas{% endblock %}
 {% block page_title %}Gestión de Reservas{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between mb-3">
-  <div>
-    <a href="?estado=PENDIENTE" class="btn btn-sm btn-outline-warning me-1">Pendientes</a>
-    <a href="?estado=CONFIRMADA" class="btn btn-sm btn-outline-primary me-1">Confirmadas</a>
-    <a href="?estado=CHECKIN" class="btn btn-sm btn-outline-success me-1">En casa</a>
-    <a href="?" class="btn btn-sm btn-outline-secondary">Todas</a>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="d-flex gap-2 align-items-center flex-wrap">
+    <div>
+      <a href="?estado=PENDIENTE" class="btn btn-sm btn-outline-warning">Pendientes</a>
+      <a href="?estado=CONFIRMADA" class="btn btn-sm btn-outline-primary">Confirmadas</a>
+      <a href="?estado=CHECKIN" class="btn btn-sm btn-outline-success">En casa</a>
+      <a href="?" class="btn btn-sm btn-outline-secondary">Todas</a>
+    </div>
+    <form class="d-flex m-0" method="get">
+      {% if estado %}<input type="hidden" name="estado" value="{{ estado }}">{% endif %}
+      <div class="input-group input-group-sm">
+        <input type="search" name="q" value="{{ query|default:'' }}" class="form-control"
+          placeholder="Buscar ID, o Huésped..." style="min-width: 250px;">
+        <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search"></i></button>
+      </div>
+    </form>
   </div>
   <div>
     <a href="/reservas/calendario/" class="btn btn-outline-info me-2"><i class="bi bi-calendar3 me-1"></i>Calendario</a>
@@ -18,13 +28,139 @@
     {% endwith %}
   </div>
 </div>
+
+<style>
+  .reservas-panel-tabs .nav-link {
+    color: #6b7280;
+    font-weight: 500;
+    border-radius: 50rem;
+    transition: background .15s, color .15s;
+    cursor: pointer;
+  }
+
+  .reservas-panel-tabs .nav-link:hover {
+    color: #4f46e5;
+  }
+
+  .reservas-panel-tabs .nav-link.active {
+    background-color: #eef2ff !important;
+    color: #6366f1 !important;
+    font-weight: 600;
+  }
+
+  .search-checkin-wrapper {
+    position: relative;
+  }
+
+  .search-checkin-input {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding-left: 2.5rem;
+    transition: all .2s;
+  }
+
+  .search-checkin-input:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    outline: none;
+  }
+
+  .search-checkin-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+  }
+</style>
+
+<div class="card shadow-sm mb-4 border-0" style="box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;">
+  <div class="card-header bg-white pb-0 pt-3 border-bottom-0">
+    <h6 class="mb-3 text-dark"><i class="bi bi-clock-history me-2"></i>Panel de Reservas del día</h6>
+    <ul class="nav nav-pills reservas-panel-tabs mb-2" id="reservaTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active py-1 px-3 small" data-bs-toggle="tab" data-bs-target="#llegadas"
+          type="button">Llegadas</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link py-1 px-3 small" data-bs-toggle="tab" data-bs-target="#encasa" type="button">En
+          Casa</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link py-1 px-3 small" data-bs-toggle="tab" data-bs-target="#salidas"
+          type="button">Salidas</button>
+      </li>
+    </ul>
+  </div>
+  <div class="card-body p-0 border-top">
+    <div class="tab-content" id="reservaTabsContent">
+      <div class="tab-pane fade show active p-3" id="llegadas" role="tabpanel">
+        {% for r in llegadas_hoy %}
+        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+          <div>
+            <div class="fw-semibold small">{{ r.huesped.nombres }} {{ r.huesped.apellidos }}</div>
+            <small class="text-muted">Hab. {{ r.habitacion.numero|default:"Sin asignar" }}</small>
+          </div>
+          <div class="text-end">
+            <span class="badge badge-{{ r.estado|lower }} mb-1 d-inline-block">{{ r.estado }}</span><br>
+            <a href="/reservas/{{ r.id }}/checkin/" class="btn btn-sm btn-success px-2 py-0"
+              style="font-size:0.75rem;">Check-in</a>
+          </div>
+        </div>
+        {% empty %}
+        <p class="text-muted small mb-0">No hay llegadas pendientes hoy.</p>
+        {% endfor %}
+      </div>
+      <div class="tab-pane fade p-3" id="encasa" role="tabpanel">
+        {% for e in en_casa %}
+        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+          <div>
+            <div class="fw-semibold small">{{ e.reserva.huesped.nombres }} {{ e.reserva.huesped.apellidos }}</div>
+            <small class="text-muted">Hab. {{ e.habitacion.numero }}</small>
+          </div>
+          <div>
+            <a href="/estancias/{{ e.id }}/folio/" class="btn btn-sm btn-outline-primary px-2 py-0"
+              style="font-size:0.75rem;">Ver Folio</a>
+          </div>
+        </div>
+        {% empty %}
+        <p class="text-muted small mb-0">No hay huéspedes en casa.</p>
+        {% endfor %}
+      </div>
+      <div class="tab-pane fade p-3" id="salidas" role="tabpanel">
+        {% for e in salidas_hoy %}
+        <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+          <div>
+            <div class="fw-semibold small">{{ e.reserva.huesped.nombres }} {{ e.reserva.huesped.apellidos }}</div>
+            <small class="text-muted">Hab. {{ e.habitacion.numero }}</small>
+          </div>
+          <div>
+            <a href="/estancias/{{ e.id }}/checkout/" onclick="return confirm('¿Confirmar check-out?')"
+              class="btn btn-sm btn-danger px-2 py-0" style="font-size:0.75rem;">Check-out</a>
+          </div>
+        </div>
+        {% empty %}
+        <p class="text-muted small mb-0">No hay salidas programadas para hoy.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<h5 class="mb-3">Todas las Reservas</h5>
 <div class="card">
   <div class="table-responsive">
     <table class="table table-hover mb-0">
       <thead class="table-light">
         <tr>
-          <th>#</th><th>Huésped</th><th>Habitación</th>
-          <th>Entrada</th><th>Salida</th><th>Total</th><th>Estado</th><th>Acciones</th>
+          <th>#</th>
+          <th>Huésped</th>
+          <th>Habitación</th>
+          <th>Entrada</th>
+          <th>Salida</th>
+          <th>Total</th>
+          <th>Estado</th>
+          <th>Acciones</th>
         </tr>
       </thead>
       <tbody>
@@ -52,7 +188,9 @@
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="8" class="text-center text-muted py-4">No hay reservas.</td></tr>
+        <tr>
+          <td colspan="8" class="text-center text-muted py-4">No hay reservas.</td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>

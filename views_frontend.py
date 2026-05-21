@@ -153,10 +153,33 @@ def reservas_lista(request):
     if not _es_recepcionista(request.user):
         return _acceso_denegado(request)
     estado = request.GET.get('estado')
+    query = request.GET.get('q', '').strip()
     reservas = Reserva.objects.select_related('huesped', 'habitacion').all().order_by('-created_at')
     if estado:
         reservas = reservas.filter(estado=estado)
-    return render(request, 'reservas/lista.html', {'reservas': reservas})
+    if query:
+        if query.isdigit():
+            reservas = reservas.filter(id=query)
+        else:
+            reservas = reservas.filter(
+                Q(huesped__nombres__icontains=query) |
+                Q(huesped__apellidos__icontains=query) |
+                Q(huesped__num_doc__icontains=query)
+            )
+
+    hoy = timezone.now().date()
+    llegadas_hoy = Reserva.objects.filter(fecha_entrada=hoy, estado__in=['PENDIENTE', 'CONFIRMADA'])
+    en_casa = Estancia.objects.filter(estado='ACTIVA')
+    salidas_hoy = Estancia.objects.filter(estado='ACTIVA', reserva__fecha_salida=hoy)
+
+    return render(request, 'reservas/lista.html', {
+        'reservas': reservas, 
+        'query': query, 
+        'estado': estado,
+        'llegadas_hoy': llegadas_hoy,
+        'en_casa': en_casa,
+        'salidas_hoy': salidas_hoy
+    })
 
 
 @login_required
@@ -238,6 +261,58 @@ def reserva_nueva(request):
         'selected_huesped': selected_huesped,
         'hora_actual': timezone.localtime().strftime('%Y-%m-%dT%H:%M'),
     })
+
+
+from django.http import JsonResponse
+
+@login_required
+def api_habitaciones_disponibles(request):
+    fecha_entrada_str = request.GET.get('entrada')
+    fecha_salida_str = request.GET.get('salida')
+    hora_entrada_str = request.GET.get('hora_entrada')
+    duracion = float(request.GET.get('duracion', 3))
+    modalidad = request.GET.get('modalidad', 'DIA')
+
+    habitaciones = Habitacion.objects.exclude(estado='MANTENIMIENTO').select_related('tipo')
+    
+    fecha_entrada = None
+    fecha_salida = None
+
+    try:
+        if modalidad == 'DIA' and fecha_entrada_str and fecha_salida_str:
+            fecha_entrada = parse_date_local(fecha_entrada_str)
+            fecha_salida = parse_date_local(fecha_salida_str)
+        elif modalidad == 'HORA' and hora_entrada_str:
+            fecha_hora_entrada = parse_datetime_local(hora_entrada_str)
+            if fecha_hora_entrada:
+                fecha_entrada = fecha_hora_entrada.date()
+                fecha_salida = (fecha_hora_entrada + timedelta(hours=duracion)).date()
+    except Exception:
+        pass
+
+    if fecha_entrada and fecha_salida:
+        reservas_cruzadas = Reserva.objects.filter(
+            estado__in=['PENDIENTE', 'CONFIRMADA', 'CHECKIN'],
+            fecha_entrada__lt=fecha_salida,
+            fecha_salida__gt=fecha_entrada
+        ).exclude(
+            # Si una reserva de misma modalidad HORA no se cruza en la misma hora (se podría omitir por simplicidad de momento, limitándonos a día completo por seguridad)
+            estado__in=[] # Placeholder si luego ampliamos cruces por hora exacta
+        ).values_list('habitacion_id', flat=True)
+        
+        habitaciones = habitaciones.exclude(id__in=reservas_cruzadas)
+
+    data = []
+    for h in habitaciones.order_by('piso', 'numero'):
+        data.append({
+            'id': h.id,
+            'numero': h.numero,
+            'piso': h.piso,
+            'estado_label': h.get_estado_display(),
+            'tipo_nombre': h.tipo.nombre,
+            'precio_base': str(h.tipo.precio_base)
+        })
+    return JsonResponse({'habitaciones': data})
 
 
 

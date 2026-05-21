@@ -10,7 +10,8 @@ from views_frontend import (
     huespedes_lista, huesped_nuevo, huesped_editar, exportar_huespedes_excel,
     habitaciones_lista, habitacion_nueva, habitacion_editar,
     estancias_lista, reservas_calendario,
-    usuarios_lista, usuario_editar, usuario_nuevo, usuario_eliminar
+    usuarios_lista, usuario_editar, usuario_nuevo, usuario_eliminar,
+    api_habitaciones_disponibles
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_yasg.views import get_schema_view
@@ -70,6 +71,7 @@ urlpatterns = [
     path('reservas/calendario/', reservas_calendario, name='reservas_calendario'),
     path('reservas/nueva/', reserva_nueva, name='reserva_nueva'),
     path('reservas/<int:reserva_id>/checkin/', reserva_checkin, name='reserva_checkin'),
+    path('api/habitaciones-disponibles/', api_habitaciones_disponibles, name='api_habitaciones_disponibles'),
     path('estancias/<int:estancia_id>/folio/', folio_view, name='folio'),
     path('estancias/<int:estancia_id>/cargo/', agregar_cargo, name='agregar_cargo'),
     path('estancias/<int:estancia_id>/pago/', registrar_pago, name='registrar_pago'),
