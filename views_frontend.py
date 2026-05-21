@@ -444,60 +444,146 @@ def housekeeping_estado(request, hab_id):
 def reportes_view(request):
     if not _es_recepcionista(request.user):
         return _acceso_denegado(request)
+    
     import json
+    from datetime import timedelta, datetime
     from django.utils import timezone
     from django.db import models
+    from django.db.models.functions import TruncMonth
     from estancias.models import Estancia, CargoEstancia
     from reservas.models import Reserva
     from hotel.models import Habitacion
     
     hoy = timezone.now().date()
+    periodo = request.GET.get('periodo', 'mes')
+    
+    # Rango de fechas actual
+    if periodo == 'hoy':
+        start_date = hoy
+        end_date = hoy
+        dias = 1
+        prev_start = start_date - timedelta(days=1)
+        prev_end = prev_start
+    elif periodo == 'semana':
+        start_date = hoy - timedelta(days=hoy.weekday())
+        end_date = start_date + timedelta(days=6)
+        dias = 7
+        prev_start = start_date - timedelta(days=7)
+        prev_end = end_date - timedelta(days=7)
+    elif periodo == 'anio':
+        start_date = hoy.replace(month=1, day=1)
+        end_date = hoy.replace(month=12, day=31)
+        dias = 365
+        prev_start = start_date.replace(year=start_date.year - 1)
+        prev_end = end_date.replace(year=end_date.year - 1)
+    else: # mes (default)
+        start_date = hoy.replace(day=1)
+        next_month = start_date.replace(day=28) + timedelta(days=4)
+        end_date = next_month - timedelta(days=next_month.day)
+        dias = (end_date - start_date).days + 1
+        prev_end = start_date - timedelta(days=1)
+        prev_start = prev_end.replace(day=1)
     
     total_habitaciones = Habitacion.objects.count()
+    habitaciones_disponibles_periodo = total_habitaciones * dias
+    habitaciones_disponibles_prev = total_habitaciones * ((prev_end - prev_start).days + 1)
     
-    estancias_activas_qs = Estancia.objects.filter(estado='ACTIVA').select_related('reserva__huesped', 'habitacion__tipo')
-    estancias_activas_count = estancias_activas_qs.count()
+    # 1. KPIs del periodo actual
+    estancias_qs = Estancia.objects.filter(fecha_checkin__date__gte=start_date, fecha_checkin__date__lte=end_date)
+    estancias_activas_count = Estancia.objects.filter(estado='ACTIVA').count()
+    hab_ocupadas_actual = estancias_qs.values('habitacion').distinct().count()
     
-    # hab_ocupadas: count distinct de habitaciones con estancia ACTIVA
-    hab_ocupadas = estancias_activas_qs.values('habitacion').distinct().count()
+    ocupacion_actual = round((hab_ocupadas_actual / total_habitaciones * 100), 1) if total_habitaciones > 0 else 0
     
-    ocupacion_hoy = round((hab_ocupadas / total_habitaciones * 100), 1) if total_habitaciones > 0 else 0
-    ocupacion_semanal = round((ocupacion_hoy) * 0.85, 1) if total_habitaciones > 0 else 0
+    cargos_hab = CargoEstancia.objects.filter(
+        tipo='HABITACION', fecha__date__gte=start_date, fecha__date__lte=end_date
+    ).aggregate(total=models.Sum('monto'))['total'] or 0.0
     
-    reservas_hoy = Reserva.objects.filter(created_at__date=hoy).count()
-    reservas_pendientes = Reserva.objects.filter(estado__in=['PENDIENTE', 'CONFIRMADA']).count()
+    revenue_total = CargoEstancia.objects.filter(
+        fecha__date__gte=start_date, fecha__date__lte=end_date
+    ).aggregate(total=models.Sum('monto'))['total'] or 0.0
     
-    # revenue_activas: sum of cargos de estancias activas
-    revenue_activas = CargoEstancia.objects.filter(estancia__estado='ACTIVA').aggregate(total=models.Sum('monto'))['total'] or 0.0
+    adr_actual = float(cargos_hab) / hab_ocupadas_actual if hab_ocupadas_actual > 0 else 0.0
+    revpar_actual = float(cargos_hab) / habitaciones_disponibles_periodo if habitaciones_disponibles_periodo > 0 else 0.0
     
-    # agrupaciones
-    revenue_por_tipo = {}
+    # 2. KPIs del periodo anterior (para comparativa)
+    estancias_prev_qs = Estancia.objects.filter(fecha_checkin__date__gte=prev_start, fecha_checkin__date__lte=prev_end)
+    hab_ocupadas_prev = estancias_prev_qs.values('habitacion').distinct().count()
+    ocupacion_prev = round((hab_ocupadas_prev / total_habitaciones * 100), 1) if total_habitaciones > 0 else 0
+    
+    cargos_hab_prev = CargoEstancia.objects.filter(
+        tipo='HABITACION', fecha__date__gte=prev_start, fecha__date__lte=prev_end
+    ).aggregate(total=models.Sum('monto'))['total'] or 0.0
+    revenue_total_prev = CargoEstancia.objects.filter(
+        fecha__date__gte=prev_start, fecha__date__lte=prev_end
+    ).aggregate(total=models.Sum('monto'))['total'] or 0.0
+    
+    adr_prev = float(cargos_hab_prev) / hab_ocupadas_prev if hab_ocupadas_prev > 0 else 0.0
+    revpar_prev = float(cargos_hab_prev) / habitaciones_disponibles_prev if habitaciones_disponibles_prev > 0 else 0.0
+    
+    def calc_var(actual, prev):
+        if prev == 0: return 100 if actual > 0 else 0
+        return round(((actual - prev) / prev) * 100, 1)
+        
+    variaciones = {
+        'ocupacion': calc_var(ocupacion_actual, ocupacion_prev),
+        'revenue': calc_var(float(revenue_total), float(revenue_total_prev)),
+        'adr': calc_var(adr_actual, adr_prev),
+        'revpar': calc_var(revpar_actual, revpar_prev)
+    }
+
+    # 3. Gráficos - Ocupación por tipo (activas)
+    estancias_activas_qs = Estancia.objects.filter(estado='ACTIVA').select_related('habitacion__tipo')
     ocupacion_por_tipo = {}
-    
     for e in estancias_activas_qs:
         tipo = e.habitacion.tipo.nombre
-        monto_estancia = CargoEstancia.objects.filter(estancia=e).aggregate(total=models.Sum('monto'))['total'] or 0.0
-        revenue_por_tipo[tipo] = revenue_por_tipo.get(tipo, 0.0) + float(monto_estancia)
         ocupacion_por_tipo[tipo] = ocupacion_por_tipo.get(tipo, 0) + 1
-        
-    ultimas_estancias = Estancia.objects.all().select_related('reserva__huesped', 'habitacion__tipo').order_by('-fecha_checkin')[:5]
+
+    # 4. Gráficos - Ingresos mensuales (12 meses)
+    doce_meses_atras = hoy.replace(day=1) - timedelta(days=365)
+    ingresos_mensuales = CargoEstancia.objects.filter(fecha__date__gte=doce_meses_atras) \
+        .annotate(mes=TruncMonth('fecha')) \
+        .values('mes') \
+        .annotate(total=models.Sum('monto')) \
+        .order_by('mes')
+    
+    meses_labels = [i['mes'].strftime('%b %Y') for i in ingresos_mensuales]
+    meses_data = [float(i['total']) for i in ingresos_mensuales]
+
+    # 5. Gráficos - Ingresos por origen (periodo actual)
+    ingresos_origen = Reserva.objects.filter(
+        fecha_entrada__gte=start_date, fecha_entrada__lte=end_date, estado__in=['CHECKIN', 'CHECKOUT']
+    ).values('origen').annotate(total=models.Sum('precio_total'))
+    
+    origen_labels = [i['origen'] for i in ingresos_origen]
+    origen_data = [float(i['total']) for i in ingresos_origen]
+
+    ultimas_estancias = Estancia.objects.all().select_related('reserva__huesped', 'habitacion__tipo').order_by('-fecha_checkin')[:8]
+    reservas_pendientes = Reserva.objects.filter(estado__in=['PENDIENTE', 'CONFIRMADA'], fecha_entrada__gte=hoy).order_by('fecha_entrada')[:5]
 
     context = {
-        'ocupacion_hoy': ocupacion_hoy,
-        'ocupacion_semanal': ocupacion_semanal,
-        'hab_ocupadas': hab_ocupadas,
-        'total_habitaciones': total_habitaciones,
-        'reservas_hoy': reservas_hoy,
-        'estancias_activas': estancias_activas_count,
-        'reservas_pendientes': reservas_pendientes,
-        'revenue_activas': revenue_activas,
-        'ocupacion_por_tipo': ocupacion_por_tipo,
-        'revenue_por_tipo': revenue_por_tipo,
-        'ultimas_estancias': ultimas_estancias,
+        'periodo': periodo,
+        'start_date': start_date,
+        'end_date': end_date,
         
-        # Para el Chart.js (que requiere JSON válido)
+        'ocupacion_actual': ocupacion_actual,
+        'hab_ocupadas_actual': hab_ocupadas_actual,
+        'estancias_activas': estancias_activas_count,
+        'revenue_total': revenue_total,
+        'adr_actual': adr_actual,
+        'revpar_actual': revpar_actual,
+        'total_habitaciones': total_habitaciones,
+        'variaciones': variaciones,
+        
+        'ultimas_estancias': ultimas_estancias,
+        'reservas_pendientes': reservas_pendientes,
+        
         'tipos_labels_json': json.dumps(list(ocupacion_por_tipo.keys())),
         'tipos_data_json': json.dumps(list(ocupacion_por_tipo.values())),
+        'meses_labels_json': json.dumps(meses_labels),
+        'meses_data_json': json.dumps(meses_data),
+        'origen_labels_json': json.dumps(origen_labels),
+        'origen_data_json': json.dumps(origen_data),
     }
     
     return render(request, 'reportes/dashboard.html', context)

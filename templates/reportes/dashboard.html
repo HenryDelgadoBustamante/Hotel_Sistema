@@ -3,8 +3,14 @@
 {% block page_title %}{% endblock %}
 
 {% block content %}
-<script id="chart-data" type="application/json">
+<script id="chart-data-tipos" type="application/json">
 {"labels": {{ tipos_labels_json|safe }}, "data": {{ tipos_data_json|safe }}}
+</script>
+<script id="chart-data-meses" type="application/json">
+{"labels": {{ meses_labels_json|safe }}, "data": {{ meses_data_json|safe }}}
+</script>
+<script id="chart-data-origen" type="application/json">
+{"labels": {{ origen_labels_json|safe }}, "data": {{ origen_data_json|safe }}}
 </script>
 
 <style>
@@ -32,33 +38,22 @@
 .kpi-icon.orange { background: #fff7ed; color: #f97316; }
 .kpi-label { font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
 .kpi-val { font-size: 28px; font-weight: 700; color: #1e293b; line-height: 1; margin-bottom: 12px; }
-.kpi-badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
-.kpi-badge.green { background: #dcfce7; color: #166534; }
-.kpi-badge.gray { background: #f1f5f9; color: #475569; }
-
-/* Revenue List */
-.rev-list { display: flex; flex-direction: column; gap: 12px; }
-.rev-item { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9; }
-.rev-item:last-child { border: none; padding-bottom: 0; }
-.rev-name { font-size: 13px; font-weight: 600; color: #374151; }
-.rev-amt { font-size: 14px; font-weight: 700; color: #059669; }
-.rev-total { border-top: 2px solid #e2e8f0; margin-top: 8px; padding-top: 16px; font-size: 15px; color: #1e293b; }
+.kpi-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+.kpi-badge.up { background: #dcfce7; color: #166534; }
+.kpi-badge.down { background: #fee2e2; color: #991b1b; }
+.kpi-badge.neutral { background: #f1f5f9; color: #475569; }
 
 /* Empty States */
 .empty-ill { text-align: center; padding: 32px 20px; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .empty-ill i { font-size: 48px; color: #cbd5e1; margin-bottom: 16px; }
 .empty-ill p { margin: 0; font-size: 13px; color: #94a3b8; font-weight: 500; }
 
-/* Estancias List */
-.est-list { display: flex; flex-direction: column; gap: 16px; }
-.est-item { display: flex; align-items: center; gap: 16px; }
-.est-av { width: 40px; height: 40px; border-radius: 50%; background: #e0e7ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
-.est-info { flex: 1; min-width: 0; }
-.est-name { font-size: 13px; font-weight: 700; color: #1e293b; margin: 0 0 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.est-hab { font-size: 11px; color: #64748b; }
-.est-right { text-align: right; flex-shrink: 0; }
-.est-amt { font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 4px; display: block; }
-.badge-st { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+/* Tablas */
+.table-modern { width: 100%; border-collapse: separate; border-spacing: 0; }
+.table-modern th { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; padding: 8px 12px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+.table-modern td { padding: 12px; font-size: 13px; color: #334155; border-bottom: 1px solid #f8fafc; vertical-align: middle; }
+.table-modern tr:last-child td { border-bottom: none; }
+.badge-st { font-size: 10px; padding: 3px 6px; border-radius: 4px; font-weight: 600; }
 .badge-st.activa { background: #dcfce7; color: #166534; }
 .badge-st.final { background: #f1f5f9; color: #475569; }
 </style>
@@ -66,12 +61,16 @@
 <div class="reports-header mt-2">
   <div>
     <h1 class="reports-title"><i class="bi bi-graph-up-arrow text-primary"></i>Reportes y Estadísticas</h1>
-    <p class="reports-subtitle">{% now "l, d de F Y" %}</p>
+    <p class="reports-subtitle">Período: {{ start_date|date:"d M Y" }} al {{ end_date|date:"d M Y" }}</p>
   </div>
   <div class="reports-actions">
-    <button class="btn btn-sm btn-outline-secondary px-3 bg-white fw-medium">Hoy</button>
-    <button class="btn btn-sm btn-outline-secondary px-3 bg-white fw-medium">Esta semana</button>
-    <button class="btn btn-sm btn-dark px-3 fw-medium"><i class="bi bi-file-earmark-pdf me-2"></i>Exportar PDF</button>
+    <a href="?periodo=hoy" class="btn btn-sm btn-outline-secondary px-3 {% if periodo == 'hoy' %}bg-secondary text-white{% else %}bg-white{% endif %} fw-medium">Hoy</a>
+    <a href="?periodo=semana" class="btn btn-sm btn-outline-secondary px-3 {% if periodo == 'semana' %}bg-secondary text-white{% else %}bg-white{% endif %} fw-medium">Semana</a>
+    <a href="?periodo=mes" class="btn btn-sm btn-outline-secondary px-3 {% if periodo == 'mes' %}bg-secondary text-white{% else %}bg-white{% endif %} fw-medium">Mes</a>
+    <a href="?periodo=anio" class="btn btn-sm btn-outline-secondary px-3 {% if periodo == 'anio' %}bg-secondary text-white{% else %}bg-white{% endif %} fw-medium">Año</a>
+    <a href="{% url 'exportar_excel' %}?fecha_inicio={{ start_date|date:'Y-m-d' }}&fecha_fin={{ end_date|date:'Y-m-d' }}" class="btn btn-sm btn-success px-3 fw-medium ms-2">
+      <i class="bi bi-file-earmark-excel me-1"></i>Exportar Excel
+    </a>
   </div>
 </div>
 
@@ -83,133 +82,136 @@
 </div>
 
 <div class="row g-4 mb-4">
+  <!-- Ocupación -->
   <div class="col-md-3 col-sm-6">
     <div class="r-card">
       <div class="kpi-header">
-        <span class="kpi-label">Ocupación hoy</span>
+        <span class="kpi-label">Ocupación Prom.</span>
         <div class="kpi-icon blue"><i class="bi bi-percent"></i></div>
       </div>
-      <div class="kpi-val">{{ ocupacion_hoy }}%</div>
+      <div class="kpi-val">{{ ocupacion_actual }}%</div>
       <div>
-        <span class="kpi-badge {% if ocupacion_hoy > 0 %}green{% else %}gray{% endif %}">
-          {% if ocupacion_hoy > 0 %}En curso{% else %}Sin datos{% endif %}
+        <span class="kpi-badge {% if variaciones.ocupacion > 0 %}up{% elif variaciones.ocupacion < 0 %}down{% else %}neutral{% endif %}">
+          {% if variaciones.ocupacion > 0 %}<i class="bi bi-arrow-up-right"></i>{% elif variaciones.ocupacion < 0 %}<i class="bi bi-arrow-down-right"></i>{% endif %}
+          {{ variaciones.ocupacion }}% vs ant.
         </span>
       </div>
     </div>
   </div>
   
+  <!-- ADR -->
   <div class="col-md-3 col-sm-6">
     <div class="r-card">
       <div class="kpi-header">
-        <span class="kpi-label">Hab. Ocupadas</span>
-        <div class="kpi-icon purple"><i class="bi bi-door-open"></i></div>
+        <span class="kpi-label">Precio Promedio Vendido</span>
+        <div class="kpi-icon purple"><i class="bi bi-tags"></i></div>
       </div>
-      <div class="kpi-val">{{ hab_ocupadas }} <span style="font-size: 16px; color: #94a3b8; font-weight: 500;">/ {{ total_habitaciones }}</span></div>
+      <div class="kpi-val"><span style="font-size: 16px;">S/.</span>{{ adr_actual|floatformat:1 }}</div>
       <div>
-        <span class="kpi-badge {% if hab_ocupadas > 0 %}green{% else %}gray{% endif %}">
-          {{ hab_ocupadas }} activas
+        <span class="kpi-badge {% if variaciones.adr > 0 %}up{% elif variaciones.adr < 0 %}down{% else %}neutral{% endif %}">
+          {% if variaciones.adr > 0 %}<i class="bi bi-arrow-up-right"></i>{% elif variaciones.adr < 0 %}<i class="bi bi-arrow-down-right"></i>{% endif %}
+          {{ variaciones.adr }}% vs ant.
         </span>
       </div>
     </div>
   </div>
 
+  <!-- RevPAR -->
   <div class="col-md-3 col-sm-6">
     <div class="r-card">
       <div class="kpi-header">
-        <span class="kpi-label">Estancias Activas</span>
-        <div class="kpi-icon green"><i class="bi bi-key"></i></div>
+        <span class="kpi-label">Rendimiento (x Habitación)</span>
+        <div class="kpi-icon green"><i class="bi bi-bar-chart-line"></i></div>
       </div>
-      <div class="kpi-val">{{ estancias_activas }}</div>
+      <div class="kpi-val"><span style="font-size: 16px;">S/.</span>{{ revpar_actual|floatformat:1 }}</div>
       <div>
-        <span class="kpi-badge {% if estancias_activas > 0 %}green{% else %}gray{% endif %}">
-          En el hotel
+        <span class="kpi-badge {% if variaciones.revpar > 0 %}up{% elif variaciones.revpar < 0 %}down{% else %}neutral{% endif %}">
+          {% if variaciones.revpar > 0 %}<i class="bi bi-arrow-up-right"></i>{% elif variaciones.revpar < 0 %}<i class="bi bi-arrow-down-right"></i>{% endif %}
+          {{ variaciones.revpar }}% vs ant.
         </span>
       </div>
     </div>
   </div>
 
-  {% with groups=request.user.groups.all|stringformat:"s" %}
-  {% if request.user.is_superuser or 'admin' in groups %}
+  <!-- Revenue Total -->
   <div class="col-md-3 col-sm-6">
     <div class="r-card">
       <div class="kpi-header">
-        <span class="kpi-label">Revenue Activas</span>
+        <span class="kpi-label">Ingresos Totales</span>
         <div class="kpi-icon orange"><i class="bi bi-cash-stack"></i></div>
       </div>
-      <div class="kpi-val"><span style="font-size: 18px; margin-right: 2px;">S/.</span>{{ revenue_activas|floatformat:0 }}</div>
+      <div class="kpi-val"><span style="font-size: 16px;">S/.</span>{{ revenue_total|floatformat:0 }}</div>
       <div>
-        <span class="kpi-badge {% if revenue_activas > 0 %}green{% else %}gray{% endif %}">
-          Generado hoy
+        <span class="kpi-badge {% if variaciones.revenue > 0 %}up{% elif variaciones.revenue < 0 %}down{% else %}neutral{% endif %}">
+          {% if variaciones.revenue > 0 %}<i class="bi bi-arrow-up-right"></i>{% elif variaciones.revenue < 0 %}<i class="bi bi-arrow-down-right"></i>{% endif %}
+          {{ variaciones.revenue }}% vs ant.
         </span>
       </div>
     </div>
   </div>
-  {% endif %}
-  {% endwith %}
 </div>
 
 <div class="row g-4 mb-4">
+  <!-- Gráfico de Ingresos Anuales -->
   <div class="col-lg-8">
     <div class="r-card">
-      <div class="r-card-header"><i class="bi bi-bar-chart-fill"></i>Ocupación por tipo de habitación</div>
+      <div class="r-card-header"><i class="bi bi-graph-up"></i>Ingresos últimos 12 meses</div>
       <div style="position: relative; height: 260px; width: 100%;">
-        <canvas id="ocupacionChart"></canvas>
+        <canvas id="ingresosMesesChart"></canvas>
       </div>
     </div>
   </div>
-  {% with groups=request.user.groups.all|stringformat:"s" %}
-  {% if request.user.is_superuser or 'admin' in groups %}
+
+  <!-- Origen de Reservas -->
   <div class="col-lg-4">
     <div class="r-card">
-      <div class="r-card-header"><i class="bi bi-wallet2"></i>Revenue por tipo</div>
-      {% if revenue_por_tipo %}
-      <div class="rev-list">
-        {% for tipo, monto in revenue_por_tipo.items %}
-        <div class="rev-item">
-          <span class="rev-name">{{ tipo }}</span>
-          <span class="rev-amt">S/. {{ monto|floatformat:2 }}</span>
-        </div>
-        {% endfor %}
-        <div class="rev-item rev-total">
-          <span class="rev-name" style="font-size: 15px;">Total Revenue</span>
-          <span class="rev-amt" style="font-size: 16px;">S/. {{ revenue_activas|floatformat:2 }}</span>
-        </div>
+      <div class="r-card-header"><i class="bi bi-pie-chart"></i>Ingresos por Origen</div>
+      <div style="position: relative; height: 260px; width: 100%; display: flex; justify-content: center;">
+        <canvas id="origenChart"></canvas>
       </div>
-      {% else %}
-      <div class="empty-ill">
-        <i class="bi bi-cash-coin"></i>
-        <p>No hay ingresos registrados activos.<br>Las estancias generarán revenue aquí.</p>
-      </div>
-      {% endif %}
     </div>
   </div>
-  {% endif %}
-  {% endwith %}
 </div>
 
 <div class="row g-4 mb-4">
-  <div class="col-lg-6">
+  <!-- Tabla de Estancias -->
+  <div class="col-lg-8">
     <div class="r-card">
-      <div class="r-card-header"><i class="bi bi-clock-history"></i>Últimas estancias</div>
+      <div class="r-card-header"><i class="bi bi-clock-history"></i>Estancias Recientes</div>
       {% if ultimas_estancias %}
-      <div class="est-list">
-        {% for e in ultimas_estancias %}
-        <div class="est-item">
-          <div class="est-av">{{ e.reserva.huesped.nombres|slice:":1"|upper }}</div>
-          <div class="est-info">
-            <h6 class="est-name">{{ e.reserva.huesped.nombres }} {{ e.reserva.huesped.apellidos }}</h6>
-            <span class="est-hab">Hab. {{ e.habitacion.numero }} • {{ e.habitacion.tipo.nombre }}</span>
-          </div>
-          <div class="est-right">
-            <span class="est-amt">S/. {{ e.precio_final }}</span>
-            {% if e.estado == 'ACTIVA' %}
-            <span class="badge-st activa">ACTIVA</span>
-            {% else %}
-            <span class="badge-st final">FINALIZADA</span>
-            {% endif %}
-          </div>
-        </div>
-        {% endfor %}
+      <div class="table-responsive">
+        <table class="table-modern">
+          <thead>
+            <tr>
+              <th>Huésped</th>
+              <th>Habitación</th>
+              <th>Check-in</th>
+              <th>Check-out</th>
+              <th>Noches</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in ultimas_estancias %}
+            <tr>
+              <td><strong>{{ e.reserva.huesped.nombres }} {{ e.reserva.huesped.apellidos }}</strong></td>
+              <td>Hab. {{ e.habitacion.numero }} ({{ e.habitacion.tipo.nombre }})</td>
+              <td>{{ e.fecha_checkin|date:"d/m/y H:i" }}</td>
+              <td>{% if e.fecha_checkout %}{{ e.fecha_checkout|date:"d/m/y H:i" }}{% else %}-{% endif %}</td>
+              <td>
+                {% if e.reserva.modalidad == 'HORA' %}
+                  {{ e.reserva.duracion_horas }} hs
+                {% else %}
+                  {{ e.reserva.fecha_salida|timeuntil:e.reserva.fecha_entrada|default:"1 día" }}
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge-st {% if e.estado == 'ACTIVA' %}activa{% else %}final{% endif %}">{{ e.estado }}</span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
       {% else %}
       <div class="empty-ill" style="padding-top: 10px;">
@@ -220,12 +222,12 @@
     </div>
   </div>
   
-  <div class="col-lg-6">
+  <!-- Ocupación por tipo -->
+  <div class="col-lg-4">
     <div class="r-card">
-      <div class="r-card-header"><i class="bi bi-calendar-x"></i>Reservas pendientes</div>
-      <div class="empty-ill" style="padding-top: 10px;">
-        <i class="bi bi-calendar-event"></i>
-        <p>No hay reservas programadas pendientes.<br>Las nuevas reservas aparecerán aquí.</p>
+      <div class="r-card-header"><i class="bi bi-bar-chart-fill"></i>Estancias Activas por Tipo</div>
+      <div style="position: relative; height: 220px; width: 100%;">
+        <canvas id="ocupacionChart"></canvas>
       </div>
     </div>
   </div>
@@ -236,56 +238,95 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    var raw  = document.getElementById("chart-data");
-    var info = raw ? JSON.parse(raw.textContent) : { labels: [], data: [] };
-    var ctx  = document.getElementById("ocupacionChart");
-    if (!ctx || !info.labels.length) {
-        ctx && (ctx.parentElement.innerHTML += '<div class="empty-ill"><i class="bi bi-bar-chart"></i><p>Sin datos activos para mostrar en gráfica.</p></div>');
-        ctx && ctx.remove();
-        return;
-    }
-    new Chart(ctx.getContext("2d"), {
-        type: "bar",
-        data: {
-            labels: info.labels,
-            datasets: [{
-                label: "Hab. Ocupadas",
-                data: info.data,
-                backgroundColor: "rgba(99, 102, 241, 0.85)", // Indigo #6366f1
-                borderColor: "rgba(99, 102, 241, 1)",
-                borderWidth: 0,
-                borderRadius: 4,
-                barPercentage: 0.6,
-                categoryPercentage: 0.8
-            }]
-        },
-        options: {
-            indexAxis: 'y', // Convertir a barras horizontales
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: { 
-                  backgroundColor: '#1e293b',
-                  padding: 12,
-                  callbacks: {
-                    label: function(c) { return " " + c.parsed.x + " habitación" + (c.parsed.x !== 1 ? "es" : ""); }
-                  }
-                }
+    // Colores globales
+    Chart.defaults.font.family = "'Inter', sans-serif";
+    Chart.defaults.color = '#64748b';
+    
+    // 1. Ingresos Mensuales
+    var infoMeses = JSON.parse(document.getElementById("chart-data-meses").textContent);
+    var ctxMeses = document.getElementById("ingresosMesesChart");
+    if(ctxMeses && infoMeses.labels.length) {
+        new Chart(ctxMeses.getContext("2d"), {
+            type: "line",
+            data: {
+                labels: infoMeses.labels,
+                datasets: [{
+                    label: "Ingresos (S/.)",
+                    data: infoMeses.data,
+                    borderColor: "#3b82f6",
+                    backgroundColor: "rgba(59, 130, 246, 0.1)",
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: "#ffffff",
+                    pointBorderColor: "#3b82f6",
+                    pointRadius: 4,
+                }]
             },
-            scales: {
-                x: { 
-                  beginAtZero: true, 
-                  ticks: { stepSize: 1, font: { size: 12, family: 'Inter, sans-serif' } },
-                  grid: { color: "#f1f5f9", drawBorder: false } 
-                },
-                y: { 
-                  grid: { display: false, drawBorder: false }, 
-                  ticks: { font: { size: 13, family: 'Inter, sans-serif', weight: '500' }, color: '#475569' } 
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { borderDash: [2, 4], color: "#e2e8f0", drawBorder: false } },
+                    x: { grid: { display: false } }
                 }
             }
-        }
-    });
+        });
+    }
+
+    // 2. Ingresos por Origen
+    var infoOrigen = JSON.parse(document.getElementById("chart-data-origen").textContent);
+    var ctxOrigen = document.getElementById("origenChart");
+    if(ctxOrigen && infoOrigen.labels.length) {
+        new Chart(ctxOrigen.getContext("2d"), {
+            type: "doughnut",
+            data: {
+                labels: infoOrigen.labels,
+                datasets: [{
+                    data: infoOrigen.data,
+                    backgroundColor: ["#6366f1", "#10b981", "#f59e0b", "#ef4444"],
+                    borderWidth: 0,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } }
+                }
+            }
+        });
+    }
+
+    // 3. Ocupación por Tipo
+    var infoTipos = JSON.parse(document.getElementById("chart-data-tipos").textContent);
+    var ctxTipos = document.getElementById("ocupacionChart");
+    if (ctxTipos && infoTipos.labels.length) {
+        new Chart(ctxTipos.getContext("2d"), {
+            type: "bar",
+            data: {
+                labels: infoTipos.labels,
+                datasets: [{
+                    label: "Activas",
+                    data: infoTipos.data,
+                    backgroundColor: "#8b5cf6",
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { display: false } },
+                    y: { grid: { display: false, drawBorder: false } }
+                }
+            }
+        });
+    }
 });
 </script>
 {% endblock %}
