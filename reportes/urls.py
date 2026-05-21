@@ -1,3 +1,4 @@
+# Rutas de endpoints gerenciales
 from django.urls import path
 from .views import OcupacionView, exportar_excel
 

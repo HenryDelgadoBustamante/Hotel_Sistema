@@ -1,3 +1,4 @@
+# Ajustes globales (DB, Auth, DRF, JWT, etc.)
 from pathlib import Path
 from decouple import config
 

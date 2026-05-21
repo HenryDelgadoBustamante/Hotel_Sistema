@@ -1,3 +1,4 @@
+# Manual básico de puesta en marcha del proyecto;
 <div align="center">
 
 <img src="https://img.shields.io/badge/-%F0%9F%8F%A8%20HotelSystem-0f172a?style=for-the-badge&labelColor=0f172a" alt="HotelSystem" height="42"/>
@@ -20,21 +21,21 @@
 
 ---
 
-## ✨ Características principales
+## Características principales
 
 | Módulo | Funcionalidades |
 |--------|-----------------|
-| 🏠 **Habitaciones** | Plano visual interactivo, estados en tiempo real, galería de imágenes por habitación. |
-| 📅 **Reservas** | Calendario de ocupación mensual (Gantt), reservas por día/hora, check-in express. |
-| 👤 **Huéspedes** | Registro por documento, búsqueda rápida, historial de estancias. |
-| 🚪 **Estancias** | Folio de cargos, cargos por servicio (restaurante, lavandería, etc.), check-out con IGV. |
-| 🧹 **Housekeeping** | Panel de estado de limpieza por habitación con actualización en un clic. |
-| 📊 **Reportes** | KPIs de ocupación, revenue por tipo, estancias activas, gráficos interactivos. |
-| 🔐 **API REST** | Endpoints JWT para integración con apps externas (documentado con Swagger/ReDoc). |
+|  **Habitaciones** | Plano visual interactivo, estados en tiempo real, galería de imágenes por habitación. |
+|  **Reservas** | Calendario de ocupación mensual (Gantt), reservas por día/hora, check-in express. |
+| **Huéspedes** | Registro por documento, búsqueda rápida, historial de estancias. |
+| **Estancias** | Folio de cargos, cargos por servicio (restaurante, lavandería, etc.), check-out con IGV. |
+|  **Housekeeping** | Panel de estado de limpieza por habitación con actualización en un clic. |
+|  **Reportes** | KPIs de ocupación, revenue por tipo, estancias activas, gráficos interactivos. |
+|  **API REST** | Endpoints JWT para integración con apps externas (documentado con Swagger/ReDoc). |
 
 ---
 
-## 🖼️ Capturas de pantalla
+##  Capturas de pantalla
 
 <details>
 <summary>Ver detalles de la interfaz</summary>
@@ -48,7 +49,7 @@
 
 ---
 
-## 🛠️ Stack tecnológico
+##  Stack tecnológico
 
 <table>
 <tr>
@@ -79,7 +80,7 @@
 
 ---
 
-## 📁 Estructura del proyecto
+##  Estructura del proyecto
 
 ```
 hotel_system/
@@ -105,7 +106,7 @@ hotel_system/
 
 ---
 
-## 🔄 Flujo principal del sistema
+##  Flujo principal del sistema
 
 ```
 [Huésped] ──→ [Reserva] ──→ [Check-in] ──→ [Folio] ──→ [Check-out]
@@ -116,9 +117,9 @@ documento       por hora      habitación     extra          + IGV
 
 ---
 
-## ⚡ Inicio rápido
+##  Inicio rápido
 
-### 🐳 Con Docker (Recomendado)
+### Con Docker (Recomendado)
 
 ```bash
 # 1. Clonar el repositorio
@@ -139,7 +140,7 @@ El sistema estará disponible en **http://localhost:8000** 🚀
 
 ---
 
-### 💻 Sin Docker (Entorno local)
+###  Sin Docker (Entorno local)
 
 ```bash
 # 1. Crear y activar entorno virtual
@@ -166,7 +167,7 @@ El sistema estará disponible en **http://localhost:8000** 🚀
 
 ---
 
-## 🔌 API REST
+##  API REST
 
 La API está disponible bajo el prefijo `/api/` y cuenta con especificación interactiva:
 
@@ -188,7 +189,7 @@ curl http://localhost:8000/api/habitaciones/ \
 
 ---
 
-## 🧪 Pruebas unitarias (Tests)
+##  Pruebas unitarias (Tests)
 
 ```bash
 # Ejecutar la suite de pruebas completa
@@ -200,7 +201,7 @@ pytest --cov=. --cov-report=html
 
 ---
 
-## ⚙️ Variables de entorno (`.env`)
+## Variables de entorno (`.env`)
 
 Crea un archivo `.env` en la raíz del proyecto configurando lo siguiente:
 
@@ -212,7 +213,7 @@ ALLOWED_HOSTS=localhost,127.0.0.1
 
 ---
 
-## 🤝 Contribuciones
+##  Contribuciones
 
 Las contribuciones son bienvenidas. Por favor sigue este flujo:
 
@@ -224,9 +225,9 @@ Las contribuciones son bienvenidas. Por favor sigue este flujo:
 
 ---
 
-## 👨‍💻 Autor
+## Autor
 
-Desarrollado por **Henry Delgado Bustamante**
+Desarrollado por **Henry Delgado Bustamante, Estela Alvarado Robert Anthony, Goicochea Flores Euler Ivan, Tantalean Inga Nilver**
 
 <div align="center">
 

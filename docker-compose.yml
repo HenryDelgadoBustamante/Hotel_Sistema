@@ -1,3 +1,4 @@
+# Orquestación de infraestructura local (Web + DB PostgreSQL)
 services:
   db:
     image: postgres:15-alpine

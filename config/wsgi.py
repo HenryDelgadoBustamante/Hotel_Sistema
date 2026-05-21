@@ -1,3 +1,4 @@
+# Puntos de entrada para servidores WSGI/ASGI en producción
 """
 WSGI config for config project.
 

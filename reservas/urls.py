@@ -1,3 +1,4 @@
+# Rutas asociadas al ciclo de reservas
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import ReservaViewSet, TarifaViewSet

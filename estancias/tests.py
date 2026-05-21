@@ -1,11 +1,15 @@
-from datetime import date
+from datetime import date, datetime, timedelta
 from decimal import Decimal
-from django.test import TestCase
+from django.test import TestCase, Client
+from django.contrib.auth.models import User, Group
+from django.urls import reverse
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 from hotel.models import Hotel, TipoHabitacion, Habitacion
 from huespedes.models import Huesped
 from reservas.models import Reserva
 from estancias.models import Estancia, CargoEstancia, Folio, Pago
+
 
 class EstanciaModelTest(TestCase):
     def setUp(self):
@@ -79,3 +83,82 @@ class EstanciaModelTest(TestCase):
         self.assertEqual(estancia.estado, Estancia.FINALIZADA)
         self.assertEqual(folio.estado, Folio.CERRADO)
         self.assertEqual(self.habitacion.estado, Habitacion.LIMPIEZA) # Estado cambia a limpieza para preparación
+
+
+class EstanciaViewsTest(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.hotel = Hotel.objects.create(
+            nombre="Hotel Cusco", ruc="22334455667", direccion="Av Sol", estrellas=4, telefono="084999888"
+        )
+        self.tipo_hab = TipoHabitacion.objects.create(
+            hotel=self.hotel, nombre="Matrimonial", capacidad=2, precio_base=Decimal("150.00")
+        )
+        self.habitacion = Habitacion.objects.create(
+            hotel=self.hotel, tipo=self.tipo_hab, numero="204", piso=2, estado=Habitacion.DISPONIBLE
+        )
+        self.huesped = Huesped.objects.create(
+            tipo_doc=Huesped.DNI, num_doc="99998888", nombres="Rosa", apellidos="Salas"
+        )
+        hoy = timezone.localdate()
+        self.reserva = Reserva.objects.create(
+            hotel=self.hotel, huesped=self.huesped, habitacion=self.habitacion,
+            fecha_entrada=hoy, fecha_salida=hoy + timedelta(days=2),
+            modalidad=Reserva.POR_DIA, estado=Reserva.CONFIRMADA
+        )
+        self.reserva.precio_total = self.reserva.calcular_precio()
+        self.reserva.save()
+
+        # Crear y autenticar usuario recepcionista
+        self.user = User.objects.create_superuser(username='recep_estancias', password='password123')
+        self.group = Group.objects.create(name='recepcionista')
+        self.user.groups.add(self.group)
+        self.client.login(username='recep_estancias', password='password123')
+
+    def test_reserva_checkin_y_cargos_flujo_completo(self):
+        # 1. Realizar check-in
+        checkin_url = reverse('reserva_checkin', kwargs={'reserva_id': self.reserva.id})
+        response = self.client.post(checkin_url, {'habitacion': self.habitacion.id})
+        
+        self.assertEqual(response.status_code, 302)  # Redirige a folio
+        self.reserva.refresh_from_db()
+        self.assertEqual(self.reserva.estado, Reserva.CHECKIN)
+        
+        estancia = Estancia.objects.get(reserva=self.reserva)
+        self.assertEqual(estancia.estado, Estancia.ACTIVA)
+        self.assertEqual(estancia.habitacion.estado, Habitacion.OCUPADA)
+
+        # 2. Verificar que se autogeneró el cargo base de habitación
+        folio = Folio.objects.get(estancia=estancia)
+        self.assertEqual(estancia.cargos.filter(tipo=CargoEstancia.HABITACION).count(), 1)
+        self.assertEqual(folio.total, Decimal("300.00")) # 2 noches * 150
+
+        # 3. Agregar cargo extra por restaurante
+        cargo_url = reverse('agregar_cargo', kwargs={'estancia_id': estancia.id})
+        response_cargo = self.client.post(cargo_url, {
+            'concepto': 'Desayuno Buffet',
+            'monto': '25.00',
+            'tipo': 'RESTAURANTE'
+        })
+        self.assertEqual(response_cargo.status_code, 302)
+        folio.calcular_totales()
+        self.assertEqual(folio.total, Decimal("325.00"))
+
+        # 4. Registrar pago
+        pago_url = reverse('registrar_pago', kwargs={'estancia_id': estancia.id})
+        response_pago = self.client.post(pago_url, {
+            'monto': '325.00',
+            'metodo_pago': Pago.EFECTIVO
+        })
+        self.assertEqual(response_pago.status_code, 302)
+        folio.calcular_totales()
+        self.assertEqual(folio.saldo_pendiente, Decimal("0.00"))
+
+        # 5. Realizar check-out
+        checkout_url = reverse('checkout', kwargs={'estancia_id': estancia.id})
+        response_checkout = self.client.get(checkout_url)
+        self.assertEqual(response_checkout.status_code, 302)
+        
+        estancia.refresh_from_db()
+        self.assertEqual(estancia.estado, Estancia.FINALIZADA)
+        self.assertEqual(estancia.habitacion.estado, Habitacion.LIMPIEZA)

@@ -1,3 +1,4 @@
+# Script CLI de utilidades de desarrollo en Django
 #!/usr/bin/env python
 """Django's command-line utility for administrative tasks."""
 import os

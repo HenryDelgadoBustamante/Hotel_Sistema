@@ -1,3 +1,4 @@
+# Registro de entidades en el panel administrativo
 from django.contrib import admin
 from .models import Hotel, TipoHabitacion, Habitacion
 

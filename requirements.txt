@@ -1,3 +1,4 @@
+# Archivo de dependencias y librerías externas de Python
 asgiref==3.11.1
 colorama==0.4.6
 coverage==7.13.5

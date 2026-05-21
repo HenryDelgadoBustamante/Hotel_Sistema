@@ -1,3 +1,4 @@
+# Definición de entidades: Tarifa, Reserva con lógica tarifaria
 from datetime import datetime, time, timedelta
 from decimal import Decimal
 

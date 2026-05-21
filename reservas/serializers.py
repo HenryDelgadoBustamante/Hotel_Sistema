@@ -1,3 +1,4 @@
+# Serializadores REST para reservas y tarifas
 from rest_framework import serializers
 from .models import Reserva, Tarifa
 from huespedes.serializers import HuespedSerializer

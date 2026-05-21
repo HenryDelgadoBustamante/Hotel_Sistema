@@ -1,3 +1,4 @@
+# Serializadores REST para huéspedes
 from rest_framework import serializers
 from .models import Huesped
 

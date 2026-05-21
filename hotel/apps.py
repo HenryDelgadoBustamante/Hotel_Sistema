@@ -1,3 +1,4 @@
+# Metadatos del módulo
 from django.apps import AppConfig
 
 

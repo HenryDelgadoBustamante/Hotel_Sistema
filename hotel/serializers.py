@@ -1,3 +1,4 @@
+# Serializadores de API REST para habitaciones
 from rest_framework import serializers
 from .models import Hotel, TipoHabitacion, Habitacion
 

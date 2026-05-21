@@ -1,3 +1,4 @@
+# Serializadores de datos de cuentas
 from rest_framework import serializers
 from .models import Estancia, CargoEstancia, Folio
 

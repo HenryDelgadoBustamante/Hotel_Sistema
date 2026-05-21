@@ -1,3 +1,4 @@
+# Aplicación para el control de fichas de huéspedes
 from django.db import models
 
 

@@ -1,3 +1,4 @@
+# Clases de permisos personalizados (EsAdmin, EsRecepcionista, etc.)
 from rest_framework.permissions import BasePermission
 
 
