@@ -294,10 +294,7 @@
           class="bi {% if hab.estado_visual == 'DISPONIBLE' %}bi-door-open{% elif hab.estado_visual == 'OCUPADA' %}bi-person-fill{% elif hab.estado_visual == 'LIMPIEZA' %}bi-stars{% elif hab.estado_visual == 'MANTENIMIENTO' %}bi-tools{% elif hab.estado_visual == 'VENCIDA' %}bi-exclamation-octagon{% elif hab.estado_visual == 'RESERVADA' %}bi-clock-history{% elif hab.estado_visual == 'RETRASO' %}bi-clock-fill{% else %}bi-door-open{% endif %} hab-icon"></i>
       </div>
       <div class="hab-badge">
-        {% if hab.estado_visual == 'DISPONIBLE' %}Disponible{% elif hab.estado_visual == 'OCUPADA' %}Ocupada{% elif
-        hab.estado_visual == 'LIMPIEZA' %}Limpieza{% elif hab.estado_visual == 'MANTENIMIENTO' %}Mantenimiento{% elif
-        hab.estado_visual == 'VENCIDA' %}Vencida{% elif hab.estado_visual == 'RESERVADA' %}Reservada{% elif
-        hab.estado_visual == 'RETRASO' %}Retraso{% else %}Disponible{% endif %}
+        {% if hab.estado_visual == 'DISPONIBLE' %}Disponible{% elif hab.estado_visual == 'OCUPADA' %}Ocupada{% elif hab.estado_visual == 'LIMPIEZA' %}Limpieza{% elif hab.estado_visual == 'MANTENIMIENTO' %}Mantenimiento{% elif hab.estado_visual == 'VENCIDA' %}Vencida{% elif hab.estado_visual == 'RESERVADA' %}Reservada{% elif hab.estado_visual == 'RETRASO' %}Retraso{% else %}Disponible{% endif %}
       </div>
     </div>
 
