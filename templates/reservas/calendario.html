@@ -274,7 +274,8 @@
       {% for ev in eventos %}
       {% if ev.habitacion_id == hab.id %}
       <div class="timeline-event"
-        style="left: calc(110px + {{ ev.offset }} * 44px); width: calc({{ ev.width }} * 44px); background-color: {{ ev.color }};"
+        style="left: calc(110px + {{ ev.offset }} * 44px); width: calc({{ ev.width }} * 44px); background-color: {{ ev.color }}; cursor: pointer;"
+        onclick="window.location.href='/reservas/{{ ev.id }}/';"
         title="{{ ev.huesped }} ({{ ev.estado }})">
         {{ ev.huesped }}
       </div>
