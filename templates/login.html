@@ -49,8 +49,8 @@
     content: '';
     position: absolute;
     inset: 0;
-    background-image: radial-gradient(circle at 20% 30%, rgba(255,255,255,0.08) 2px, transparent 0),
-                      radial-gradient(circle at 80% 70%, rgba(255,255,255,0.08) 2px, transparent 0);
+    background-image: radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.08) 2px, transparent 0),
+      radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.08) 2px, transparent 0);
     background-size: 40px 40px;
     z-index: 2;
     animation: movePattern 20s linear infinite;
@@ -58,33 +58,126 @@
   }
 
   @keyframes movePattern {
-    from { background-position: 0 0; }
-    to { background-position: 40px 40px; }
+    from {
+      background-position: 0 0;
+    }
+
+    to {
+      background-position: 40px 40px;
+    }
   }
 
-  .left-content { position: relative; z-index: 3; }
+  .left-content {
+    position: relative;
+    z-index: 3;
+  }
 
-  .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 80px; }
-  .brand-icon { width: 36px; height: 36px; background: var(--color-gold-start); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--color-primary); font-size: 18px; }
-  .brand-name { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; letter-spacing: 0.02em; }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 80px;
+  }
 
-  .tag-pill { display: inline-flex; align-items: center; gap: 6px; background: rgba(201,168,76,0.15); color: var(--color-gold); padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid rgba(201,168,76,0.3); margin-bottom: 24px; }
-  
-  .hero-title { font-family: 'Playfair Display', serif; font-size: 56px; font-weight: 400; line-height: 1.15; margin-bottom: 20px; max-width: 500px; color: #ffffff; text-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-  .hero-title i { color: var(--color-gold-start); font-style: italic; }
-  .hero-subtitle { color: #cbd5e1; font-size: 16px; max-width: 400px; line-height: 1.6; }
+  .brand-icon {
+    width: 36px;
+    height: 36px;
+    background: var(--color-gold-start);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-primary);
+    font-size: 18px;
+  }
 
-  .metrics-box { display: flex; gap: 16px; margin-bottom: 40px; }
+  .brand-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  .tag-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(201, 168, 76, 0.15);
+    color: var(--color-gold);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid rgba(201, 168, 76, 0.3);
+    margin-bottom: 24px;
+  }
+
+  .hero-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 56px;
+    font-weight: 400;
+    line-height: 1.15;
+    margin-bottom: 20px;
+    max-width: 500px;
+    color: #ffffff;
+    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .hero-title i {
+    color: var(--color-gold-start);
+    font-style: italic;
+  }
+
+  .hero-subtitle {
+    color: #cbd5e1;
+    font-size: 16px;
+    max-width: 400px;
+    line-height: 1.6;
+  }
+
+  .metrics-box {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 40px;
+  }
+
   .metric-item {
-    flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(201,168,76,0.3); border-radius: 12px; padding: 16px; text-align: center; backdrop-filter: blur(8px);
-    transition: transform 0.3s ease, border-color 0.3s ease; box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    flex: 1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(201, 168, 76, 0.3);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    backdrop-filter: blur(8px);
+    transition: transform 0.3s ease, border-color 0.3s ease;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   }
-  .metric-item:hover { transform: translateY(-4px); border-color: var(--color-gold); }
-  
-  .metric-val { font-size: 22px; font-weight: 600; color: #fff; margin-bottom: 4px; }
-  .metric-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
 
-  .left-footer { color: #94a3b8; font-size: 13px; position: relative; z-index: 3; }
+  .metric-item:hover {
+    transform: translateY(-4px);
+    border-color: var(--color-gold);
+  }
+
+  .metric-val {
+    font-size: 22px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+
+  .metric-label {
+    font-size: 11px;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .left-footer {
+    color: #94a3b8;
+    font-size: 13px;
+    position: relative;
+    z-index: 3;
+  }
 
   /* Right Panel */
   .right-panel {
@@ -94,68 +187,248 @@
     align-items: center;
     justify-content: center;
   }
+
   .login-box {
     width: 100%;
     max-width: 380px;
     padding: 32px;
     background: var(--color-white);
     border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.04);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
   }
-  
-  .security-badge { 
-    display: inline-flex; align-items: center; gap: 6px; background: #dcfce7; color: #166534; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-bottom: 32px; 
+
+  .security-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #dcfce7;
+    color: #166534;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 32px;
     border: 1px solid #bbf7d0;
   }
-  .security-badge i { animation: pulse 2s infinite; color: #22c55e; }
-  @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
-  
-  .welcome-label { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; display: block; }
-  .login-title { font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 600; color: var(--color-primary); margin-bottom: 8px; line-height: 1.2; }
-  .login-subtitle { font-size: 14px; color: #64748b; margin-bottom: 32px; }
 
-  .form-group { margin-bottom: 24px; position: relative; }
-  .form-label { font-size: 13px; font-weight: 500; color: #334155; margin-bottom: 8px; display: block; }
-  .input-icon-wrap { position: relative; }
-  .input-icon-wrap i { position: absolute; left: 0; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 18px; transition: color 0.3s; }
-  
-  /* Minimalist Input Style */
-  .form-control-custom { 
-    box-sizing: border-box; width: 100%; padding: 12px 0 12px 32px; background: transparent; border: none; border-bottom: 2px solid #e2e8f0; font-size: 15px; color: #1e293b; transition: all 0.3s ease; font-family: inherit; border-radius: 0;
+  .security-badge i {
+    animation: pulse 2s infinite;
+    color: #22c55e;
   }
-  .form-control-custom::placeholder { color: #94a3b8; }
-  .form-control-custom:focus { outline: none; border-bottom-color: var(--color-gold-start); }
-  .form-control-custom:focus + i, .input-icon-wrap:focus-within i { color: var(--color-gold-start); }
-  
-  .forgot-link { font-size: 12px; font-weight: 500; color: var(--color-primary); text-decoration: none; margin-top: 4px; transition: color 0.2s; }
-  .forgot-link:hover { color: var(--color-gold-start); text-decoration: underline; }
+
+  @keyframes pulse {
+    0% {
+      transform: scale(1);
+    }
+
+    50% {
+      transform: scale(1.2);
+    }
+
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  .welcome-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .login-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 32px;
+    font-weight: 600;
+    color: var(--color-primary);
+    margin-bottom: 8px;
+    line-height: 1.2;
+  }
+
+  .login-subtitle {
+    font-size: 14px;
+    color: #64748b;
+    margin-bottom: 32px;
+  }
+
+  .form-group {
+    margin-bottom: 24px;
+    position: relative;
+  }
+
+  .form-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #334155;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .input-icon-wrap {
+    position: relative;
+  }
+
+  .input-icon-wrap i {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    font-size: 18px;
+    transition: color 0.3s;
+  }
+
+  .input-icon-wrap i.toggle-password {
+    left: auto;
+    right: 0;
+    cursor: pointer;
+    padding: 10px;
+  }
+
+  /* Minimalist Input Style */
+  .form-control-custom {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 12px 0 12px 32px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid #e2e8f0;
+    font-size: 15px;
+    color: #1e293b;
+    transition: all 0.3s ease;
+    font-family: inherit;
+    border-radius: 0;
+  }
+
+  .form-control-custom::placeholder {
+    color: #94a3b8;
+  }
+
+  .form-control-custom:focus {
+    outline: none;
+    border-bottom-color: var(--color-gold-start);
+  }
+
+  .form-control-custom:focus+i,
+  .input-icon-wrap:focus-within i {
+    color: var(--color-gold-start);
+  }
+
+  .forgot-link {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-primary);
+    text-decoration: none;
+    margin-top: 4px;
+    transition: color 0.2s;
+  }
+
+  .forgot-link:hover {
+    color: var(--color-gold-start);
+    text-decoration: underline;
+  }
 
   /* Gradient Button */
-  .btn-submit { 
-    width: 100%; padding: 14px; background: linear-gradient(135deg, var(--color-gold-start) 0%, var(--color-gold) 100%); color: var(--color-primary); border: none; border-radius: 10px; font-size: 15px; font-weight: 600; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; margin-top: 32px; box-shadow: 0 4px 12px rgba(201,168,76,0.3);
+  .btn-submit {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--color-gold-start) 0%, var(--color-gold) 100%);
+    color: var(--color-primary);
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    margin-top: 32px;
+    box-shadow: 0 4px 12px rgba(201, 168, 76, 0.3);
   }
-  .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(201,168,76,0.4); }
 
-  .login-footer-note { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; color: #94a3b8; margin-top: 24px; }
+  .btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(201, 168, 76, 0.4);
+  }
+
+  .login-footer-note {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #94a3b8;
+    margin-top: 24px;
+  }
 
   /* Django Alerts override & Shake animation */
-  .alert-custom { 
-    background: #fee2e2; border: 1px solid #f87171; color: #991b1b; padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 24px; display: flex; align-items: center; gap: 8px;
-    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+  .alert-custom {
+    background: #fee2e2;
+    border: 1px solid #f87171;
+    color: #991b1b;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: shake 0.5s cubic-bezier(.36, .07, .19, .97) both;
   }
-  
+
   @keyframes shake {
-    10%, 90% { transform: translate3d(-1px, 0, 0); }
-    20%, 80% { transform: translate3d(2px, 0, 0); }
-    30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
-    40%, 60% { transform: translate3d(4px, 0, 0); }
+
+    10%,
+    90% {
+      transform: translate3d(-1px, 0, 0);
+    }
+
+    20%,
+    80% {
+      transform: translate3d(2px, 0, 0);
+    }
+
+    30%,
+    50%,
+    70% {
+      transform: translate3d(-4px, 0, 0);
+    }
+
+    40%,
+    60% {
+      transform: translate3d(4px, 0, 0);
+    }
   }
 
   @media (max-width: 900px) {
-    .left-panel { display: none; }
-    .right-panel { padding: 40px; background: url('https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80') center/cover; position: relative; }
-    .right-panel::before { content: ''; position: absolute; inset: 0; background: rgba(0,0,0,0.6); }
-    .login-box { position: relative; z-index: 1; }
+    .left-panel {
+      display: none;
+    }
+
+    .right-panel {
+      padding: 40px;
+      background: url('https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80') center/cover;
+      position: relative;
+    }
+
+    .right-panel::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+    }
+
+    .login-box {
+      position: relative;
+      z-index: 1;
+    }
   }
 </style>
 
@@ -164,7 +437,7 @@
   <div class="left-panel">
     <div class="glow-1"></div>
     <div class="glow-2"></div>
-    
+
     <div class="left-content">
       <div class="brand">
         <div class="brand-icon"><i class="bi bi-building"></i></div>
@@ -174,9 +447,10 @@
       <div class="tag-pill">
         <i class="bi bi-stars"></i> Gestión Hotelera
       </div>
-      
+
       <h1 class="hero-title">Administra tu hotel con <i>total</i> control.</h1>
-      <p class="hero-subtitle">La plataforma más avanzada para recepcionistas y gerentes. Minimiza errores, optimiza tu ocupación y mejora la experiencia de tus huéspedes.</p>
+      <p class="hero-subtitle">La plataforma más avanzada para recepcionistas y gerentes. Minimiza errores, optimiza tu
+        ocupación y mejora la experiencia de tus huéspedes.</p>
     </div>
 
     <div class="left-content">
@@ -212,11 +486,11 @@
       <p class="login-subtitle">Ingresa tus credenciales para acceder al panel</p>
 
       {% if messages %}
-        {% for msg in messages %}
-          <div class="alert-custom">
-            <i class="bi bi-exclamation-triangle-fill"></i> {{ msg }}
-          </div>
-        {% endfor %}
+      {% for msg in messages %}
+      <div class="alert-custom">
+        <i class="bi bi-exclamation-triangle-fill"></i> {{ msg }}
+      </div>
+      {% endfor %}
       {% endif %}
 
       <form method="POST" action="">
@@ -225,7 +499,8 @@
           <label class="form-label">Usuario</label>
           <div class="input-icon-wrap">
             <i class="bi bi-person"></i>
-            <input type="text" name="username" class="form-control-custom" placeholder="Ingresa tu usuario" required autofocus autocomplete="username">
+            <input type="text" name="username" class="form-control-custom" placeholder="Ingresa tu usuario" required
+              autofocus autocomplete="username">
           </div>
         </div>
 
@@ -236,7 +511,9 @@
           </div>
           <div class="input-icon-wrap">
             <i class="bi bi-lock"></i>
-            <input type="password" name="password" class="form-control-custom" placeholder="••••••••" required autocomplete="current-password">
+            <input type="password" name="password" id="passwordInput" class="form-control-custom" placeholder="••••••••"
+              required autocomplete="current-password" style="padding-right: 40px;">
+            <i class="bi bi-eye toggle-password" id="togglePassword"></i>
           </div>
         </div>
 
@@ -251,4 +528,20 @@
     </div>
   </div>
 </div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const togglePassword = document.getElementById('togglePassword');
+    const password = document.getElementById('passwordInput');
+
+    if (togglePassword && password) {
+      togglePassword.addEventListener('click', function () {
+        const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+        password.setAttribute('type', type);
+        this.classList.toggle('bi-eye');
+        this.classList.toggle('bi-eye-slash');
+      });
+    }
+  });
+</script>
 {% endblock %}

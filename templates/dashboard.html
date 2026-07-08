@@ -1,163 +1,523 @@
 {% extends 'base.html' %}
-{% block title %}Dashboard{% endblock %}
-{% block page_title %}Dashboard{% endblock %}
+{% block title %}Dashboard Principal{% endblock %}
+{% block page_title %}Vista General{% endblock %}
 {% block content %}
 
 <style>
-  .dashboard-room-button { border: 0; background: transparent; padding: 0; }
+  /* ====== METRIC CARDS ====== */
+  .metric-box {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    border: 1px solid #f1f5f9;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s;
+    height: 100%;
+  }
+
+  .metric-box:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+  }
+
+  .metric-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+  }
+
+  .metric-content {
+    flex: 1;
+  }
+
+  .metric-val {
+    font-size: 28px;
+    font-weight: 800;
+    color: #0a1628;
+    line-height: 1.1;
+    margin-bottom: 6px;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: -0.5px;
+  }
+
+  .metric-label {
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .box-emerald .metric-icon {
+    background: #82e0b4;
+    color: #10b981;
+  }
+
+  .box-rose .metric-icon {
+    background: #fff1f2;
+    color: #f43f5e;
+  }
+
+  .box-amber .metric-icon {
+    background: #fffbeb;
+    color: #f59e0b;
+  }
+
+  .box-gold .metric-icon {
+    background: rgba(201, 168, 76, 0.15);
+    color: #c9a84c;
+  }
+
+  .box-blue .metric-icon {
+    background: #eff6ff;
+    color: #3b82f6;
+  }
+
+  /* ====== PLANO HOTEL (ROOM CARDS) ====== */
+  .hotel-map-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    border: 1px solid #f1f5f9;
+    height: 100%;
+  }
+
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0a1628;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Playfair Display', serif;
+  }
+
+  .dashboard-room-button {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    outline: none;
+  }
+
+  .hab-card {
+    width: 140px;
+    height: 140px;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    padding: 8px;
+  }
+
+  .hab-card .hab-type {
+    font-size: 11.5px;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    text-align: center;
+    line-height: 1.2;
+    margin: 4px 0;
+    z-index: 2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  .dashboard-room-button:hover .hab-card {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+  }
+
+  .hab-card .hab-num {
+    font-weight: 800;
+    font-size: 22px;
+    color: #1e293b;
+    line-height: 1.2;
+    z-index: 2;
+  }
+
+  .hab-card .hab-piso {
+    font-size: 11.5px;
+    color: #94a3b8;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    z-index: 2;
+  }
+
+  /* Estados Habitaciones Override */
+  .hab-disponible {
+    background: #ecfdf5;
+    border-bottom: 5px solid #39e8ae;
+    border-color: #7af468;
+  }
+
+  .hab-disponible .hab-num,
+  .hab-disponible .hab-piso {
+    color: #065f46;
+  }
+
+  .hab-disponible:hover {
+    border-color: #059669;
+  }
+
+  .hab-ocupada {
+    background: #fff1f2;
+    border-bottom: 5px solid #f43f5e;
+    border-color: #fecdd3;
+  }
+
+  .hab-ocupada .hab-num,
+  .hab-ocupada .hab-piso {
+    color: #9f1239;
+  }
+
+  .hab-limpieza {
+    background: #fffbeb;
+    border-bottom: 5px solid #f59e0b;
+    border-color: #fde68a;
+  }
+
+  .hab-reservada {
+    background: #eff6ff;
+    border-bottom: 5px solid #3b82f6;
+    border-color: #bfdbfe;
+  }
+
+  .hab-reservada .hab-num,
+  .hab-reservada .hab-piso {
+    color: #1e3a8a;
+  }
+
+  .hab-limpieza .hab-num,
+  .hab-limpieza .hab-piso {
+    color: #92400e;
+  }
+
+  .hab-mantenimiento {
+    background: #f8fafc;
+    border-bottom: 5px solid #94a3b8;
+    border-color: #e2e8f0;
+  }
+
+  .hab-mantenimiento .hab-num {
+    color: #475569;
+  }
+
+  /* ====== PANEL DE RESERVAS ====== */
+  .res-panel-card {
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    border: 1px solid #f1f5f9;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .reservas-panel-tabs {
+    border-bottom: 2px solid #f1f5f9;
+    gap: 8px;
+    padding: 0 24px;
+    margin-bottom: 0;
+  }
+
+  .reservas-panel-tabs .nav-link {
+    border: none;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 14px 16px;
+    border-radius: 0;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+  }
+
+  .reservas-panel-tabs .nav-link:hover {
+    color: #0f172a;
+  }
+
+  .reservas-panel-tabs .nav-link.active {
+    color: #c9a84c !important;
+    border-bottom: 2px solid #c9a84c;
+    background: transparent !important;
+  }
+
+  .reserva-item {
+    padding: 16px 24px;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.2s;
+  }
+
+  .reserva-item:hover {
+    background: #f8fafc;
+  }
+
+  .reserva-item:last-child {
+    border-bottom: none;
+  }
+
+  .res-guest-info {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .res-guest-initials {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: rgba(201, 168, 76, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: #c9a84c;
+    font-size: 14px;
+  }
+
+  .res-name {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 14.5px;
+    line-height: 1.2;
+    margin-bottom: 2px;
+  }
+
+  .res-room {
+    font-size: 12.5px;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .btn-action-small {
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 8px;
+    letter-spacing: 0.3px;
+  }
+
+  .bg-status-pendiente {
+    background: #fef9c3;
+    color: #854d0e;
+  }
+
+  /* MISC */
+  .search-checkin-wrapper {
+    position: relative;
+    margin: 20px 24px;
+  }
+
+  .search-checkin-input {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 12px 14px 12px 44px;
+    font-size: 14px;
+    background: #f8fafc;
+  }
+
+  .search-checkin-input:focus {
+    border-color: #c9a84c;
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(201, 168, 76, 0.15);
+    outline: none;
+  }
+
+  .search-checkin-icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+  }
+
+  /* Modals */
   .room-detail-photo {
     aspect-ratio: 16 / 10;
     width: 100%;
     object-fit: cover;
     background: #eef2f7;
-    border-radius: 8px;
+    border-radius: 12px;
   }
+
   .room-detail-placeholder {
     aspect-ratio: 16 / 10;
-    border-radius: 8px;
+    border-radius: 12px;
     background: linear-gradient(135deg, #eef2f7, #d9e2ec);
     color: #64748b;
     display: grid;
     place-items: center;
   }
-
-  /* Nuevas Stat Cards */
-  .stat-card-new {
-    background: #fff; border-radius: 10px; padding: 20px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column;
-    border-left: 4px solid transparent;
-  }
-  .stat-card-new .stat-number { font-size: 2rem; font-weight: 700; line-height: 1.2; margin-bottom: 4px; }
-  .stat-card-new .stat-label { color: #6b7280; font-size: 13px; font-weight: 500; }
-  .stat-disponibles { border-left-color: #10b981; }
-  .stat-disponibles .stat-number { color: #10b981; }
-  .stat-ocupadas { border-left-color: #ef4444; }
-  .stat-ocupadas .stat-number { color: #ef4444; }
-  .stat-reservas { border-left-color: #f59e0b; }
-  .stat-reservas .stat-number { color: #f59e0b; }
-  .stat-ocupacion { border-left-color: #6366f1; }
-  .stat-ocupacion .stat-number { color: #6366f1; }
-
-  /* Tabs de reservaciones (pill style override) */
-  .reservas-panel-tabs .nav-link { color: #6b7280; font-weight: 500; border-radius: 50rem; transition: background .15s, color .15s; }
-  .reservas-panel-tabs .nav-link:hover { color: #4f46e5; }
-  .reservas-panel-tabs .nav-link.active { background-color: #eef2ff !important; color: #6366f1 !important; font-weight: 600; }
-  
-  /* Buscador Check-In */
-  .search-checkin-wrapper { position: relative; }
-  .search-checkin-input { border: 1px solid #e5e7eb; border-radius: 8px; padding-left: 2.5rem; transition: all .2s; }
-  .search-checkin-input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.15); outline: none; }
-  .search-checkin-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; }
 </style>
 
-<div class="row g-3 mb-4">
+<!-- Kpis / Stats -->
+<div class="row g-4 mb-4">
   <div class="col-md-3">
-    <div class="stat-card-new stat-disponibles">
-      <div class="stat-number">{{ stats.disponibles }}</div>
-      <div class="stat-label">Habitaciones disponibles</div>
+    <div class="metric-box box-emerald">
+      <div class="metric-icon"><i class="bi bi-door-open"></i></div>
+      <div class="metric-content">
+        <div class="metric-val">{{ stats.disponibles }}</div>
+        <div class="metric-label">Hab. Disponibles</div>
+      </div>
     </div>
   </div>
   <div class="col-md-3">
-    <div class="stat-card-new stat-ocupadas">
-      <div class="stat-number">{{ stats.ocupadas }}</div>
-      <div class="stat-label">Habitaciones ocupadas</div>
+    <div class="metric-box box-rose">
+      <div class="metric-icon"><i class="bi bi-door-closed"></i></div>
+      <div class="metric-content">
+        <div class="metric-val">{{ stats.ocupadas }}</div>
+        <div class="metric-label">Hab. Ocupadas</div>
+      </div>
     </div>
   </div>
   <div class="col-md-3">
-    <div class="stat-card-new stat-reservas">
-      <div class="stat-number">{{ stats.reservas_hoy }}</div>
-      <div class="stat-label">Reservas hoy</div>
+    <div class="metric-box box-blue">
+      <div class="metric-icon"><i class="bi bi-calendar-check"></i></div>
+      <div class="metric-content">
+        <div class="metric-val">{{ stats.reservas_hoy }}</div>
+        <div class="metric-label">Reservas (Hoy)</div>
+      </div>
     </div>
   </div>
   <div class="col-md-3">
-    <div class="stat-card-new stat-ocupacion">
-      <div class="stat-number">{{ stats.tasa_ocupacion }}%</div>
-      <div class="stat-label">Tasa de ocupación</div>
+    <div class="metric-box box-gold">
+      <div class="metric-icon"><i class="bi bi-pie-chart"></i></div>
+      <div class="metric-content">
+        <div class="metric-val">{{ stats.tasa_ocupacion }}%</div>
+        <div class="metric-label">Tasa Ocupación</div>
+      </div>
     </div>
   </div>
 </div>
 
-<div class="row g-3">
-  <div class="col-md-8">
-    <div class="card p-3">
-      <h6 class="mb-3"><i class="bi bi-grid-3x3-gap me-2"></i>Plano del hotel</h6>
-      <div class="d-flex flex-wrap gap-2">
+<div class="row g-4 mb-5">
+  <!-- Mapa del Hotel -->
+  <div class="col-lg-7 col-xl-8">
+    <div class="hotel-map-card">
+      <div class="section-title">
+        <i class="bi bi-grid-3x3-gap text-muted" style="font-size: 20px;"></i>
+        Plano del Hotel
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 mb-4">
         {% for hab in habitaciones %}
-        <button type="button" class="dashboard-room-button" data-bs-toggle="modal" data-bs-target="#dashboard-room-{{ hab.id }}" aria-label="Ver detalle de habitación {{ hab.numero }}">
-          <div class="hab-card hab-{{ hab.estado|lower }}">
+        <button type="button" class="dashboard-room-button" data-bs-toggle="modal"
+          data-bs-target="#dashboard-room-{{ hab.id }}" aria-label="Ver detalle de habitación {{ hab.numero }}">
+          <div class="hab-card hab-{{ hab.estado_visual|default:hab.estado|lower }}">
             <span class="hab-num">{{ hab.numero }}</span>
+            <span class="hab-type" title="{{ hab.tipo.nombre }}">{{ hab.tipo.nombre|truncatechars:12 }}</span>
             <span class="hab-piso">PISO {{ hab.piso }}</span>
           </div>
         </button>
 
+        <!-- Room Modal -->
         <div class="modal fade" id="dashboard-room-{{ hab.id }}" tabindex="-1" aria-hidden="true">
           <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-              <div class="modal-header">
+            <div class="modal-content"
+              style="border: none; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.1);">
+              <div class="modal-header border-bottom-0 pt-4 pb-2 px-4">
                 <div>
-                  <h5 class="modal-title mb-0">Habitación {{ hab.numero }}</h5>
-                  <small class="text-muted">{{ hab.tipo.nombre }} · Piso {{ hab.piso }}</small>
+                  <h4 class="modal-title mb-1"
+                    style="font-family: 'Playfair Display', serif; font-weight: 700; color: #0a1628;">
+                    Habitación {{ hab.numero }}
+                  </h4>
+                  <div class="text-muted" style="font-size: 14px;">{{ hab.tipo.nombre }} · Piso {{ hab.piso }}</div>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
               </div>
-              <div class="modal-body">
-                <div class="row g-4">
+              <div class="modal-body px-4 pb-4">
+                <div class="row g-4 mt-1">
+                  <!-- Imagen -->
                   <div class="col-md-6">
                     {% if hab.imagenes_urls %}
-                    <div id="gallery-room-{{ hab.id }}" class="carousel slide" data-bs-ride="false">
-                      <div class="carousel-inner rounded-3">
+                    <div id="gallery-room-{{ hab.id }}" class="carousel slide" data-bs-ride="false"
+                      style="border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+                      <div class="carousel-inner">
                         {% for image_url in hab.imagenes_urls %}
                         <div class="carousel-item {% if forloop.first %}active{% endif %}">
-                          <img src="{{ image_url }}" alt="Imagen {{ forloop.counter }} de la habitación {{ hab.numero }}" class="room-detail-photo">
+                          <img src="{{ image_url }}" alt="..." class="room-detail-photo">
                         </div>
                         {% endfor %}
                       </div>
                       {% if hab.imagenes_urls|length > 1 %}
-                      <button class="carousel-control-prev" type="button" data-bs-target="#gallery-room-{{ hab.id }}" data-bs-slide="prev">
+                      <button class="carousel-control-prev" type="button" data-bs-target="#gallery-room-{{ hab.id }}"
+                        data-bs-slide="prev">
                         <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                        <span class="visually-hidden">Anterior</span>
                       </button>
-                      <button class="carousel-control-next" type="button" data-bs-target="#gallery-room-{{ hab.id }}" data-bs-slide="next">
+                      <button class="carousel-control-next" type="button" data-bs-target="#gallery-room-{{ hab.id }}"
+                        data-bs-slide="next">
                         <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                        <span class="visually-hidden">Siguiente</span>
                       </button>
-                      <div class="small text-muted mt-2">{{ hab.imagenes_urls|length }} imágenes referenciales</div>
                       {% endif %}
                     </div>
                     {% elif hab.imagen_url %}
-                    <img src="{{ hab.imagen_url }}" alt="Imagen referencial de la habitación {{ hab.numero }}" class="room-detail-photo">
+                    <img src="{{ hab.imagen_url }}" class="room-detail-photo"
+                      style="box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
                     {% else %}
                     <div class="room-detail-placeholder">
                       <div class="text-center">
                         <i class="bi bi-image fs-1 d-block mb-2"></i>
-                        <span class="small">Sin imagen referencial</span>
+                        <span class="small">Fotografía no disponible</span>
                       </div>
                     </div>
                     {% endif %}
                   </div>
+                  <!-- Detalles -->
                   <div class="col-md-6">
-                    <div class="d-flex justify-content-between py-2 border-bottom">
-                      <span class="text-muted">Estado</span>
-                      <span class="badge {% if hab.estado == 'DISPONIBLE' %}bg-success{% elif hab.estado == 'OCUPADA' %}bg-danger{% elif hab.estado == 'LIMPIEZA' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ hab.get_estado_display }}</span>
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                      <span class="text-muted fw-medium" style="font-size: 14px;">Estado Actual</span>
+                      <span
+                        class="badge {% if hab.estado == 'DISPONIBLE' %}bg-success{% elif hab.estado == 'OCUPADA' %}bg-danger{% elif hab.estado == 'LIMPIEZA' %}bg-warning text-dark{% else %}bg-secondary{% endif %}"
+                        style="padding: 6px 12px; border-radius: 6px; font-weight: 600; letter-spacing: 0.3px;">
+                        {{ hab.get_estado_display }}
+                      </span>
                     </div>
-                    <div class="d-flex justify-content-between py-2 border-bottom">
-                      <span class="text-muted">Tipo</span><strong>{{ hab.tipo.nombre }}</strong>
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                      <span class="text-muted fw-medium" style="font-size: 14px;">Tipo</span>
+                      <strong style="color: #1e293b;">{{ hab.tipo.nombre }}</strong>
                     </div>
-                    <div class="d-flex justify-content-between py-2 border-bottom">
-                      <span class="text-muted">Capacidad</span><strong>{{ hab.tipo.capacidad }} personas</strong>
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                      <span class="text-muted fw-medium" style="font-size: 14px;">Capacidad</span>
+                      <strong style="color: #1e293b;">{{ hab.tipo.capacidad }} Personas</strong>
                     </div>
-                    <div class="d-flex justify-content-between py-2 border-bottom">
-                      <span class="text-muted">Tarifa base</span><strong>S/. {{ hab.tipo.precio_base }}/noche</strong>
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                      <span class="text-muted fw-medium" style="font-size: 14px;">Tarifa Noche</span>
+                      <strong style="color: #c9a84c; font-size: 16px;">S/ {{ hab.tipo.precio_base }}</strong>
                     </div>
-                    <div class="d-flex justify-content-between py-2">
-                      <span class="text-muted">Hotel</span><strong class="text-end">{{ hab.hotel.nombre }}</strong>
-                    </div>
+
                     {% if hab.tipo.amenidades %}
                     <div class="mt-3">
-                      <div class="text-muted small mb-2">Amenidades</div>
+                      <div class="text-muted fw-medium mb-2"
+                        style="font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Amenidades Incluidas
+                      </div>
                       <div class="d-flex flex-wrap gap-2">
                         {% for amenidad in hab.tipo.amenidades %}
-                        <span class="badge text-bg-light border">{{ amenidad }}</span>
+                        <span
+                          style="font-size: 12px; padding: 4px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; color: #475569; font-weight: 500;">
+                          {{ amenidad }}
+                        </span>
                         {% endfor %}
                       </div>
                     </div>
@@ -165,13 +525,15 @@
                   </div>
                 </div>
               </div>
-              <div class="modal-footer">
-                <a href="{% url 'habitacion_editar' hab.id %}" class="btn btn-outline-secondary">
-                  <i class="bi bi-pencil me-1"></i>Editar habitación
+              <div class="modal-footer px-4 py-3 bg-light border-top" style="border-color: #f1f5f9 !important;">
+                <a href="{% url 'habitacion_editar' hab.id %}" class="btn btn-light"
+                  style="border: 1px solid #e2e8f0; font-weight: 500; color: #475569; border-radius: 8px;">
+                  <i class="bi bi-pencil me-1"></i> Editar
                 </a>
                 {% if hab.estado == 'DISPONIBLE' %}
-                <a href="/reservas/nueva/?habitacion={{ hab.id }}" class="btn btn-primary">
-                  <i class="bi bi-calendar-plus me-1"></i>Reservar esta habitación
+                <a href="/reservas/nueva/?habitacion={{ hab.id }}" class="btn"
+                  style="background: linear-gradient(135deg, #c9a84c 0%, #f0c040 100%); color: white; font-weight: 600; border-radius: 8px;">
+                  <i class="bi bi-calendar-plus me-1"></i> Reservar
                 </a>
                 {% endif %}
               </div>
@@ -179,90 +541,164 @@
           </div>
         </div>
         {% empty %}
-        <p class="text-muted">No hay habitaciones registradas.</p>
+        <div class="text-center text-muted p-5 w-100 bg-light rounded-3">No hay habitaciones registradas.</div>
         {% endfor %}
       </div>
-      <div class="d-flex gap-3 mt-3 small">
-        <span><span class="badge" style="background:#10b981">●</span> Disponible</span>
-        <span><span class="badge" style="background:#ef4444">●</span> Ocupada</span>
-        <span><span class="badge" style="background:#f59e0b">●</span> Limpieza</span>
-        <span><span class="badge" style="background:#9ca3af">●</span> Mantenimiento</span>
+
+      <!-- Leyenda -->
+      <div class="d-flex flex-wrap gap-4 pt-3 mt-4" style="border-top: 1px dashed #e2e8f0;">
+        <div class="d-flex align-items-center gap-2">
+          <div style="width: 14px; height: 14px; border-radius: 4px; background: #10b981;"></div>
+          <span style="font-size: 13px; font-weight: 500; color: #64748b;">Disponible</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <div style="width: 14px; height: 14px; border-radius: 4px; background: #f43f5e;"></div>
+          <span style="font-size: 13px; font-weight: 500; color: #64748b;">Ocupada</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <div style="width: 14px; height: 14px; border-radius: 4px; background: #f59e0b;"></div>
+          <span style="font-size: 13px; font-weight: 500; color: #64748b;">Limpieza</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <div style="width: 14px; height: 14px; border-radius: 4px; background: #94a3b8;"></div>
+          <span style="font-size: 13px; font-weight: 500; color: #64748b;">Mantenimiento</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <div style="width: 14px; height: 14px; border-radius: 4px; background: #3b82f6;"></div>
+          <span style="font-size: 13px; font-weight: 500; color: #64748b;">Reservada (Hoy)</span>
+        </div>
       </div>
     </div>
   </div>
-  <div class="col-md-4">
-    <div class="card shadow-sm h-100 border-0" style="box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;">
-      <div class="card-header bg-white pb-0 pt-3 border-bottom-0">
-        <h6 class="mb-3 text-dark"><i class="bi bi-clock-history me-2"></i>Panel de Reservas</h6>
-        <ul class="nav nav-pills reservas-panel-tabs mb-2" id="reservaTabs" role="tablist">
+
+  <!-- Panel de Reservas -->
+  <div class="col-lg-5 col-xl-4">
+    <div class="res-panel-card">
+      <div class="pt-4 pb-2">
+        <div class="section-title px-4 mb-3">
+          <i class="bi bi-calendar4-week text-muted" style="font-size: 20px;"></i>
+          Recepción Hoy
+        </div>
+
+        <ul class="nav nav-pills reservas-panel-tabs" id="reservaTabs" role="tablist">
           <li class="nav-item" role="presentation">
-            <button class="nav-link active py-1 px-3 small" data-bs-toggle="tab" data-bs-target="#llegadas" type="button">Llegadas</button>
+            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#llegadas"
+              type="button">Llegadas</button>
           </li>
           <li class="nav-item" role="presentation">
-            <button class="nav-link py-1 px-3 small" data-bs-toggle="tab" data-bs-target="#encasa" type="button">En Casa</button>
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#encasa" type="button">En Casa</button>
           </li>
           <li class="nav-item" role="presentation">
-            <button class="nav-link py-1 px-3 small" data-bs-toggle="tab" data-bs-target="#salidas" type="button">Salidas</button>
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#salidas" type="button">Salidas</button>
           </li>
         </ul>
       </div>
-      <div class="card-body p-0 border-top">
+
+      <div class="flex-grow-1" style="overflow-y: auto; max-height: 500px;">
         <div class="tab-content" id="reservaTabsContent">
+
           <!-- LLEGADAS -->
-          <div class="tab-pane fade show active p-3" id="llegadas" role="tabpanel">
-            {% for r in llegadas_hoy %}
-            <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-              <div>
-                <div class="fw-semibold small">{{ r.huesped.nombres }} {{ r.huesped.apellidos }}</div>
-                <small class="text-muted">Hab. {{ r.habitacion.numero|default:"Sin asignar" }}</small>
-              </div>
-              <div class="text-end">
-                <span class="badge badge-{{ r.estado|lower }} mb-1 d-inline-block">{{ r.estado }}</span><br>
-                <a href="/reservas/{{ r.id }}/checkin/" class="btn btn-sm btn-success px-2 py-0" style="font-size:0.75rem;">Check-in</a>
-              </div>
-            </div>
-            {% empty %}
-            <p class="text-muted small mb-0">No hay llegadas pendientes hoy.</p>
-            {% endfor %}
-            <div class="mt-3 search-checkin-wrapper">
+          <div class="tab-pane fade show active" id="llegadas" role="tabpanel">
+            <div class="search-checkin-wrapper">
               <form action="{% url 'reservas_lista' %}" method="get">
                 <i class="bi bi-search search-checkin-icon"></i>
-                <input type="text" name="q" class="form-control search-checkin-input w-100" placeholder="Buscar reservas...">
+                <input type="text" name="q" class="search-checkin-input w-100" placeholder="Buscar reservas rápido...">
               </form>
             </div>
+
+            <div class="pb-3">
+              {% for r in llegadas_hoy %}
+              <div class="reserva-item">
+                <div class="res-guest-info">
+                  <div class="res-guest-initials">
+                    {{ r.huesped.nombres|make_list|first|upper }}{{ r.huesped.apellidos|make_list|first|upper }}
+                  </div>
+                  <div>
+                    <div class="res-name">{{ r.huesped.nombres }} {{ r.huesped.apellidos }}</div>
+                    <div class="res-room">
+                      <i class="bi bi-door-closed"></i> Hab. {{ r.habitacion.numero|default:"Pendiente" }}
+                    </div>
+                  </div>
+                </div>
+                <div class="text-end">
+                  <a href="/reservas/{{ r.id }}/checkin/" class="btn btn-success btn-action-small">
+                    Check-In
+                  </a>
+                </div>
+              </div>
+              {% empty %}
+              <div class="text-center py-5">
+                <div class="mb-3"><i class="bi bi-check2-circle" style="font-size: 32px; color: #cbd5e1;"></i></div>
+                <p class="text-muted small fw-medium mb-0">No hay más llegadas pendientes hoy.</p>
+              </div>
+              {% endfor %}
+            </div>
           </div>
+
           <!-- EN CASA -->
-          <div class="tab-pane fade p-3" id="encasa" role="tabpanel">
-            {% for e in en_casa %}
-            <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-              <div>
-                <div class="fw-semibold small">{{ e.reserva.huesped.nombres }} {{ e.reserva.huesped.apellidos }}</div>
-                <small class="text-muted">Hab. {{ e.habitacion.numero }}</small>
+          <div class="tab-pane fade" id="encasa" role="tabpanel">
+            <div class="pt-2 pb-3">
+              {% for e in en_casa %}
+              <div class="reserva-item">
+                <div class="res-guest-info">
+                  <div class="res-guest-initials" style="background: rgba(16,185,129,0.1); color: #10b981;">
+                    {{ e.reserva.huesped.nombres|make_list|first|upper }}{{
+                    e.reserva.huesped.apellidos|make_list|first|upper }}
+                  </div>
+                  <div>
+                    <div class="res-name">{{ e.reserva.huesped.nombres }} {{ e.reserva.huesped.apellidos }}</div>
+                    <div class="res-room">
+                      <i class="bi bi-door-closed"></i> Hab. {{ e.habitacion.numero }}
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <a href="/estancias/{{ e.id }}/folio/" class="btn btn-light btn-action-small"
+                    style="border: 1px solid #e2e8f0; color: #475569;">Ver Conta</a>
+                </div>
               </div>
-              <div>
-                 <a href="/estancias/{{ e.id }}/folio/" class="btn btn-sm btn-outline-primary px-2 py-0" style="font-size:0.75rem;">Ver Folio</a>
+              {% empty %}
+              <div class="text-center py-5">
+                <div class="mb-3"><i class="bi bi-house" style="font-size: 32px; color: #cbd5e1;"></i></div>
+                <p class="text-muted small fw-medium mb-0">Actualmente no hay huéspedes alojados.</p>
               </div>
+              {% endfor %}
             </div>
-            {% empty %}
-            <p class="text-muted small mb-0">No hay huéspedes en casa.</p>
-            {% endfor %}
           </div>
+
           <!-- SALIDAS -->
-          <div class="tab-pane fade p-3" id="salidas" role="tabpanel">
-            {% for e in salidas_hoy %}
-            <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-              <div>
-                <div class="fw-semibold small">{{ e.reserva.huesped.nombres }} {{ e.reserva.huesped.apellidos }}</div>
-                <small class="text-muted">Hab. {{ e.habitacion.numero }}</small>
+          <div class="tab-pane fade" id="salidas" role="tabpanel">
+            <div class="pt-2 pb-3">
+              {% for e in salidas_hoy %}
+              <div class="reserva-item">
+                <div class="res-guest-info">
+                  <div class="res-guest-initials" style="background: rgba(245,158,11,0.1); color: #f59e0b;">
+                    {{ e.reserva.huesped.nombres|make_list|first|upper }}{{
+                    e.reserva.huesped.apellidos|make_list|first|upper }}
+                  </div>
+                  <div>
+                    <div class="res-name">{{ e.reserva.huesped.nombres }} {{ e.reserva.huesped.apellidos }}</div>
+                    <div class="res-room">
+                      <i class="bi bi-door-closed"></i> Hab. {{ e.habitacion.numero }}
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <a href="/estancias/{{ e.id }}/checkout/" onclick="return confirm('¿Confirmar salida?')"
+                    class="btn btn-danger btn-action-small">
+                    Check-Out
+                  </a>
+                </div>
               </div>
-              <div>
-                <a href="/estancias/{{ e.id }}/checkout/" onclick="return confirm('¿Confirmar check-out?')" class="btn btn-sm btn-danger px-2 py-0" style="font-size:0.75rem;">Check-out</a>
+              {% empty %}
+              <div class="text-center py-5">
+                <div class="mb-3"><i class="bi bi-inbox" style="font-size: 32px; color: #cbd5e1;"></i></div>
+                <p class="text-muted small fw-medium mb-0">No hay salidas programadas para hoy.</p>
               </div>
+              {% endfor %}
             </div>
-            {% empty %}
-            <p class="text-muted small mb-0">No hay salidas programadas para hoy.</p>
-            {% endfor %}
           </div>
+
         </div>
       </div>
     </div>

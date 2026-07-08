@@ -118,14 +118,42 @@ def dashboard(request):
 
     habitaciones = Habitacion.objects.select_related('tipo', 'hotel').all().order_by('piso', 'numero')
     hoy = timezone.now().date()
+    ahora = timezone.now()
+    
     total = habitaciones.count()
     ocupadas = habitaciones.filter(estado='OCUPADA').count()
     stats = {
         'disponibles': habitaciones.filter(estado='DISPONIBLE').count(),
         'ocupadas': ocupadas,
-        'reservas_hoy': Reserva.objects.filter(fecha_entrada=hoy).count(),
+        'reservas_hoy': 0, # Calculado más abajo
         'tasa_ocupacion': round(ocupadas / total * 100) if total else 0,
     }
+    
+    # Lógica de estados visuales para el plano
+    from datetime import datetime, time
+    checkin_time = timezone.make_aware(datetime.combine(hoy, time(14, 0)))
+    reservas_hoy = Reserva.objects.filter(
+        fecha_entrada=hoy, estado__in=['PENDIENTE', 'CONFIRMADA']
+    ).select_related('habitacion')
+    reservas_dict = {r.habitacion_id: r for r in reservas_hoy if r.habitacion_id}
+    
+    for hab in habitaciones:
+        hab.estado_visual = hab.estado
+        if hab.estado == 'OCUPADA':
+            for e in hab.estancias.all():
+                if e.estado == 'ACTIVA' and e.reserva.fecha_salida < hoy:
+                    hab.estado_visual = 'VENCIDA'
+                    break
+        elif hab.estado == 'DISPONIBLE':
+            r = reservas_dict.get(hab.id)
+            if r:
+                if ahora > checkin_time:
+                    hab.estado_visual = 'RETRASO'
+                else:
+                    hab.estado_visual = 'RESERVADA'
+
+    stats['reservas_hoy'] = sum(1 for hab in habitaciones if getattr(hab, 'estado_visual', '') in ['RESERVADA', 'RETRASO'])
+
     llegadas_hoy = Reserva.objects.filter(
         fecha_entrada=hoy,
         estado__in=['PENDIENTE', 'CONFIRMADA']
@@ -899,7 +927,7 @@ def habitaciones_lista(request):
             if r:
                 if ahora > checkin_time:
                     hab.estado_visual = 'RETRASO'
-                elif (checkin_time - ahora).total_seconds() <= 3600 and (checkin_time - ahora).total_seconds() >= 0:
+                else:
                     hab.estado_visual = 'RESERVADA'
                     
     stats = {
