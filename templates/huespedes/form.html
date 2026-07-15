@@ -133,15 +133,40 @@
             <div class="col-sm-5">
               <label class="form-label">Tipo de Documento</label>
               <select name="tipo_doc" class="form-select form-select-custom" required>
-                <option value="DNI" {% if huesped.tipo_doc=='DNI' %}selected{% endif %}>DNI</option>
-                <option value="PASAPORTE" {% if huesped.tipo_doc=='PASAPORTE' %}selected{% endif %}>Pasaporte</option>
-                <option value="CE" {% if huesped.tipo_doc=='CE' %}selected{% endif %}>Carné de Extranjería</option>
+                {% if huesped.tipo_doc == 'DNI' %}
+                <option value="DNI" selected>DNI</option>
+                {% else %}
+                <option value="DNI">DNI</option>
+                {% endif %}
+                {% if huesped.tipo_doc == 'PASAPORTE' %}
+                <option value="PASAPORTE" selected>Pasaporte</option>
+                {% else %}
+                <option value="PASAPORTE">Pasaporte</option>
+                {% endif %}
+                {% if huesped.tipo_doc == 'CE' %}
+                <option value="CE" selected>Carné de Extranjería</option>
+                {% else %}
+                <option value="CE">Carné de Extranjería</option>
+                {% endif %}
               </select>
             </div>
             <div class="col-sm-7">
-              <label class="form-label">Número de Documento</label>
-              <input type="text" name="num_doc" value="{{ huesped.num_doc|default:initial_query|default:'' }}"
-                class="form-control form-control-custom" required placeholder="Ej: 72345678">
+              <label class="form-label d-flex justify-content-between align-items-center">
+                Número de Documento
+                <span id="doc-spinner" class="spinner-border spinner-border-sm text-primary ms-2 d-none"
+                  role="status"></span>
+              </label>
+              <div class="input-group">
+                <input type="text" name="num_doc" id="num_doc"
+                  value="{{ huesped.num_doc|default:initial_query|default:'' }}"
+                  class="form-control form-control-custom" required placeholder="Ej: 72345678"
+                  style="border-radius: 8px 0 0 8px;">
+                <button type="button" id="btn-buscar-doc" class="btn btn-outline-secondary"
+                  style="border-radius: 0 8px 8px 0; border: 1px solid #e2e8f0; border-left: none; background: #f8fafc; color: #c9a84c;"
+                  title="Buscar DNI">
+                  <i class="bi bi-search"></i>
+                </button>
+              </div>
             </div>
 
             <div class="col-sm-6">
@@ -237,4 +262,63 @@
     }
   }
 </style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const btnBuscar = document.getElementById('btn-buscar-doc');
+    const numDocInput = document.getElementById('num_doc');
+    const tipoDocSelect = document.querySelector('select[name="tipo_doc"]');
+    const nombresInput = document.querySelector('input[name="nombres"]');
+    const apellidosInput = document.querySelector('input[name="apellidos"]');
+    const spinner = document.getElementById('doc-spinner');
+
+    btnBuscar.addEventListener('click', async function () {
+      const tipo = tipoDocSelect.value;
+      const numero = numDocInput.value.trim();
+
+      if (tipo === 'DNI' && numero.length === 8) {
+        spinner.classList.remove('d-none');
+        btnBuscar.disabled = true;
+        try {
+          // API Proxy local para evitar CORS
+          const response = await fetch(`/api/dni/?numero=${numero}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.nombres) {
+              nombresInput.value = data.nombres;
+              apellidosInput.value = `${data.apellidoPaterno} ${data.apellidoMaterno}`.trim();
+              // Agregar un pequeño efecto visual para indicar éxito
+              nombresInput.style.backgroundColor = '#e8f5e9';
+              apellidosInput.style.backgroundColor = '#e8f5e9';
+              setTimeout(() => {
+                nombresInput.style.backgroundColor = '';
+                apellidosInput.style.backgroundColor = '';
+              }, 1000);
+            }
+          } else {
+            alert('No se pudo encontrar información para este DNI.');
+          }
+        } catch (error) {
+          console.error('Error consultando la API:', error);
+          alert('Ocurrió un error al consultar el DNI. Intente nuevamente.');
+        } finally {
+          spinner.classList.add('d-none');
+          btnBuscar.disabled = false;
+        }
+      } else if (tipo === 'DNI') {
+        alert('El DNI debe tener exactamente 8 dígitos.');
+      } else {
+        alert('La búsqueda automática actualmente solo está disponible para DNI.');
+      }
+    });
+
+    // Búsqueda automática al presionar Enter en el input de documento
+    numDocInput.addEventListener('keypress', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        btnBuscar.click();
+      }
+    });
+  });
+</script>
 {% endblock %}

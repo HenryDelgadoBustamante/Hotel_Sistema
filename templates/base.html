@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,16 +10,94 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     /* ── Base ── */
-    *, *::before, *::after { box-sizing: border-box; transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease; }
-    
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    }
+
     /* ── Keyframes ── */
-    @keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-    @keyframes flash-border { 0%, 100% { box-shadow: 0 0 0 0px currentColor; } 50% { box-shadow: 0 0 0 4px currentColor; } }
-    @keyframes highlight-row { from { background-color: #eef2ff; } to { background-color: transparent; } }
-    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-    @keyframes ripple { from { transform: scale(0); opacity: 0.4; } to { transform: scale(4); opacity: 0; } }
-    @keyframes slideOut { to { opacity: 0; transform: translateX(20px); max-height: 0; margin: 0; padding: 0; } }
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.4;
+      }
+    }
+
+    @keyframes flash-border {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0px currentColor;
+      }
+
+      50% {
+        box-shadow: 0 0 0 4px currentColor;
+      }
+    }
+
+    @keyframes highlight-row {
+      from {
+        background-color: #eef2ff;
+      }
+
+      to {
+        background-color: transparent;
+      }
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.3;
+      }
+    }
+
+    @keyframes ripple {
+      from {
+        transform: scale(0);
+        opacity: 0.4;
+      }
+
+      to {
+        transform: scale(4);
+        opacity: 0;
+      }
+    }
+
+    @keyframes slideOut {
+      to {
+        opacity: 0;
+        transform: translateX(20px);
+        max-height: 0;
+        margin: 0;
+        padding: 0;
+      }
+    }
+
     body {
       font-family: 'Inter', system-ui, sans-serif;
       background: #f5f6fa;
@@ -26,400 +105,827 @@
       font-size: 14px;
       -webkit-font-smoothing: antialiased;
     }
-    h1, h2, h3, h4, h5, h6, .navbar-top-title, .form-section-title {
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    .navbar-top-title,
+    .form-section-title {
       color: #1f2937;
     }
 
     /* ── Sidebar ── */
     .sidebar {
-      width: 230px; min-height: 100vh;
+      width: 230px;
+      min-height: 100vh;
       background: linear-gradient(180deg, #1e2a3b 0%, #1a2535 100%);
-      background-image: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(180deg, #1e2a3b 0%, #1a2535 100%);
+      background-image: radial-gradient(circle, rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(180deg, #1e2a3b 0%, #1a2535 100%);
       background-size: 20px 20px, 100% 100%;
-      position: fixed; top: 0; left: 0; z-index: 100;
-      display: flex; flex-direction: column;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
       padding: 0;
     }
-    .sidebar-brand {
-      display: flex; align-items: center; gap: 10px;
-      padding: 20px 20px 16px;
-      border-bottom: 1px solid rgba(255,255,255,.06);
-    }
-    .sidebar-brand-icon {
-      width: 32px; height: 32px; border-radius: 8px;
-      background: linear-gradient(135deg, #3b82f6, #6366f1);
-      display: flex; align-items: center; justify-content: center;
-      color: #fff; font-size: 15px; flex-shrink: 0;
-    }
-    .sidebar-brand-text { line-height: 1.2; }
-    .sidebar-brand-name { color: #f8fafc; font-size: 13px; font-weight: 600; letter-spacing: .01em; display: flex; align-items: center; gap: 6px; }
-    .sidebar-brand-user { color: #64748b; font-size: 11px; }
 
-    .sidebar-nav { padding: 12px 10px; flex: 1; }
-    .sidebar-section { 
-      color: #64748b; font-size: 10px; font-weight: 600;
-      letter-spacing: .08em; text-transform: uppercase;
-      padding: 12px 10px 4px; 
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, .06);
     }
+
+    .sidebar-brand-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #3b82f6, #6366f1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-brand-text {
+      line-height: 1.2;
+    }
+
+    .sidebar-brand-name {
+      color: #f8fafc;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: .01em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sidebar-brand-user {
+      color: #64748b;
+      font-size: 11px;
+    }
+
+    .sidebar-nav {
+      padding: 12px 10px;
+      flex: 1;
+    }
+
+    .sidebar-section {
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      padding: 12px 10px 4px;
+    }
+
     .nav-link {
-      display: flex; align-items: center; gap: 9px;
-      color: #94a3b8; font-size: 13px; font-weight: 500;
-      padding: 10px 16px; border-radius: 8px;
-      margin-bottom: 2px; transition: background .15s, color .15s, transform .15s, padding .15s, border .15s;
-      text-decoration: none; border-left: 0px solid transparent;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: #94a3b8;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 10px 16px;
+      border-radius: 8px;
+      margin-bottom: 2px;
+      transition: background .15s, color .15s, transform .15s, padding .15s, border .15s;
+      text-decoration: none;
+      border-left: 0px solid transparent;
     }
-    .nav-link i { font-size: 15px; flex-shrink: 0; width: 18px; text-align: center; }
-    .nav-link:hover { background: rgba(255,255,255,.07); color: #e2e8f0; transform: translateX(4px); }
-    .nav-link.active { background: rgba(99,102,241,.2); color: #818cf8; border-left: 3px solid #818cf8; padding-left: 13px; }
-    .nav-link.active i { color: #818cf8; }
+
+    .nav-link i {
+      font-size: 15px;
+      flex-shrink: 0;
+      width: 18px;
+      text-align: center;
+    }
+
+    .nav-link:hover {
+      background: rgba(255, 255, 255, .07);
+      color: #e2e8f0;
+      transform: translateX(4px);
+    }
+
+    .nav-link.active {
+      background: rgba(99, 102, 241, .2);
+      color: #818cf8;
+      border-left: 3px solid #818cf8;
+      padding-left: 13px;
+    }
+
+    .nav-link.active i {
+      color: #818cf8;
+    }
+
     .sidebar-footer {
       padding: 10px 10px 16px;
-      border-top: 1px solid rgba(255,255,255,.06);
+      border-top: 1px solid rgba(255, 255, 255, .06);
     }
-    .nav-link.logout { color: #f87171; }
-    .nav-link.logout:hover { background: rgba(239,68,68,.1); color: #fca5a5; transform: translateX(4px); }
+
+    .nav-link.logout {
+      color: #f87171;
+    }
+
+    .nav-link.logout:hover {
+      background: rgba(239, 68, 68, .1);
+      color: #fca5a5;
+      transform: translateX(4px);
+    }
 
     /* ── Top bar ── */
     .navbar-top {
-      margin-left: 230px; position: sticky; top: 0; z-index: 99;
-      background: #fff; border-bottom: 1px solid #f1f5f9;
-      padding: 0 28px; height: 56px;
-      display: flex; align-items: center; justify-content: space-between;
+      margin-left: 230px;
+      position: sticky;
+      top: 0;
+      z-index: 99;
+      background: #fff;
+      border-bottom: 1px solid #f1f5f9;
+      padding: 0 28px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
-    .navbar-top-title { font-size: 14px; font-weight: 600; color: #1f2937; }
+
+    .navbar-top-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1f2937;
+    }
+
     .user-chip {
-      display: flex; align-items: center; gap: 7px;
-      background: #f1f5f9; border-radius: 20px;
-      padding: 4px 12px 4px 5px; font-size: 12px; font-weight: 500; color: #475569;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: #f1f5f9;
+      border-radius: 20px;
+      padding: 4px 12px 4px 5px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #475569;
     }
+
     .user-chip-avatar {
-      width: 26px; height: 26px; border-radius: 50%;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
       background: linear-gradient(135deg, #3b82f6, #6366f1);
-      color: #fff; font-size: 11px; font-weight: 700;
-      display: flex; align-items: center; justify-content: center;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     /* ── Main content ── */
-    .main-content { margin-left: 230px; padding: 24px 28px; min-height: 100vh; }
+    .main-content {
+      margin-left: 230px;
+      padding: 24px 28px;
+      min-height: 100vh;
+    }
 
     /* ── Cards ── */
     .card {
-      border: 1px solid #e2e8f0; border-radius: 10px;
-      box-shadow: 0 1px 3px rgba(15,23,42,.05);
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, .05);
       background: #fff;
     }
-    .card-header { background: #fff; border-bottom: 1px solid #f1f5f9; border-radius: 10px 10px 0 0 !important; }
+
+    .card-header {
+      background: #fff;
+      border-bottom: 1px solid #f1f5f9;
+      border-radius: 10px 10px 0 0 !important;
+    }
 
     /* ── Form fields ── */
-    .form-control, .form-select {
-      border: 1px solid #e2e8f0; border-radius: 7px;
-      font-size: 13.5px; color: #1e293b; background: #fff;
-      padding: 8px 11px; transition: border-color .15s, box-shadow .15s;
+    .form-control,
+    .form-select {
+      border: 1px solid #e2e8f0;
+      border-radius: 7px;
+      font-size: 13.5px;
+      color: #1e293b;
+      background: #fff;
+      padding: 8px 11px;
+      transition: border-color .15s, box-shadow .15s;
       font-family: inherit;
     }
-    .form-control:focus, .form-select:focus {
-      border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.1);
+
+    .form-control:focus,
+    .form-select:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, .1);
       outline: none;
     }
-    .form-control::placeholder { color: #94a3b8; }
-    .form-label {
-      font-size: 12px; font-weight: 600; color: #374151;
-      margin-bottom: 5px; letter-spacing: .01em;
+
+    .form-control::placeholder {
+      color: #94a3b8;
     }
-    .form-text, .field-help { font-size: 11.5px; color: #94a3b8; margin-top: 4px; }
+
+    .form-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 5px;
+      letter-spacing: .01em;
+    }
+
+    .form-text,
+    .field-help {
+      font-size: 11.5px;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
 
     /* ── Buttons ── */
     .btn {
-      font-family: inherit; font-weight: 500;
-      border-radius: 7px; transition: all .15s;
-      font-size: 13px; letter-spacing: .01em;
+      font-family: inherit;
+      font-weight: 500;
+      border-radius: 7px;
+      transition: all .15s;
+      font-size: 13px;
+      letter-spacing: .01em;
     }
-    .btn-primary { background: #6366f1; border-color: #6366f1; position: relative; overflow: hidden; } 
-    .btn-primary:active { transform: scale(0.97); }
-    .btn-primary:hover { background: #4f46e5; border-color: #4f46e5; }
-    .btn-success { background: #10b981; border-color: #10b981; }
-    .btn-success:hover { background: #059669; border-color: #059669; }
-    .btn-danger { background: #ef4444; border-color: #ef4444; }
-    .btn-danger:hover { background: #dc2626; border-color: #dc2626; }
+
+    .btn-primary {
+      background: #6366f1;
+      border-color: #6366f1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-primary:active {
+      transform: scale(0.97);
+    }
+
+    .btn-primary:hover {
+      background: #4f46e5;
+      border-color: #4f46e5;
+    }
+
+    .btn-success {
+      background: #10b981;
+      border-color: #10b981;
+    }
+
+    .btn-success:hover {
+      background: #059669;
+      border-color: #059669;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      border-color: #ef4444;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+      border-color: #dc2626;
+    }
+
     .btn-outline-secondary {
-      border-color: #e2e8f0; color: #64748b; background: #fff;
+      border-color: #e2e8f0;
+      color: #64748b;
+      background: #fff;
     }
-    .btn-outline-secondary:hover { background: #f8fafc; color: #374151; border-color: #cbd5e1; }
+
+    .btn-outline-secondary:hover {
+      background: #f8fafc;
+      color: #374151;
+      border-color: #cbd5e1;
+    }
 
     /* ── Room cards ── */
     .hab-card {
-      width: 72px; height: 72px; border-radius: 8px;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      cursor: pointer; transition: all .2s;
+      width: 72px;
+      height: 72px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all .2s;
       background: #fff;
       border: 1px solid #e5e7eb;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     }
-    .hab-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-    .hab-card .hab-num { color: #1f2937; font-size: 16px; font-weight: 700; line-height: 1.1; }
-    .hab-card .hab-piso { color: #9ca3af; font-size: 10px; font-weight: 500; }
-    
-    .hab-disponible    { border-color: #10b981; border-width: 2px; background: #e6f7ed; color: #166534; }
-    .hab-ocupada       { border-color: #ef4444; border-width: 2px; background: #fee2e2; color: #991b1b; }
-    .hab-limpieza      { border-color: #f59e0b; border-width: 2px; background: #fef3c7; color: #92400e; }
-    .hab-mantenimiento { border-color: #9ca3af; border-width: 2px; background: #f3f4f6; color: #4b5563; }
+
+    .hab-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .hab-card .hab-num {
+      color: #1f2937;
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .hab-card .hab-piso {
+      color: #9ca3af;
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    .hab-disponible {
+      border-color: #10b981;
+      border-width: 2px;
+      background: #e6f7ed;
+      color: #166534;
+    }
+
+    .hab-ocupada {
+      border-color: #ef4444;
+      border-width: 2px;
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .hab-limpieza {
+      border-color: #f59e0b;
+      border-width: 2px;
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .hab-mantenimiento {
+      border-color: #9ca3af;
+      border-width: 2px;
+      background: #f3f4f6;
+      color: #4b5563;
+    }
 
     /* ── State badges ── */
-    .badge-pendiente  { background: #fef3c7; color: #92400e; }
-    .badge-confirmada { background: #dbeafe; color: #1e40af; }
-    .badge-checkin    { background: #dcfce7; color: #166534; }
-    .badge-checkout   { background: #f1f5f9; color: #475569; }
-    .badge-cancelada  { background: #fee2e2; color: #991b1b; }
+    .badge-pendiente {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge-confirmada {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .badge-checkin {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .badge-checkout {
+      background: #f1f5f9;
+      color: #475569;
+    }
+
+    .badge-cancelada {
+      background: #fee2e2;
+      color: #991b1b;
+    }
 
     /* ── Form shell (used in reserva/nueva, checkin) ── */
-    .form-shell { max-width: 980px; margin: 0 auto; }
+    .form-shell {
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
     .form-panel {
-      background: #fff; border: 1px solid #e2e8f0;
-      border-radius: 10px; padding: 20px 22px;
-      box-shadow: 0 1px 3px rgba(15,23,42,.04);
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 20px 22px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, .04);
     }
+
     .form-section-title {
-      font-size: 10.5px; font-weight: 700; color: #64748b;
-      text-transform: uppercase; letter-spacing: .07em; margin-bottom: 14px;
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      margin-bottom: 14px;
     }
+
     .summary-strip {
-      background: #f8fafc; border: 1px solid #e2e8f0;
-      border-radius: 8px; padding: 12px 14px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 14px;
     }
-    .summary-label { color: #94a3b8; font-size: 10px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: .06em; }
-    .summary-value { color: #0f172a; font-weight: 700; font-size: 15px; }
+
+    .summary-label {
+      color: #94a3b8;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .summary-value {
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 15px;
+    }
 
     /* ── Alerts ── */
-    .alert { border-radius: 8px; font-size: 13px; }
+    .alert {
+      border-radius: 8px;
+      font-size: 13px;
+    }
 
     /* ── Tables ── */
-    .table { font-size: 13.5px; }
-    .table th { font-weight: 600; font-size: 11.5px; letter-spacing: .03em;
-      text-transform: uppercase; color: #64748b; }
-    .table-hover > tbody > tr { transition: background-color 0.1s ease; cursor: pointer; }
-    .table-hover > tbody > tr:hover > * { background-color: #f8faff !important; }
-    .table-hover > tbody > tr .table-actions { opacity: 0.4; transition: opacity 0.15s ease; }
-    .table-hover > tbody > tr:hover .table-actions { opacity: 1; }
-    .fila-nueva { animation: highlight-row 2s ease forwards; }
+    .table {
+      font-size: 13.5px;
+    }
+
+    .table th {
+      font-weight: 600;
+      font-size: 11.5px;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+
+    .table-hover>tbody>tr {
+      transition: background-color 0.1s ease;
+      cursor: pointer;
+    }
+
+    .table-hover>tbody>tr:hover>* {
+      background-color: #f8faff !important;
+    }
+
+    .table-hover>tbody>tr .table-actions {
+      opacity: 0.4;
+      transition: opacity 0.15s ease;
+    }
+
+    .table-hover>tbody>tr:hover .table-actions {
+      opacity: 1;
+    }
+
+    .fila-nueva {
+      animation: highlight-row 2s ease forwards;
+    }
 
     /* ── Animations Inject ── */
-    .stat-card-new { position: relative; overflow: hidden; }
-    .stat-card-new:hover { transform: translateY(-3px) !important; box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important; }
-    .stat-card-progress { position: absolute; bottom: 0; left: 0; height: 3px; border-radius: 0 0 12px 12px; opacity: 0.8; }
-    .hab-cell { animation: fadeInUp 0.3s ease both; }
-    .hab-cell:hover { transform: translateY(-4px) scale(1.02) !important; box-shadow: 0 8px 25px rgba(0,0,0,0.12) !important; }
-    .estado-cambiado { animation: flash-border 0.6s ease; }
-    .badge-activa-anim::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; animation: blink 1.5s infinite; background: #10b981; }
-    .badge-pendiente-anim::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; animation: blink 1.5s infinite; background: #f59e0b; }
-    .ripple { position: absolute; border-radius: 50%; background: rgba(255,255,255,0.4); transform: scale(0); animation: ripple 0.4s ease-out; pointer-events: none; }
+    .stat-card-new {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card-new:hover {
+      transform: translateY(-3px) !important;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .stat-card-progress {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 3px;
+      border-radius: 0 0 12px 12px;
+      opacity: 0.8;
+    }
+
+    .hab-cell {
+      animation: fadeInUp 0.3s ease both;
+    }
+
+    .hab-cell:hover {
+      transform: translateY(-4px) scale(1.02) !important;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12) !important;
+    }
+
+    .estado-cambiado {
+      animation: flash-border 0.6s ease;
+    }
+
+    .badge-activa-anim::before {
+      content: "";
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      margin-right: 6px;
+      animation: blink 1.5s infinite;
+      background: #10b981;
+    }
+
+    .badge-pendiente-anim::before {
+      content: "";
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      margin-right: 6px;
+      animation: blink 1.5s infinite;
+      background: #f59e0b;
+    }
+
+    .ripple {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.4);
+      transform: scale(0);
+      animation: ripple 0.4s ease-out;
+      pointer-events: none;
+    }
 
     /* ── Scrollbar ── */
-    ::-webkit-scrollbar { width: 5px; height: 5px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 991px) {
+      .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+      }
+
+      .sidebar.show-sidebar {
+        transform: translateX(0);
+        box-shadow: 4px 0 15px rgba(0, 0, 0, 0.2);
+      }
+
+      .navbar-top {
+        margin-left: 0;
+        padding: 0 16px;
+      }
+
+      .main-content {
+        margin-left: 0;
+        padding: 16px 12px;
+      }
+
+      /* Overlay to close sidebar on mobile */
+      .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 99;
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+
+      .sidebar-overlay.show {
+        display: block;
+        opacity: 1;
+      }
+    }
   </style>
 </head>
+
 <body>
-{% if user.is_authenticated %}
+  {% if user.is_authenticated %}
 
-<aside class="sidebar">
-  <div class="sidebar-brand">
-    <div class="sidebar-brand-icon"><i class="bi bi-building"></i></div>
-    <div class="sidebar-brand-text">
-      <div class="sidebar-brand-name">HotelSystem <span style="width:8px;height:8px;background:#10b981;border-radius:50%;animation: pulse 2s infinite; display: inline-block;"></span></div>
-      <div class="sidebar-brand-user">{{ user.username }}</div>
-    </div>
-  </div>
-
-  <nav class="sidebar-nav">
-    {% with groups=request.user.groups.all|stringformat:"s" %}
-    {% if request.user.is_superuser or 'admin' in groups or 'recepcionista' in groups %}
-    <div class="sidebar-section">Principal</div>
-    <a href="/dashboard/" class="nav-link {% if request.path == '/dashboard/' %}active{% endif %}">
-      <i class="bi bi-speedometer2"></i>Dashboard
-    </a>
-
-    <a href="/habitaciones/" class="nav-link {% if '/habitaciones/' in request.path %}active{% endif %}">
-      <i class="bi bi-grid-3x3-gap"></i>Habitaciones
-    </a>
-    <a href="/reservas/" class="nav-link {% if '/reservas/' in request.path %}active{% endif %}">
-      <i class="bi bi-calendar-check"></i>Reservas
-    </a>
-
-    <div class="sidebar-section">Huéspedes</div>
-    <a href="/huespedes/" class="nav-link {% if '/huespedes/' in request.path %}active{% endif %}">
-      <i class="bi bi-people"></i>Huéspedes
-    </a>
-    <a href="/estancias/" class="nav-link {% if '/estancias/' in request.path %}active{% endif %}">
-      <i class="bi bi-door-open"></i>Estancias
-    </a>
-    {% endif %}
-
-    <div class="sidebar-section">Operaciones</div>
-    {% if request.user.is_superuser or 'admin' in groups or 'housekeeping' in groups %}
-    <a href="/housekeeping/" class="nav-link {% if '/housekeeping/' in request.path %}active{% endif %}">
-      <i class="bi bi-stars"></i>Housekeeping
-    </a>
-    {% endif %}
-    
-    {% if request.user.is_superuser or 'admin' in groups or 'recepcionista' in groups %}
-    <a href="/reportes/" class="nav-link {% if '/reportes/' in request.path %}active{% endif %}">
-      <i class="bi bi-bar-chart-line"></i>Reportes
-    </a>
-    {% endif %}
-
-    {% if request.user.is_superuser or 'admin' in groups %}
-    <div class="sidebar-section">Configuración</div>
-    <a href="/usuarios/" class="nav-link {% if '/usuarios/' in request.path %}active{% endif %}">
-      <i class="bi bi-person-gear"></i>Usuarios y Roles
-    </a>
-    {% endif %}
-    {% endwith %}
-  </nav>
-
-  <div class="sidebar-footer">
-    <a href="/logout/" class="nav-link logout">
-      <i class="bi bi-box-arrow-left"></i>Cerrar sesión
-    </a>
-  </div>
-</aside>
-
-<header class="navbar-top">
-  <span class="navbar-top-title">{% block page_title %}{% endblock %}</span>
-  <div class="user-chip">
-    <div class="user-chip-avatar">{{ user.username|slice:":1"|upper }}</div>
-    {{ user.username }}
-  </div>
-</header>
-
-<main class="main-content">
-  {% if messages %}
-    {% for msg in messages %}
-      <div class="alert alert-{{ msg.tags }} alert-dismissible fade show d-flex align-items-center gap-2 mb-3" role="alert">
-        {% if msg.tags == 'success' %}<i class="bi bi-check-circle-fill"></i>
-        {% elif msg.tags == 'error' or msg.tags == 'danger' %}<i class="bi bi-exclamation-circle-fill"></i>
-        {% elif msg.tags == 'warning' %}<i class="bi bi-exclamation-triangle-fill"></i>
-        {% else %}<i class="bi bi-info-circle-fill"></i>{% endif %}
-        <div>{{ msg }}</div>
-        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-icon"><i class="bi bi-building"></i></div>
+      <div class="sidebar-brand-text">
+        <div class="sidebar-brand-name">HotelSystem <span
+            style="width:8px;height:8px;background:#10b981;border-radius:50%;animation: pulse 2s infinite; display: inline-block;"></span>
+        </div>
+        <div class="sidebar-brand-user">{{ user.username }}</div>
       </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      {% with groups=request.user.groups.all|stringformat:"s" %}
+      {% if request.user.is_superuser or 'admin' in groups or 'recepcionista' in groups %}
+      <div class="sidebar-section">Principal</div>
+      <a href="/dashboard/" class="nav-link {% if request.path == '/dashboard/' %}active{% endif %}">
+        <i class="bi bi-speedometer2"></i>Dashboard
+      </a>
+
+      <a href="/habitaciones/" class="nav-link {% if '/habitaciones/' in request.path %}active{% endif %}">
+        <i class="bi bi-grid-3x3-gap"></i>Habitaciones
+      </a>
+      <a href="/reservas/" class="nav-link {% if '/reservas/' in request.path %}active{% endif %}">
+        <i class="bi bi-calendar-check"></i>Reservas
+      </a>
+
+      <div class="sidebar-section">Huéspedes</div>
+      <a href="/huespedes/" class="nav-link {% if '/huespedes/' in request.path %}active{% endif %}">
+        <i class="bi bi-people"></i>Huéspedes
+      </a>
+      <a href="/estancias/" class="nav-link {% if '/estancias/' in request.path %}active{% endif %}">
+        <i class="bi bi-door-open"></i>Estancias
+      </a>
+      {% endif %}
+
+      <div class="sidebar-section">Operaciones</div>
+      {% if request.user.is_superuser or 'admin' in groups or 'housekeeping' in groups %}
+      <a href="/housekeeping/" class="nav-link {% if '/housekeeping/' in request.path %}active{% endif %}">
+        <i class="bi bi-stars"></i>Housekeeping
+      </a>
+      {% endif %}
+
+      {% if request.user.is_superuser or 'admin' in groups or 'recepcionista' in groups %}
+      <a href="/reportes/" class="nav-link {% if '/reportes/' in request.path %}active{% endif %}">
+        <i class="bi bi-bar-chart-line"></i>Reportes
+      </a>
+      {% endif %}
+
+      {% if request.user.is_superuser or 'admin' in groups %}
+      <div class="sidebar-section">Configuración</div>
+      <a href="/usuarios/" class="nav-link {% if '/usuarios/' in request.path %}active{% endif %}">
+        <i class="bi bi-person-gear"></i>Usuarios y Roles
+      </a>
+      {% endif %}
+      {% endwith %}
+    </nav>
+
+    <div class="sidebar-footer">
+      <a href="/logout/" class="nav-link logout">
+        <i class="bi bi-box-arrow-left"></i>Cerrar sesión
+      </a>
+    </div>
+  </aside>
+
+  <header class="navbar-top">
+    <div class="d-flex align-items-center gap-2">
+      <button class="btn btn-sm btn-outline-secondary d-lg-none" id="mobileMenuBtn" style="border:none; padding:4px;">
+        <i class="bi bi-list fs-4"></i>
+      </button>
+      <span class="navbar-top-title">{% block page_title %}{% endblock %}</span>
+    </div>
+    <div class="user-chip">
+      <div class="user-chip-avatar">{{ user.username|slice:":1"|upper }}</div>
+      {{ user.username }}
+    </div>
+  </header>
+
+  <main class="main-content">
+    {% if messages %}
+    {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags }} alert-dismissible fade show d-flex align-items-center gap-2 mb-3"
+      role="alert">
+      {% if msg.tags == 'success' %}<i class="bi bi-check-circle-fill"></i>
+      {% elif msg.tags == 'error' or msg.tags == 'danger' %}<i class="bi bi-exclamation-circle-fill"></i>
+      {% elif msg.tags == 'warning' %}<i class="bi bi-exclamation-triangle-fill"></i>
+      {% else %}<i class="bi bi-info-circle-fill"></i>{% endif %}
+      <div>{{ msg }}</div>
+      <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
     {% endfor %}
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+
+  {% else %}
+  {% block auth_content %}{% endblock %}
   {% endif %}
-  {% block content %}{% endblock %}
-</main>
 
-{% else %}
-{% block auth_content %}{% endblock %}
-{% endif %}
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // 1. Contador para stat-card-new y Barra de progreso
+      document.querySelectorAll('.stat-card-new .stat-number').forEach(el => {
+        let text = el.innerText.trim();
+        let isPercent = text.includes('%');
+        let finalVal = parseFloat(text.replace(/[^0-9.]/g, ''));
+        if (isNaN(finalVal)) return;
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    // 1. Contador para stat-card-new y Barra de progreso
-    document.querySelectorAll('.stat-card-new .stat-number').forEach(el => {
-      let text = el.innerText.trim();
-      let isPercent = text.includes('%');
-      let finalVal = parseFloat(text.replace(/[^0-9.]/g, ''));
-      if (isNaN(finalVal)) return;
-      
-      let card = el.closest('.stat-card-new');
-      if (card) {
-        let pb = document.createElement('div');
-        pb.className = 'stat-card-progress';
-        let color = window.getComputedStyle(el).color;
-        pb.style.background = color;
-        let w = isPercent ? finalVal : Math.min(100, finalVal * 2);
-        pb.style.width = w + '%';
-        card.appendChild(pb);
-      }
-
-      let start = null;
-      let duration = 800;
-      function step(timestamp) {
-        if (!start) start = timestamp;
-        let progress = Math.min((timestamp - start) / duration, 1);
-        let curr = Math.floor(progress * finalVal);
-        el.innerText = curr + (isPercent ? '%' : '');
-        if (progress < 1) {
-          window.requestAnimationFrame(step);
-        } else {
-          el.innerText = text;
-        }
-      }
-      window.requestAnimationFrame(step);
-    });
-
-    // 2. Animación escalonada para hab-card / hab-cell
-    document.querySelectorAll('.hab-cell, .hab-card').forEach((el, i) => {
-      el.style.animationDelay = (i * 0.03) + 's';
-    });
-
-    // 3. Badges parpadeantes
-    document.querySelectorAll('.badge, .hab-badge, td, span').forEach(el => {
-      let txt = el.innerText.trim().toUpperCase();
-      if (txt === 'ACTIVA' && !el.classList.contains('badge-activa-anim')) el.classList.add('badge-activa-anim');
-      if (txt === 'PENDIENTE' && !el.classList.contains('badge-pendiente-anim')) el.classList.add('badge-pendiente-anim');
-    });
-
-    // 4. Ripple effect botones
-    document.querySelectorAll('.btn-primary, .btn-success').forEach(btn => {
-      btn.addEventListener('click', function(e) {
-        let rect = this.getBoundingClientRect();
-        let size = Math.max(rect.width, rect.height);
-        let x = e.clientX - rect.left - size/2;
-        let y = e.clientY - rect.top - size/2;
-        let ripple = document.createElement('span');
-        ripple.className = 'ripple';
-        ripple.style.width = ripple.style.height = size + 'px';
-        ripple.style.left = x + 'px';
-        ripple.style.top = y + 'px';
-        this.appendChild(ripple);
-        setTimeout(() => ripple.remove(), 400);
-      });
-    });
-
-    // 5. Housekeeping action click anim
-    document.body.addEventListener('click', e => {
-      let btn = e.target.closest('button');
-      if (!btn) return;
-      let txt = btn.innerText.trim().toUpperCase();
-      if (txt.includes('MARCAR LISTA') || txt.includes('LISTA')) {
-        btn.innerHTML = '✓ Marcada';
-        btn.style.background = '#10b981';
-        btn.style.color = '#fff';
-        btn.style.borderColor = '#10b981';
-        let card = btn.closest('.card, tr, .hab-cell');
+        let card = el.closest('.stat-card-new');
         if (card) {
-          setTimeout(() => {
-            card.style.animation = 'slideOut 0.3s ease forwards';
-          }, 1500);
+          let pb = document.createElement('div');
+          pb.className = 'stat-card-progress';
+          let color = window.getComputedStyle(el).color;
+          pb.style.background = color;
+          let w = isPercent ? finalVal : Math.min(100, finalVal * 2);
+          pb.style.width = w + '%';
+          card.appendChild(pb);
         }
-        
-        // Counter decrement in title
-        let title = document.querySelector('h1, h2, h3, h4, .card-header h6');
-        if (title && title.innerText.match(/\(\d+\)/)) {
-          title.innerText = title.innerText.replace(/\((\d+)\)/, (match, p1) => {
-            let n = parseInt(p1);
-            return '(' + Math.max(0, n - 1) + ')';
-          });
-        }
-      }
-    });
 
-    // 6. Simulated "estado cambiado" when selects change
-    document.querySelectorAll('select[name="estado"]').forEach(s => {
-      s.addEventListener('change', e => {
-        let cell = e.target.closest('.modal')?.previousElementSibling; 
-        if (cell) {
-          cell.classList.remove('estado-cambiado');
-          void cell.offsetWidth;
-          cell.classList.add('estado-cambiado');
+        let start = null;
+        let duration = 800;
+        function step(timestamp) {
+          if (!start) start = timestamp;
+          let progress = Math.min((timestamp - start) / duration, 1);
+          let curr = Math.floor(progress * finalVal);
+          el.innerText = curr + (isPercent ? '%' : '');
+          if (progress < 1) {
+            window.requestAnimationFrame(step);
+          } else {
+            el.innerText = text;
+          }
+        }
+        window.requestAnimationFrame(step);
+      });
+
+      // 2. Animación escalonada para hab-card / hab-cell
+      document.querySelectorAll('.hab-cell, .hab-card').forEach((el, i) => {
+        el.style.animationDelay = (i * 0.03) + 's';
+      });
+
+      // 3. Badges parpadeantes
+      document.querySelectorAll('.badge, .hab-badge, td, span').forEach(el => {
+        let txt = el.innerText.trim().toUpperCase();
+        if (txt === 'ACTIVA' && !el.classList.contains('badge-activa-anim')) el.classList.add('badge-activa-anim');
+        if (txt === 'PENDIENTE' && !el.classList.contains('badge-pendiente-anim')) el.classList.add('badge-pendiente-anim');
+      });
+
+      // 4. Ripple effect botones
+      document.querySelectorAll('.btn-primary, .btn-success').forEach(btn => {
+        btn.addEventListener('click', function (e) {
+          let rect = this.getBoundingClientRect();
+          let size = Math.max(rect.width, rect.height);
+          let x = e.clientX - rect.left - size / 2;
+          let y = e.clientY - rect.top - size / 2;
+          let ripple = document.createElement('span');
+          ripple.className = 'ripple';
+          ripple.style.width = ripple.style.height = size + 'px';
+          ripple.style.left = x + 'px';
+          ripple.style.top = y + 'px';
+          this.appendChild(ripple);
+          setTimeout(() => ripple.remove(), 400);
+        });
+      });
+
+      // 5. Housekeeping action click anim
+      document.body.addEventListener('click', e => {
+        let btn = e.target.closest('button');
+        if (!btn) return;
+        let txt = btn.innerText.trim().toUpperCase();
+        if (txt.includes('MARCAR LISTA') || txt.includes('LISTA')) {
+          btn.innerHTML = '✓ Marcada';
+          btn.style.background = '#10b981';
+          btn.style.color = '#fff';
+          btn.style.borderColor = '#10b981';
+          let card = btn.closest('.card, tr, .hab-cell');
+          if (card) {
+            setTimeout(() => {
+              card.style.animation = 'slideOut 0.3s ease forwards';
+            }, 1500);
+          }
+
+          // Counter decrement in title
+          let title = document.querySelector('h1, h2, h3, h4, .card-header h6');
+          if (title && title.innerText.match(/\(\d+\)/)) {
+            title.innerText = title.innerText.replace(/\((\d+)\)/, (match, p1) => {
+              let n = parseInt(p1);
+              return '(' + Math.max(0, n - 1) + ')';
+            });
+          }
         }
       });
+
+      // 6. Simulated "estado cambiado" when selects change
+      document.querySelectorAll('select[name="estado"]').forEach(s => {
+        s.addEventListener('change', e => {
+          let cell = e.target.closest('.modal')?.previousElementSibling;
+          if (cell) {
+            cell.classList.remove('estado-cambiado');
+            void cell.offsetWidth;
+            cell.classList.add('estado-cambiado');
+          }
+        });
+      });
+
+      // 7. Responsive sidebar toggle
+      const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+      const sidebar = document.querySelector('.sidebar');
+      const sidebarOverlay = document.getElementById('sidebarOverlay');
+      if (mobileMenuBtn && sidebar && sidebarOverlay) {
+        mobileMenuBtn.addEventListener('click', () => {
+          sidebar.classList.add('show-sidebar');
+          sidebarOverlay.classList.add('show');
+        });
+        sidebarOverlay.addEventListener('click', () => {
+          sidebar.classList.remove('show-sidebar');
+          sidebarOverlay.classList.remove('show');
+        });
+      }
     });
-  });
-</script>
-{% block scripts %}{% endblock %}
+  </script>
+  {% block scripts %}{% endblock %}
 </body>
+
 </html>

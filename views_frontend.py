@@ -147,6 +147,7 @@ def dashboard(request):
         elif hab.estado == 'DISPONIBLE':
             r = reservas_dict.get(hab.id)
             if r:
+                hab.reserva_hoy = r
                 if ahora > checkin_time:
                     hab.estado_visual = 'RETRASO'
                 else:
@@ -472,13 +473,23 @@ def registrar_pago(request, estancia_id):
         transaccion_id = request.POST.get('transaccion_id') or None
 
         if monto:
-            Pago.objects.create(
-                folio=folio,
-                monto=monto,
-                metodo_pago=metodo_pago,
-                transaccion_id=transaccion_id
-            )
-            messages.success(request, 'Pago registrado correctamente.')
+            try:
+                from decimal import Decimal
+                monto_decimal = Decimal(monto)
+                if monto_decimal <= 0:
+                    messages.error(request, 'El monto debe ser mayor a cero.')
+                elif monto_decimal > folio.saldo_pendiente:
+                    messages.error(request, f'No se puede pagar más del saldo pendiente (S/ {folio.saldo_pendiente:.2f}).')
+                else:
+                    Pago.objects.create(
+                        folio=folio,
+                        monto=monto,
+                        metodo_pago=metodo_pago,
+                        transaccion_id=transaccion_id
+                    )
+                    messages.success(request, 'Pago registrado correctamente.')
+            except Exception:
+                messages.error(request, 'Monto inválido para el pago.')
         else:
             messages.error(request, 'Monto inválido para el pago.')
     return redirect('folio', estancia_id=estancia_id)
@@ -925,6 +936,7 @@ def habitaciones_lista(request):
         elif hab.estado == 'DISPONIBLE':
             r = reservas_dict.get(hab.id)
             if r:
+                hab.reserva_hoy = r
                 if ahora > checkin_time:
                     hab.estado_visual = 'RETRASO'
                 else:
@@ -1018,9 +1030,24 @@ def estancias_lista(request):
     if not _es_recepcionista(request.user):
         return _acceso_denegado(request)
     from django.utils import timezone
+    from django.db.models import Q
+    
+    estado = request.GET.get('estado', 'ACTIVA')
+    q = request.GET.get('q', '').strip()
+    
     estancias = Estancia.objects.select_related(
         'reserva__huesped', 'habitacion__tipo'
-    ).all().order_by('-fecha_checkin')
+    ).order_by('-fecha_checkin')
+    
+    if estado != 'TODAS':
+        estancias = estancias.filter(estado=estado)
+        
+    if q:
+        estancias = estancias.filter(
+            Q(reserva__huesped__nombres__icontains=q) | 
+            Q(reserva__huesped__apellidos__icontains=q) |
+            Q(reserva__huesped__num_doc__icontains=q)
+        )
 
     for e in estancias:
         if e.fecha_checkout:
@@ -1154,3 +1181,19 @@ def usuario_eliminar(request, user_id):
             messages.error(request, f'Error al eliminar: {str(e)}')
             
     return redirect('usuarios_lista')
+
+@login_required
+def api_consulta_dni(request):
+    from django.http import JsonResponse
+    numero = request.GET.get('numero')
+    if not numero or len(numero) != 8:
+        return JsonResponse({'error': 'DNI inválido'}, status=400)
+    
+    try:
+        import urllib.request, json
+        req = urllib.request.Request(f'https://api.apis.net.pe/v1/dni?numero={numero}', headers={'User-Agent': 'Mozilla/5.0'})
+        response = urllib.request.urlopen(req)
+        data = json.loads(response.read().decode('utf-8'))
+        return JsonResponse(data)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

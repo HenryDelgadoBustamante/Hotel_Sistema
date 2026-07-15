@@ -1,105 +1,346 @@
 {% extends 'base.html' %}
 {% block title %}Estancias{% endblock %}
-{% block page_title %}Estancias activas{% endblock %}
+{% block page_title %}Estancias Activas{% endblock %}
 {% block content %}
 <style>
   .estancias-filters {
-    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;
-    background: #fff; padding: 16px 20px; border-radius: 12px 12px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    background: #fff;
+    padding: 20px 24px;
+    border-radius: 16px 16px 0 0;
     border-bottom: 1px solid #f1f5f9;
   }
-  .estancias-tabs { display: flex; gap: 8px; }
-  .estancias-tab {
-    padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 500;
-    color: #64748b; background: #f1f5f9; text-decoration: none; transition: all 0.2s;
+
+  .estancias-tabs {
+    display: flex;
+    gap: 8px;
+    background: #f8fafc;
+    padding: 4px;
+    border-radius: 20px;
+    border: 1px solid #e2e8f0;
   }
-  .estancias-tab.active { background: #6366f1; color: #fff; }
-  .estancias-tab:hover:not(.active) { background: #e2e8f0; }
-  
-  .search-wrapper { position: relative; width: 260px; }
-  .search-input { width: 100%; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px 8px 36px; font-size: 13px; outline: none; transition: border 0.2s; }
-  .search-input:focus { border-color: #6366f1; }
-  .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; }
 
-  .table-estancias th { text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; color: #64748b; padding: 14px 20px; border-bottom: 1px solid #f1f5f9; background: #f8faff; font-weight: 600; }
-  .table-estancias td { padding: 16px 20px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; color: #374151; font-size: 14px; }
-  .table-estancias tr:hover { background-color: #f8faff; }
-  
-  .badge-activa { background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; border: 1px solid #bbf7d0;}
-  .badge-finalizada { background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; border: 1px solid #e2e8f0; }
+  .estancias-tab {
+    padding: 8px 18px;
+    border-radius: 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+    text-decoration: none;
+    transition: all 0.25s ease;
+  }
 
-  .btn-folio { background: #eef2ff; color: #4f46e5; border: none; font-weight: 600; padding: 6px 12px; border-radius: 6px; font-size: 12px; transition: all 0.2s; display: inline-flex; align-items: center; }
-  .btn-folio:hover { background: #e0e7ff; color: #4338ca; }
-  .btn-checkout { background: transparent; color: #ef4444; border: 1px solid #fecaca; font-weight: 600; padding: 6px 12px; border-radius: 6px; font-size: 12px; transition: all 0.2s; }
-  .btn-checkout:hover { background: #fef2f2; border-color: #fca5a5; }
+  .estancias-tab.active {
+    background: #fff;
+    color: #3b82f6;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+
+  .estancias-tab:hover:not(.active) {
+    color: #1e293b;
+  }
+
+  .search-wrapper {
+    position: relative;
+    width: 280px;
+  }
+
+  .search-input {
+    width: 100%;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 10px 14px 10px 38px;
+    font-size: 13px;
+    outline: none;
+    transition: all 0.2s;
+    background: #f8fafc;
+  }
+
+  .search-input:focus {
+    border-color: #3b82f6;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    font-size: 14px;
+  }
+
+  .premium-card {
+    border-radius: 16px;
+    border: none;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+    background: #fff;
+  }
+
+  .table-estancias th {
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+    padding: 16px 24px;
+    border-bottom: 2px solid #f1f5f9;
+    font-weight: 600;
+  }
+
+  .table-estancias td {
+    padding: 16px 24px;
+    vertical-align: middle;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    font-size: 14px;
+    transition: background 0.2s;
+  }
+
+  .table-estancias tr:hover td {
+    background-color: #f8fafc;
+  }
+
+  .guest-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+    color: #4338ca;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .guest-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+  }
+
+  .badge-estancia {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: 0.03em;
+  }
+
+  .badge-estancia.activa {
+    background: rgba(34, 197, 94, 0.1);
+    color: #16a34a;
+    border: 1px solid rgba(34, 197, 94, 0.2);
+  }
+
+  .badge-estancia.activa::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    background: #22c55e;
+    border-radius: 50%;
+    animation: pulse-green 2s infinite;
+  }
+
+  .badge-estancia.finalizada {
+    background: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+  }
+
+  @keyframes pulse-green {
+    0% {
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+    }
+
+    70% {
+      box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+    }
+
+    100% {
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+    }
+  }
+
+  .btn-premium {
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    gap: 6px;
+  }
+
+  .btn-folio {
+    background: #f8fafc;
+    color: #3b82f6;
+    border: 1px solid #e2e8f0;
+  }
+
+  .btn-folio:hover {
+    background: #3b82f6;
+    color: #fff;
+    border-color: #3b82f6;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+  }
+
+  .btn-checkout {
+    background: #fff;
+    color: #ef4444;
+    border: 1px solid #fecaca;
+  }
+
+  .btn-checkout:hover {
+    background: #ef4444;
+    color: #fff;
+    border-color: #ef4444;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+  }
 </style>
 
-<div class="card border-0 shadow-sm" style="border-radius: 12px; background: #fff;">
+<div class="card premium-card">
   <div class="estancias-filters">
     <div class="estancias-tabs">
-      <a href="?estado=ACTIVA" class="estancias-tab {% if request.GET.estado == 'ACTIVA' or not request.GET.estado %}active{% endif %}">Activas</a>
-      <a href="?estado=FINALIZADA" class="estancias-tab {% if request.GET.estado == 'FINALIZADA' %}active{% endif %}">Finalizadas</a>
+      <a href="?estado=ACTIVA"
+        class="estancias-tab {% if request.GET.estado == 'ACTIVA' or not request.GET.estado %}active{% endif %}">Activas</a>
+      <a href="?estado=FINALIZADA"
+        class="estancias-tab {% if request.GET.estado == 'FINALIZADA' %}active{% endif %}">Finalizadas</a>
       <a href="?estado=TODAS" class="estancias-tab {% if request.GET.estado == 'TODAS' %}active{% endif %}">Todas</a>
     </div>
     <div class="search-wrapper">
       <i class="bi bi-search search-icon"></i>
-      <form method="get">
+      <form method="get" class="m-0" style="display: flex; align-items: center; width: 100%;">
         <input type="text" name="q" value="{{ request.GET.q }}" class="search-input" placeholder="Buscar huésped...">
         {% if request.GET.estado %}<input type="hidden" name="estado" value="{{ request.GET.estado }}">{% endif %}
+        {% if request.GET.q %}
+        <a href="?{% if request.GET.estado %}estado={{ request.GET.estado }}{% endif %}" class="clear-search"
+          title="Limpiar búsqueda"
+          style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 14px; text-decoration: none;">
+          <i class="bi bi-x-circle-fill"></i>
+        </a>
+        {% endif %}
       </form>
     </div>
   </div>
-  
+
   <div class="table-responsive">
-    <table class="table table-estancias table-hover mb-0" style="width: 100%; border-collapse: collapse;">
+    <table class="table table-estancias mb-0" style="width: 100%; border-collapse: collapse;">
       <thead>
-        <tr><th>#</th><th>Huésped</th><th>Habitación</th><th>Check-in</th><th>Días</th>{% if not request.user.groups.all|join:',' == 'Recepcionista' %}<th>Total estimado</th>{% endif %}<th>Estado</th><th class="text-end">Acciones</th></tr>
+        <tr>
+          <th>#</th>
+          <th>Huésped</th>
+          <th>Habitación</th>
+          <th>Check-in</th>
+          <th>Días</th>
+          {% if not request.user.groups.all|join:',' == 'Recepcionista' %}
+          <th>Tarifa Total</th>
+          {% endif %}
+          <th>Estado</th>
+          <th class="text-end">Acciones</th>
+        </tr>
       </thead>
       <tbody>
         {% for e in estancias %}
         <tr>
-          <td class="text-muted fw-medium">#{{ e.id }}</td>
+          <td class="text-muted fw-medium fs-6">#{{ e.id }}</td>
           <td>
-            <div class="fw-bold" style="color: #1e293b;">{{ e.reserva.huesped.nombres }} {{ e.reserva.huesped.apellidos }}</div>
+            <div class="guest-info">
+              <div class="guest-avatar">
+                {{ e.reserva.huesped.nombres|slice:":1"|upper }}
+              </div>
+              <div>
+                <div class="fw-bold" style="color: #0f172a; font-size: 15px; line-height: 1.2;">
+                  {{ e.reserva.huesped.nombres }}
+                  {{ e.reserva.huesped.apellidos }}
+                </div>
+                <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">
+                  {{ e.reserva.huesped.tipo_doc }}:
+                  {{ e.reserva.huesped.num_doc }}
+                </div>
+              </div>
+            </div>
           </td>
           <td>
-            <div class="fw-semibold text-dark">Hab. {{ e.habitacion.numero }}</div>
-            <div style="font-size: 11px; color: #64748b;">{{ e.habitacion.tipo.nombre }}</div>
+            <div class="fw-bold" style="color: #334155; font-size: 14px;">
+              <i class="bi bi-door-closed me-1 text-muted"></i>
+              Hab. {{ e.habitacion.numero }}
+            </div>
+            <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
+              {{ e.habitacion.tipo.nombre }}
+            </div>
           </td>
           <td>
-            <div class="fw-medium text-dark">{{ e.fecha_checkin|date:"d/m/Y" }}</div>
-            <div style="font-size: 11px; color: #64748b;">{{ e.fecha_checkin|date:"H:i" }}</div>
+            <div class="fw-medium" style="color: #334155;">
+              {{ e.fecha_checkin|date:"d M Y" }}
+            </div>
+            <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">
+              <i class="bi bi-clock me-1"></i>
+              {{ e.fecha_checkin|date:"H:i" }}
+            </div>
           </td>
-          <td class="fw-medium text-dark">{{ e.dias_estancia }} días</td>
+          <td>
+            <div class="fw-semibold text-dark">
+              {{ e.dias_estancia }} <span class="fw-normal text-muted">días</span>
+            </div>
+          </td>
           {% with user_groups=request.user.groups.all|join:',' %}
           {% if 'Recepcionista' not in user_groups or request.user.is_superuser %}
-          <td class="fw-bold text-dark">S/. {{ e.precio_final }}</td>
+          <td>
+            <div class="fw-bold" style="color: #0f172a;">S/ {{ e.precio_final }}</div>
+          </td>
           {% endif %}
           {% endwith %}
           <td>
             {% if e.estado == 'ACTIVA' %}
-            <span class="badge-activa">ACTIVA</span>
+            <span class="badge-estancia activa">ACTIVA</span>
             {% else %}
-            <span class="badge-finalizada">FINALIZADA</span>
+            <span class="badge-estancia finalizada">FINALIZADA</span>
             {% endif %}
           </td>
           <td class="text-end">
             <div class="d-flex gap-2 justify-content-end">
-              <a href="/estancias/{{ e.id }}/folio/" class="btn-folio text-decoration-none">
-                <i class="bi bi-receipt me-1"></i>Folio
+              <a href="/estancias/{{ e.id }}/folio/" class="btn-premium btn-folio">
+                <i class="bi bi-receipt"></i> Folio
               </a>
               {% if e.estado == 'ACTIVA' %}
-              <a href="/estancias/{{ e.id }}/checkout/" class="btn-checkout text-decoration-none"
-                 onclick="return confirm('¿Confirmar check-out?')">Check-out</a>
+              <a href="/estancias/{{ e.id }}/checkout/" class="btn-premium btn-checkout"
+                onclick="return confirm('¿Confirmar check-out de {{ e.reserva.huesped.nombres }}?')">
+                <i class="bi bi-box-arrow-right"></i> Check-out
+              </a>
               {% endif %}
             </div>
           </td>
         </tr>
         {% empty %}
         <tr>
-          <td colspan="{% with user_groups=request.user.groups.all|join:',' %}{% if 'Recepcionista' in user_groups and not request.user.is_superuser %}7{% else %}8{% endif %}{% endwith %}" class="text-center py-5">
-            <i class="bi bi-inbox fs-1 text-muted opacity-50 mb-3 d-block"></i>
-            <h6 class="text-muted fw-medium">No hay estancias que mostrar</h6>
+          <td
+            colspan="{% with user_groups=request.user.groups.all|join:',' %}{% if 'Recepcionista' in user_groups and not request.user.is_superuser %}7{% else %}8{% endif %}{% endwith %}"
+            class="text-center py-5">
+            <div style="max-width: 300px; margin: 0 auto;">
+              <div
+                style="width: 64px; height: 64px; background: #f8fafc; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                <i class="bi bi-inbox fs-2 text-slate-400" style="color: #cbd5e1;"></i>
+              </div>
+              <h6 class="fw-bold text-slate-700 mb-2">No hay estancias</h6>
+              <p class="text-muted small">Actualmente no tienes estancias en esta categoría. Puedes buscarlas en otra
+                solapa.</p>
+            </div>
           </td>
         </tr>
         {% endfor %}

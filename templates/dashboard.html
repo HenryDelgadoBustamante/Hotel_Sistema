@@ -489,9 +489,10 @@
                     <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                       <span class="text-muted fw-medium" style="font-size: 14px;">Estado Actual</span>
                       <span
-                        class="badge {% if hab.estado == 'DISPONIBLE' %}bg-success{% elif hab.estado == 'OCUPADA' %}bg-danger{% elif hab.estado == 'LIMPIEZA' %}bg-warning text-dark{% else %}bg-secondary{% endif %}"
+                        class="badge {% if hab.estado_visual == 'RESERVADA' or hab.estado_visual == 'RETRASO' %}bg-primary{% elif hab.estado == 'DISPONIBLE' %}bg-success{% elif hab.estado == 'OCUPADA' %}bg-danger{% elif hab.estado == 'LIMPIEZA' %}bg-warning text-dark{% else %}bg-secondary{% endif %}"
                         style="padding: 6px 12px; border-radius: 6px; font-weight: 600; letter-spacing: 0.3px;">
-                        {{ hab.get_estado_display }}
+                        {% if hab.estado_visual == 'RESERVADA' or hab.estado_visual == 'RETRASO' %}RESERVADA{% else %}{{
+                        hab.get_estado_display }}{% endif %}
                       </span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
@@ -530,7 +531,12 @@
                   style="border: 1px solid #e2e8f0; font-weight: 500; color: #475569; border-radius: 8px;">
                   <i class="bi bi-pencil me-1"></i> Editar
                 </a>
-                {% if hab.estado == 'DISPONIBLE' %}
+                {% if hab.estado_visual == 'RESERVADA' or hab.estado_visual == 'RETRASO' %}
+                <a href="{% url 'reserva_checkin' hab.reserva_hoy.id %}" class="btn btn-success"
+                  style="font-weight: 600; border-radius: 8px;">
+                  <i class="bi bi-box-arrow-in-right me-1"></i> Check-in
+                </a>
+                {% elif hab.estado == 'DISPONIBLE' %}
                 <a href="/reservas/nueva/?habitacion={{ hab.id }}" class="btn"
                   style="background: linear-gradient(135deg, #c9a84c 0%, #f0c040 100%); color: white; font-weight: 600; border-radius: 8px;">
                   <i class="bi bi-calendar-plus me-1"></i> Reservar
