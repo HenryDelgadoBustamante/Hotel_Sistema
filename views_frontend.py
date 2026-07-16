@@ -672,7 +672,6 @@ def reserva_checkin(request, reserva_id):
             
             # Parsear e ingresar productos pre-seleccionados de la reserva
             import json
-            from decimal import Decimal
             observaciones = reserva.observaciones or ""
             if "__JSON_PRODUCTOS_START__" in observaciones:
                 try:

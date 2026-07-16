@@ -110,7 +110,7 @@
               <span class="input-group-text bg-white text-muted py-1 px-2" style="font-size: 13px;"><i class="bi bi-search"></i></span>
               <input type="text" id="searchCheckinRoom" class="form-control form-control-sm" placeholder="Filtrar por número o tipo..." onkeyup="filterCheckinRooms()">
             </div>
-            <select id="habitacion" name="habitacion" class="form-select form-select-lg mb-3" required size="5" style="height: 180px;">
+            <select id="habitacion" name="habitacion" class="form-select form-select-lg mb-3" required>
               {% for hab in habitaciones %}
               <option value="{{ hab.id }}" data-capacidad="{{ hab.tipo.capacidad }}" {% if reserva.habitacion_id == hab.id %}selected{% endif %}>
                 Habitación {{ hab.numero }} - {{ hab.tipo.nombre }} (Capacidad: {{ hab.tipo.capacidad }} Pax)
