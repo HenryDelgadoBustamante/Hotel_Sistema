@@ -176,6 +176,68 @@
     .sidebar-nav {
       padding: 12px 10px;
       flex: 1;
+      overflow-y: auto;
+      max-height: calc(100vh - 200px);
+    }
+
+    .sidebar-nav::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .sidebar-nav::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .sidebar-nav::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+    }
+
+    .sidebar-nav::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .sub-nav {
+      padding-left: 28px;
+      margin-bottom: 2px;
+    }
+
+    .sub-nav .nav-link {
+      font-size: 12px;
+      padding: 8px 16px;
+      color: #64748b;
+    }
+
+    .sub-nav .nav-link:hover {
+      color: #cbd5e1;
+    }
+
+    .sub-nav .nav-link.active {
+      color: #818cf8;
+    }
+
+    .nav-dropdown-toggle {
+      cursor: pointer;
+    }
+
+    .nav-dropdown-toggle .dropdown-arrow {
+      margin-left: auto;
+      font-size: 10px;
+      transition: transform 0.2s;
+    }
+
+    .nav-dropdown-toggle.expanded .dropdown-arrow {
+      transform: rotate(90deg);
+    }
+
+    .nav-dropdown-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+
+    .nav-dropdown-content.expanded {
+      max-height: 200px;
     }
 
     .sidebar-section {
@@ -229,6 +291,18 @@
     .sidebar-footer {
       padding: 10px 10px 16px;
       border-top: 1px solid rgba(255, 255, 255, .06);
+    }
+
+    .sidebar-footer .nav-dropdown-toggle {
+      margin-bottom: 0;
+    }
+
+    .sidebar-footer .nav-dropdown-content {
+      margin-bottom: 4px;
+    }
+
+    .sidebar-footer .sub-nav .nav-link {
+      padding: 6px 16px;
     }
 
     .nav-link.logout {
@@ -285,6 +359,62 @@
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+
+    .user-dropdown {
+      display: none;
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e2e8f0;
+      min-width: 200px;
+      z-index: 1000;
+      overflow: hidden;
+    }
+
+    .user-dropdown.show {
+      display: block;
+      animation: fadeInUp 0.2s ease;
+    }
+
+    .user-dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      color: #374151;
+      font-size: 13px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .user-dropdown-item:hover {
+      background: #f8fafc;
+      color: #6366f1;
+    }
+
+    .user-dropdown-item.active {
+      background: #eef2ff;
+      color: #6366f1;
+    }
+
+    .user-dropdown-item.logout {
+      color: #ef4444;
+    }
+
+    .user-dropdown-item.logout:hover {
+      background: #fef2f2;
+      color: #dc2626;
+    }
+
+    .user-dropdown-divider {
+      height: 1px;
+      background: #e2e8f0;
+      margin: 4px 0;
     }
 
     /* ── Main content ── */
@@ -769,9 +899,19 @@
 
       {% if request.user.is_superuser or 'admin' in groups %}
       <div class="sidebar-section">Configuración</div>
-      <a href="/usuarios/" class="nav-link {% if '/usuarios/' in request.path %}active{% endif %}">
-        <i class="bi bi-person-gear"></i>Usuarios y Roles
-      </a>
+      <div class="nav-dropdown-toggle {% if '/usuarios/' in request.path or '/sesiones/' in request.path %}expanded{% endif %}" onclick="toggleDropdown(this)">
+        <a href="/usuarios/" class="nav-link {% if '/usuarios/' in request.path %}active{% endif %}" style="flex:1;">
+          <i class="bi bi-person-gear"></i>Usuarios y Roles
+        </a>
+        <i class="bi bi-chevron-right dropdown-arrow"></i>
+      </div>
+      <div class="nav-dropdown-content {% if '/usuarios/' in request.path or '/sesiones/' in request.path %}expanded{% endif %}">
+        <div class="sub-nav">
+          <a href="/sesiones/" class="nav-link {% if '/sesiones/' in request.path %}active{% endif %}">
+            <i class="bi bi-display"></i>Sesiones Activas
+          </a>
+        </div>
+      </div>
       {% endif %}
       {% endwith %}
     </nav>
@@ -790,9 +930,22 @@
       </button>
       <span class="navbar-top-title">{% block page_title %}{% endblock %}</span>
     </div>
-    <div class="user-chip">
+    <div class="user-chip" onclick="toggleUserDropdown()" style="cursor:pointer; position:relative;">
       <div class="user-chip-avatar">{{ user.username|slice:":1"|upper }}</div>
       {{ user.username }}
+      <i class="bi bi-chevron-down ms-1" style="font-size:10px;"></i>
+    </div>
+    <div class="user-dropdown" id="userDropdown">
+      <a href="/mi-perfil/" class="user-dropdown-item {% if '/mi-perfil/' in request.path %}active{% endif %}">
+        <i class="bi bi-person"></i>Mi Perfil
+      </a>
+      <a href="/mi-contrasena/" class="user-dropdown-item {% if '/mi-contrasena/' in request.path %}active{% endif %}">
+        <i class="bi bi-key"></i>Cambiar Contraseña
+      </a>
+      <div class="user-dropdown-divider"></div>
+      <a href="/logout/" class="user-dropdown-item logout">
+        <i class="bi bi-box-arrow-left"></i>Cerrar sesión
+      </a>
     </div>
   </header>
 
@@ -849,6 +1002,28 @@
         sidebarOverlay.classList.remove('show');
       });
     }
+
+    function toggleDropdown(el) {
+      el.classList.toggle('expanded');
+      const content = el.nextElementSibling;
+      if (content) {
+        content.classList.toggle('expanded');
+      }
+    }
+
+    function toggleUserDropdown() {
+      const dropdown = document.getElementById('userDropdown');
+      dropdown.classList.toggle('show');
+    }
+
+    // Close user dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+      const dropdown = document.getElementById('userDropdown');
+      const userChip = document.querySelector('.user-chip');
+      if (dropdown && userChip && !userChip.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.classList.remove('show');
+      }
+    });
   </script>
 </body>
 

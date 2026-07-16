@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}Sesiones Activas — HotelSystem{% endblock %}
+{% block page_title %}Gestión de Sesiones{% endblock %}
+{% block content %}
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="mb-0"><i class="bi bi-display me-2"></i>Sesiones Activas</h5>
+      <span class="badge bg-info">{{ sesiones|length }} sesiones</span>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Usuario</th>
+            <th>IP</th>
+            <th>Última Actividad</th>
+            <th class="text-end">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in sesiones %}
+          <tr>
+            <td>
+              <strong>{{ s.usuario.username }}</strong>
+              <div class="small text-muted">{{ s.usuario.first_name }} {{ s.usuario.last_name }}</div>
+            </td>
+            <td><code>{{ s.ip }}</code></td>
+            <td>{{ s.ultima_actividad|date:"d/m/Y H:i" }}</td>
+            <td class="text-end">
+              {% if s.session_key != request.session.session_key %}
+              <form method="post" action="/sesiones/{{ s.session_key }}/cerrar/" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Cerrar sesión de {{ s.usuario.username }}?')">
+                  <i class="bi bi-x-circle me-1"></i>Cerrar
+                </button>
+              </form>
+              {% else %}
+              <span class="badge bg-success">Sesión Actual</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="4" class="text-center text-muted py-4">No hay sesiones activas.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

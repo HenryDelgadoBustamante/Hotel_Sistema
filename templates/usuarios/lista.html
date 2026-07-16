@@ -58,31 +58,41 @@
                 <i class="bi bi-pencil"></i>
               </a>
               {% if request.user != u %}
-              <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#delUser{{ u.id }}" title="Eliminar">
-                <i class="bi bi-trash"></i>
+              {% if u.is_active %}
+              <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#delUser{{ u.id }}" title="Desactivar">
+                <i class="bi bi-person-x"></i>
               </button>
 
-              <!-- Modal Eliminar -->
+              <!-- Modal Desactivar -->
               <div class="modal fade" id="delUser{{ u.id }}" tabindex="-1">
                 <div class="modal-dialog modal-sm">
                   <div class="modal-content">
                     <div class="modal-header border-0 pb-0 text-start">
-                      <h6 class="modal-title">Eliminar Usuario</h6>
+                      <h6 class="modal-title">Desactivar Usuario</h6>
                       <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body text-start">
-                      <p class="mb-0">¿Estás seguro de que quieres eliminar permanentemente al usuario <strong>{{ u.username }}</strong>?</p>
+                      <p class="mb-0">¿Estás seguro de que quieres desactivar al usuario <strong>{{ u.username }}</strong>?</p>
+                      <small class="text-muted">El usuario no podrá iniciar sesión, pero sus datos se mantendrán.</small>
                     </div>
                     <div class="modal-footer border-0 pt-0">
                       <form method="post" action="{% url 'usuario_eliminar' u.id %}">
                         {% csrf_token %}
                         <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-sm btn-danger">Sí, eliminar</button>
+                        <button type="submit" class="btn btn-sm btn-danger">Desactivar</button>
                       </form>
                     </div>
                   </div>
                 </div>
               </div>
+              {% else %}
+              <form method="post" action="{% url 'desbloquear_usuario' u.id %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-success" title="Desbloquear">
+                  <i class="bi bi-unlock me-1"></i>Desbloquear
+                </button>
+              </form>
+              {% endif %}
               {% endif %}
             </td>
           </tr>

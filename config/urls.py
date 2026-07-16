@@ -20,7 +20,10 @@ from views_frontend import (
     tickets_lista, ticket_nuevo, ticket_detalle, ticket_iniciar,
     ticket_resolver, ticket_cerrar, ticket_reabrir, ticket_seguimiento,
     ticket_agregar_cargo, reembolsos_lista_admin,
-    api_ocupacion_habitaciones, api_habitaciones_housekeeping_recientes
+    api_ocupacion_habitaciones, api_habitaciones_housekeeping_recientes,
+    mi_perfil, cambiar_password,
+    recuperar_contrasena, reset_confirmar, desbloquear_usuario,
+    sesiones_activas, cerrar_sesion
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_yasg.views import get_schema_view
@@ -115,6 +118,13 @@ urlpatterns = [
     path('usuarios/nuevo/', usuario_nuevo, name='usuario_nuevo'),
     path('usuarios/<int:user_id>/editar/', usuario_editar, name='usuario_editar'),
     path('usuarios/<int:user_id>/eliminar/', usuario_eliminar, name='usuario_eliminar'),
+    path('mi-perfil/', mi_perfil, name='mi_perfil'),
+    path('mi-contrasena/', cambiar_password, name='cambiar_password'),
+    path('recuperar-contrasena/', recuperar_contrasena, name='recuperar_contrasena'),
+    path('reset/<uuid:token>/', reset_confirmar, name='reset_confirmar'),
+    path('usuarios/<int:user_id>/desbloquear/', desbloquear_usuario, name='desbloquear_usuario'),
+    path('sesiones/', sesiones_activas, name='sesiones_activas'),
+    path('sesiones/<session_key>/cerrar/', cerrar_sesion, name='cerrar_sesion'),
     path('', lambda request: redirect('dashboard'), name='home'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

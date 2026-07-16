@@ -14,6 +14,7 @@ from hotel.models import Habitacion, Hotel, TipoHabitacion
 from huespedes.models import Huesped
 from reservas.models import Reserva
 from estancias.models import Estancia, CargoEstancia, Folio, Pago
+from reportes.models import registrar_auditoria
 import requests
 from config import roles
 
@@ -82,17 +83,74 @@ def login_view(request):
             return redirect('housekeeping')
         return redirect('dashboard')
     if request.method == 'POST':
-        user = authenticate(request, username=request.POST['username'], password=request.POST['password'])
+        username = request.POST.get('username', '')
+        ip = request.META.get('REMOTE_ADDR', 'unknown')
+        user_agent = request.META.get('HTTP_USER_AGENT', 'unknown')[:200]
+        
+        from django.contrib.auth.models import User
+        from reportes.models import LoginIntento
+        
+        user = authenticate(request, username=username, password=request.POST['password'])
+        
         if user:
+            intentos_fallidos = LoginIntento.contar_fallidos_recientes(user, minutos=15)
+            if intentos_fallidos >= 5:
+                if user.is_active:
+                    user.is_active = False
+                    user.save(update_fields=['is_active'])
+                    registrar_auditoria(
+                        usuario=None,
+                        accion="Bloqueo Automático",
+                        registro_id=user.id,
+                        tabla_afectada="auth_user",
+                        estado_anterior="Activo",
+                        estado_nuevo="Bloqueado",
+                        observacion=f"Usuario '{username}' bloqueado tras 5 intentos fallidos. IP: {ip}"
+                    )
+                messages.error(request, 'Tu cuenta está bloqueada por múltiples intentos fallidos. Contacta al administrador.')
+                return redirect('login')
+            
+            LoginIntento.registrar(usuario=user, ip=ip, user_agent=user_agent, exitoso=True)
+            
             login(request, user)
+            user.last_login = timezone.now()
+            user.save(update_fields=['last_login'])
+            
+            registrar_auditoria(
+                usuario=user,
+                accion="Login Exitoso",
+                registro_id=user.id,
+                tabla_afectada="auth_user",
+                estado_nuevo=f"Sesión iniciada desde IP: {ip}",
+                observacion=f"Device: {user_agent}"
+            )
+            
             if _solo_housekeeping(user):
                 return redirect('housekeeping')
             return redirect('dashboard')
-        messages.error(request, 'Usuario o contraseña incorrectos.')
+        else:
+            LoginIntento.registrar(usuario=None, ip=ip, user_agent=user_agent, exitoso=False)
+            registrar_auditoria(
+                usuario=None,
+                accion="Intento Login Fallido",
+                registro_id=None,
+                tabla_afectada="auth_user",
+                observacion=f"Usuario: '{username}', IP: {ip}, Device: {user_agent}"
+            )
+            messages.error(request, 'Usuario o contraseña incorrectos.')
     return render(request, 'login.html')
 
 
 def logout_view(request):
+    if request.user.is_authenticated:
+        ip = request.META.get('REMOTE_ADDR', 'unknown')
+        registrar_auditoria(
+            usuario=request.user,
+            accion="Logout",
+            registro_id=request.user.id,
+            tabla_afectada="auth_user",
+            observacion=f"Sesión cerrada. IP: {ip}"
+        )
     logout(request)
     return redirect('login')
 
@@ -1196,6 +1254,14 @@ def usuario_editar(request, user_id):
     
     if request.method == 'POST':
         try:
+            cambios = []
+            if usuario_edit.first_name != request.POST.get('nombres', usuario_edit.first_name):
+                cambios.append(f"Nombre: {usuario_edit.first_name} → {request.POST.get('nombres')}")
+            if usuario_edit.last_name != request.POST.get('apellidos', usuario_edit.last_name):
+                cambios.append(f"Apellido: {usuario_edit.last_name} → {request.POST.get('apellidos')}")
+            if usuario_edit.email != request.POST.get('email', usuario_edit.email):
+                cambios.append(f"Email: {usuario_edit.email} → {request.POST.get('email')}")
+            
             usuario_edit.first_name = request.POST.get('nombres', usuario_edit.first_name)
             usuario_edit.last_name = request.POST.get('apellidos', usuario_edit.last_name)
             usuario_edit.email = request.POST.get('email', usuario_edit.email)
@@ -1207,8 +1273,19 @@ def usuario_editar(request, user_id):
             if rol_id:
                 grupo = Group.objects.get(id=rol_id)
                 usuario_edit.groups.add(grupo)
+                cambios.append(f"Rol asignado: {grupo.name}")
                 
             usuario_edit.save()
+            
+            registrar_auditoria(
+                usuario=request.user,
+                accion="Usuario Editado",
+                registro_id=usuario_edit.id,
+                tabla_afectada="auth_user",
+                estado_nuevo=f"Usuario '{usuario_edit.username}' actualizado",
+                observacion=f"Campos modificados: {', '.join(cambios)}" if cambios else "Sin cambios significativos"
+            )
+            
             messages.success(request, f'Usuario {usuario_edit.username} actualizado correctamente.')
             return redirect('usuarios_lista')
         except Exception as e:
@@ -1256,6 +1333,16 @@ def usuario_nuevo(request):
                 nuevo_user.groups.add(grupo)
                 
             nuevo_user.save()
+            
+            registrar_auditoria(
+                usuario=request.user,
+                accion="Usuario Creado",
+                registro_id=nuevo_user.id,
+                tabla_afectada="auth_user",
+                estado_nuevo=f"Usuario '{username}' creado. Rol: {rol_id}",
+                observacion=f"Email: {nuevo_user.email}, Activo: {nuevo_user.is_active}"
+            )
+            
             messages.success(request, f'Usuario {nuevo_user.username} creado correctamente.')
             return redirect('usuarios_lista')
         except Exception as e:
@@ -1275,16 +1362,27 @@ def usuario_eliminar(request, user_id):
         
     usuario = get_object_or_404(User, id=user_id)
     if usuario == request.user:
-        messages.error(request, 'No puedes eliminar tu propia cuenta.')
+        messages.error(request, 'No puedes desactivar tu propia cuenta.')
         return redirect('usuarios_lista')
         
     if request.method == 'POST':
         try:
             username = usuario.username
-            usuario.delete()
-            messages.success(request, f'Usuario {username} eliminado.')
+            usuario.is_active = False
+            usuario.save()
+            
+            registrar_auditoria(
+                usuario=request.user,
+                accion="Usuario Desactivado",
+                registro_id=usuario.id,
+                tabla_afectada="auth_user",
+                estado_anterior="Activo",
+                estado_nuevo="Inactivo",
+                observacion=f"Usuario '{username}' desactivado (soft delete)"
+            )
+            messages.success(request, f'Usuario {username} desactivado correctamente.')
         except Exception as e:
-            messages.error(request, f'Error al eliminar: {str(e)}')
+            messages.error(request, f'Error al desactivar: {str(e)}')
             
     return redirect('usuarios_lista')
 
@@ -2397,3 +2495,277 @@ def api_habitaciones_housekeeping_recientes(request):
         'habitaciones_urgentes': data,
         'total': len(data),
     })
+
+
+@login_required
+def mi_perfil(request):
+    from django.contrib.auth.models import Group
+    
+    if request.method == 'POST':
+        try:
+            request.user.first_name = request.POST.get('nombres', request.user.first_name)
+            request.user.last_name = request.POST.get('apellidos', request.user.last_name)
+            request.user.email = request.POST.get('email', request.user.email)
+            request.user.save()
+            
+            registrar_auditoria(
+                usuario=request.user,
+                accion="Perfil Actualizado",
+                registro_id=request.user.id,
+                tabla_afectada="auth_user",
+                estado_nuevo="Datos de perfil actualizados"
+            )
+            
+            messages.success(request, 'Perfil actualizado correctamente.')
+            return redirect('mi_perfil')
+        except Exception as e:
+            messages.error(request, f'Error al actualizar: {str(e)}')
+    
+    roles = list(request.user.groups.values_list('name', flat=True))
+    
+    return render(request, 'mi_perfil.html', {
+        'user': request.user,
+        'roles': roles,
+    })
+
+
+@login_required
+def cambiar_password(request):
+    if request.method == 'POST':
+        password_actual = request.POST.get('password_actual')
+        nueva_password = request.POST.get('nueva_password')
+        confirmar_password = request.POST.get('confirmar_password')
+        
+        if not request.user.check_password(password_actual):
+            messages.error(request, 'La contraseña actual es incorrecta.')
+            return redirect('cambiar_password')
+        
+        if nueva_password != confirmar_password:
+            messages.error(request, 'Las contraseñas nuevas no coinciden.')
+            return redirect('cambiar_password')
+        
+        if len(nueva_password) < 8:
+            messages.error(request, 'La contraseña debe tener al menos 8 caracteres.')
+            return redirect('cambiar_password')
+        
+        if not any(c.isupper() for c in nueva_password):
+            messages.error(request, 'La contraseña debe contener al menos una letra mayúscula.')
+            return redirect('cambiar_password')
+        
+        if not any(c.isdigit() for c in nueva_password):
+            messages.error(request, 'La contraseña debe contener al menos un número.')
+            return redirect('cambiar_password')
+        
+        request.user.set_password(nueva_password)
+        request.user.save()
+        
+        registrar_auditoria(
+            usuario=request.user,
+            accion="Contraseña Cambiada",
+            registro_id=request.user.id,
+            tabla_afectada="auth_user",
+            estado_nuevo="Contraseña actualizada exitosamente"
+        )
+        
+        messages.success(request, 'Contraseña cambiada correctamente. Inicia sesión nuevamente.')
+        return redirect('login')
+    
+    return render(request, 'cambiar_password.html')
+
+
+@login_required
+def recuperar_contrasena(request):
+    """Vista para solicitar recuperación de contraseña"""
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip()
+        if not email:
+            messages.error(request, 'Debes ingresar un correo electrónico.')
+            return redirect('recuperar_contrasena')
+        
+        from django.contrib.auth.models import User
+        from reportes.models import PasswordResetToken
+        from django.core.mail import send_mail
+        from django.conf import settings
+        
+        usuarios = User.objects.filter(email=email, is_active=True)
+        if usuarios.exists():
+            usuario = usuarios.first()
+            token = PasswordResetToken.objects.create(usuario=usuario)
+            
+            reset_url = request.build_absolute_uri(f'/reset/{token.token}/')
+            
+            try:
+                send_mail(
+                    subject='Recuperar Contraseña - HotelSystem',
+                    message=f'Hola {usuario.username},\n\nHaz clic en el siguiente enlace para restablecer tu contraseña:\n\n{reset_url}\n\nEste enlace expira en 1 hora.\n\nSi no solicitaste este cambio, ignora este mensaje.',
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[email],
+                    fail_silently=False,
+                )
+                messages.success(request, f'Se envió un enlace de recuperación a {email}')
+            except Exception as e:
+                messages.error(request, f'Error al enviar el email: {str(e)}')
+        else:
+            messages.info(request, 'Si el correo existe en nuestro sistema, recibirás un enlace de recuperación.')
+        
+        registrar_auditoria(
+            usuario=None,
+            accion="Solicitud Recuperación Contraseña",
+            registro_id=None,
+            tabla_afectada="auth_user",
+            observacion=f"Email: {email}"
+        )
+        
+        return redirect('login')
+    
+    return render(request, 'recuperar_contrasena.html')
+
+
+@login_required
+def reset_confirmar(request, token):
+    """Vista para confirmar restablecimiento de contraseña"""
+    from reportes.models import PasswordResetToken
+    from django.contrib.auth.models import User
+    
+    try:
+        token_obj = PasswordResetToken.objects.get(token=token)
+    except PasswordResetToken.DoesNotExist:
+        messages.error(request, 'Token de recuperación inválido.')
+        return redirect('login')
+    
+    if not token_obj.esta_valido():
+        messages.error(request, 'El enlace de recuperación ha expirado o ya fue usado.')
+        return redirect('login')
+    
+    if request.method == 'POST':
+        nueva_password = request.POST.get('nueva_password')
+        confirmar_password = request.POST.get('confirmar_password')
+        
+        if nueva_password != confirmar_password:
+            messages.error(request, 'Las contraseñas no coinciden.')
+            return redirect('reset_confirmar', token=token)
+        
+        if len(nueva_password) < 8:
+            messages.error(request, 'La contraseña debe tener al menos 8 caracteres.')
+            return redirect('reset_confirmar', token=token)
+        
+        if not any(c.isupper() for c in nueva_password):
+            messages.error(request, 'La contraseña debe contener al menos una letra mayúscula.')
+            return redirect('reset_confirmar', token=token)
+        
+        if not any(c.isdigit() for c in nueva_password):
+            messages.error(request, 'La contraseña debe contener al menos un número.')
+            return redirect('reset_confirmar', token=token)
+        
+        usuario = token_obj.usuario
+        usuario.set_password(nueva_password)
+        usuario.save()
+        
+        token_obj.usado = True
+        token_obj.save()
+        
+        registrar_auditoria(
+            usuario=usuario,
+            accion="Contraseña Restablecida",
+            registro_id=usuario.id,
+            tabla_afectada="auth_user",
+            estado_nuevo="Contraseña restablecida mediante token"
+        )
+        
+        messages.success(request, 'Contraseña restablecida correctamente. Inicia sesión.')
+        return redirect('login')
+    
+    return render(request, 'reset_confirmar.html', {'token': token})
+
+
+@login_required
+def desbloquear_usuario(request, user_id):
+    """Admin puede desbloquear usuarios"""
+    if not request.user.is_superuser and not request.user.groups.filter(name='admin').exists():
+        messages.error(request, 'No tienes permisos.')
+        return redirect('dashboard')
+    
+    from django.contrib.auth.models import User
+    usuario = get_object_or_404(User, id=user_id)
+    
+    if request.method == 'POST':
+        usuario.is_active = True
+        usuario.save()
+        
+        registrar_auditoria(
+            usuario=request.user,
+            accion="Usuario Desbloqueado",
+            registro_id=usuario.id,
+            tabla_afectada="auth_user",
+            estado_anterior="Bloqueado",
+            estado_nuevo="Activo",
+            observacion=f"Usuario '{usuario.username}' desbloqueado por {request.user.username}"
+        )
+        
+        messages.success(request, f'Usuario {usuario.username} desbloqueado correctamente.')
+    
+    return redirect('usuarios_lista')
+
+
+@login_required
+def sesiones_activas(request):
+    """Lista sesiones activas (solo admin)"""
+    from django.contrib.sessions.models import Session
+    from django.contrib.auth.models import User
+    
+    if not request.user.is_superuser and not request.user.groups.filter(name='admin').exists():
+        messages.error(request, 'No tienes permisos.')
+        return redirect('dashboard')
+    
+    sesiones = []
+    for s in Session.objects.all():
+        datos = s.get_decoded()
+        user_id = datos.get('_auth_user_id')
+        if user_id:
+            try:
+                usuario = User.objects.get(id=user_id)
+                sesiones.append({
+                    'session_key': s.session_key,
+                    'usuario': usuario,
+                    'ultima_actividad': s.expire_date,
+                    'ip': datos.get('ip', 'unknown'),
+                })
+            except User.DoesNotExist:
+                pass
+    
+    return render(request, 'sesiones/lista.html', {'sesiones': sesiones})
+
+
+@login_required
+def cerrar_sesion(request, session_key):
+    """Admin puede cerrar sesiones remotamente"""
+    from django.contrib.sessions.models import Session
+    
+    if not request.user.is_superuser and not request.user.groups.filter(name='admin').exists():
+        messages.error(request, 'No tienes permisos.')
+        return redirect('dashboard')
+    
+    try:
+        sesion = Session.objects.get(session_key=session_key)
+        datos = sesion.get_decoded()
+        user_id = datos.get('_auth_user_id')
+        
+        if user_id:
+            from django.contrib.auth.models import User
+            usuario = User.objects.get(id=user_id)
+            
+            sesion.delete()
+            
+            registrar_auditoria(
+                usuario=request.user,
+                accion="Sesión Cerrada Remotamente",
+                registro_id=usuario.id,
+                tabla_afectada="auth_user",
+                observacion=f"Sesión de '{usuario.username}' cerrada por {request.user.username}"
+            )
+            
+            messages.success(request, f'Sesión de {usuario.username} cerrada correctamente.')
+    except Exception as e:
+        messages.error(request, f'Error al cerrar sesión: {str(e)}')
+    
+    return redirect('sesiones_activas')
