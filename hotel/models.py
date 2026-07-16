@@ -28,6 +28,13 @@ class Hotel(models.Model):
     late_checkout_horas_bloque = models.PositiveIntegerField(default=3)
     late_checkout_rol_exonerar = models.CharField(max_length=50, default='administrador')
 
+    # Configuración de Alertas de Check-Out
+    alerta_checkout_minutos = models.PositiveIntegerField(
+        default=30,
+        choices=[(15, '15 minutos antes'), (30, '30 minutos antes'), (60, '60 minutos antes')],
+        help_text="Minutos antes del checkout para mostrar alerta al recepcionista."
+    )
+
     class Meta:
         verbose_name = 'Hotel'
         verbose_name_plural = 'Hoteles'

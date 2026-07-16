@@ -109,6 +109,38 @@
           </div>
         </div>
 
+        <div class="form-panel mb-3">
+          <div class="form-section-title d-flex justify-content-between align-items-center">
+            <span>Registrar Pago Anticipado</span>
+            <div class="form-check form-switch m-0">
+              <input class="form-check-input" type="checkbox" name="registrar_pago" id="registrar_pago">
+            </div>
+          </div>
+          <div id="pago_campos" class="d-none">
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Monto a Pagar</label>
+              <div class="input-group">
+                <span class="input-group-text">S/.</span>
+                <input type="number" name="pago_monto" id="pago_monto" step="0.01" min="0.01" class="form-control">
+              </div>
+              <div class="field-help">Por defecto es el total calculado. Puedes modificarlo si es un adelanto menor.</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Método de Pago</label>
+              <select name="pago_metodo_pago" id="pago_metodo_pago" class="form-select">
+                <option value="EFECTIVO">Efectivo</option>
+                <option value="TARJETA">Tarjeta de Crédito/Débito</option>
+                <option value="TRANSFERENCIA">Transferencia Bancaria</option>
+                <option value="YAPE_PLIN">Yape / Plin</option>
+              </select>
+            </div>
+            <div class="mb-3 d-none" id="pago_div_transaccion">
+              <label class="form-label fw-semibold">N° Transacción</label>
+              <input type="text" name="pago_transaccion_id" id="pago_transaccion_id" class="form-control" placeholder="Referencia o N° Operación">
+            </div>
+          </div>
+        </div>
+
         <div class="d-grid gap-2">
           <button type="submit" name="accion" value="guardar" class="btn btn-primary">
             <i class="bi bi-check-lg me-1"></i>Crear reserva
@@ -287,6 +319,12 @@
       } else {
         tarifaSpan.textContent = "0.00";
       }
+
+      // Actualizar campos de pago anticipado según tarifa
+      if (regPagoCheck.checked && !montoEditado) {
+        pagoMonto.value = tarifaSpan.textContent;
+      }
+      pagoMonto.max = tarifaSpan.textContent;
     }
 
     function toggleModalidad() {
@@ -300,6 +338,34 @@
       if (!porHora) salidaHoraPreview.value = "";
       verificarDisponibilidad();
     }
+
+    // Control de Pago Anticipado
+    const regPagoCheck = document.getElementById("registrar_pago");
+    const pagoCampos = document.getElementById("pago_campos");
+    const pagoMonto = document.getElementById("pago_monto");
+    const pagoMetodo = document.getElementById("pago_metodo_pago");
+    const pagoDivTx = document.getElementById("pago_div_transaccion");
+    const pagoTxId = document.getElementById("pago_transaccion_id");
+    let montoEditado = false;
+
+    regPagoCheck.addEventListener("change", function () {
+      pagoCampos.classList.toggle("d-none", !this.checked);
+      if (this.checked && !montoEditado) {
+        pagoMonto.value = tarifaSpan.textContent;
+      }
+      pagoMonto.required = this.checked;
+      pagoMonto.max = tarifaSpan.textContent;
+    });
+
+    pagoMonto.addEventListener("input", function() {
+      montoEditado = true;
+    });
+
+    pagoMetodo.addEventListener("change", function() {
+      const esEfectivo = this.value === "EFECTIVO";
+      pagoDivTx.classList.toggle("d-none", esEfectivo);
+      pagoTxId.required = !esEfectivo && regPagoCheck.checked;
+    });
 
     setDefaultDates();
     inputHuesped.addEventListener("input", renderHuespedes);

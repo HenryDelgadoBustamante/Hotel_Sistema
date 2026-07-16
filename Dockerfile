@@ -20,8 +20,8 @@ COPY . .
 # Crear directorio de archivos estáticos
 RUN mkdir -p /app/staticfiles
 
-# Dar permisos de ejecución al entrypoint
-RUN chmod +x /app/entrypoint.sh
+# Limpiar retornos de carro (CRLF) y dar permisos de ejecución al entrypoint
+RUN sed -i 's/\r$//g' /app/entrypoint.sh && chmod +x /app/entrypoint.sh
 
 EXPOSE 8000
 

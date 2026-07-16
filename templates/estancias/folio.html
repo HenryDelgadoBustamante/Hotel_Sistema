@@ -533,7 +533,7 @@
           </tr>
           {% empty %}
           <tr>
-            <td colspan="4">
+            <td colspan="5">
               <div class="empty-state">
                 <i class="bi bi-wallet2 empty-icon"></i>
                 <h6 class="text-muted fw-medium m-0">Sin pagos registrados</h6>
@@ -616,7 +616,22 @@
         </a>
       </div>
 
+      {# ── Obs. 1: Botón Cancelar por Problema (solo cuando no hay pagos) ── #}
+      {% if folio.total_pagado == 0 %}
+      <div class="mt-3 pt-3 border-top" style="border-color: #fee2e2;">
+        <div class="alert alert-warning py-2 px-3 mb-2" style="border-radius: 8px; font-size: 13px;">
+          <i class="bi bi-exclamation-triangle-fill me-1"></i>
+          <strong>Sin pago previo:</strong> Si existe un problema grave de habitación, puede cancelar la estancia sin costo para el huésped.
+        </div>
+        <button type="button" class="btn btn-outline-danger w-100 fw-semibold"
+          style="border-radius: 8px; font-size: 13px;"
+          data-bs-toggle="modal" data-bs-target="#modalCancelarSinPago">
+          <i class="bi bi-x-octagon me-2"></i>Cancelar por Problema de Habitación
+        </button>
+      </div>
       {% endif %}
+      {% endif %}{# cierre de: if estancia.estado == 'ACTIVA' #}
+
     </div>
 
     <div class="f-card p-3 mb-3" style="border: 1px solid #e0e7ff; background: #f8fafc;">
@@ -691,7 +706,7 @@
 
 <!-- Modal Reembolso -->
 <div class="modal fade" id="modalReembolso" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered modal-sm">
+  <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content" style="border-radius: 12px;">
       <div class="modal-header border-0 pb-0">
         <h6 class="fw-bold text-warning"><i class="bi bi-arrow-return-left me-2"></i>Solicitar Reembolso</h6>
@@ -709,11 +724,83 @@
           </div>
           <div class="mb-3">
             <label class="form-label fw-semibold">Motivo</label>
-            <textarea name="motivo" class="form-control" rows="2" required placeholder="Motivo del reembolso..."></textarea>
+            <textarea name="motivo" class="form-control" rows="2" required placeholder="Motivo del reembolso (p. ej. fuga de agua, manchas, etc.)..."></textarea>
           </div>
+          
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" name="cancelar_estancia_problema" id="cancelarEstanciaProblema" value="on" onchange="toggleCancelacionEstancia(this)">
+            <label class="form-check-label fw-semibold" for="cancelarEstanciaProblema">
+              ¿Cancelar estancia por problema de habitación? (Falla/Reclamo)
+            </label>
+          </div>
+          
+          <div class="mb-3 d-none" id="pago_div_estado_hab">
+            <label class="form-label fw-semibold">Estado final de la habitación</label>
+            <select name="estado_habitacion" id="estadoHabitacion" class="form-select">
+              <option value="MANTENIMIENTO" selected>En Mantenimiento (Recomendado por falla)</option>
+              <option value="LIMPIEZA">En Limpieza</option>
+            </select>
+            <div class="field-help text-danger mt-1">Se exonerarán todos los cargos de la estancia y se finalizará de inmediato.</div>
+          </div>
+
           <div class="d-flex justify-content-end gap-2">
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Volver</button>
-            <button type="submit" class="btn btn-warning">Solicitar</button>
+            <button type="submit" class="btn btn-warning">Proceder</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Cancelar Estancia Sin Pago (Obs. 1 – Escenario 3) -->
+<div class="modal fade" id="modalCancelarSinPago" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 20px 40px rgba(0,0,0,0.12);">
+      <div class="modal-header border-0 pb-0" style="background: linear-gradient(135deg, #fee2e2, #fef2f2); border-radius: 12px 12px 0 0;">
+        <div>
+          <h6 class="fw-bold mb-1" style="color: #991b1b;">
+            <i class="bi bi-x-octagon-fill me-2"></i>Cancelar Estancia por Problema de Habitación
+          </h6>
+          <p class="text-muted mb-0" style="font-size: 12px;">Sin pago previo — No se generará reembolso</p>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-danger py-2 px-3 mb-3" style="font-size: 13px; border-radius: 8px;">
+          <i class="bi bi-shield-exclamation me-1"></i>
+          <strong>Acción irreversible.</strong> Se exonerarán todos los cargos, la estancia y reserva quedarán canceladas, y la habitación pasará al estado seleccionado.
+          <br><strong>No se generará ningún reembolso</strong> ya que no existe pago registrado.
+        </div>
+
+        <form id="formCancelarSinPago" method="post" action="{% url 'cancelar_estancia_sin_pago' estancia.id %}">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold" style="font-size: 13px;">Motivo de la cancelación <span class="text-danger">*</span></label>
+            <textarea name="motivo" class="form-control" rows="3" required
+              placeholder="Ej: La habitación presenta cucarachas / fuga de agua / aire acondicionado no funciona..."
+              style="border-radius: 8px; font-size: 13px;"></textarea>
+            <div class="form-text text-muted">Campo obligatorio. Se registrará en la auditoría del sistema.</div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold" style="font-size: 13px;">Estado final de la habitación</label>
+            <select name="estado_habitacion_nopago" class="form-select" style="border-radius: 8px; font-size: 13px;">
+              <option value="MANTENIMIENTO" selected>🔧 En Mantenimiento (Recomendado por falla grave)</option>
+              <option value="LIMPIEZA">🧹 En Limpieza (Problema menor / estético)</option>
+            </select>
+            <div class="form-text text-danger mt-1">
+              <i class="bi bi-info-circle me-1"></i>Todos los cargos serán exonerados y el saldo quedará en S/. 0.00.
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"
+              style="border-radius: 8px;">Volver</button>
+            <button type="submit" class="btn btn-danger fw-semibold" style="border-radius: 8px;"
+              onclick="return confirm('¿Confirmar cancelación de la estancia? Esta acción no se puede deshacer.')">
+              <i class="bi bi-x-octagon me-1"></i>Cancelar Estancia
+            </button>
           </div>
         </form>
       </div>
@@ -768,7 +855,23 @@
     document.getElementById('formReembolso').action = '/pagos/' + pagoId + '/reembolso/';
     document.getElementById('maxReembolso').textContent = montoMax.toFixed(2);
     document.getElementById('montoReembolso').max = montoMax;
+    document.getElementById('montoReembolso').value = montoMax.toFixed(2);
+    
+    // Resetear los inputs de cancelación
+    const cancelSwitch = document.getElementById('cancelarEstanciaProblema');
+    if (cancelSwitch) {
+      cancelSwitch.checked = false;
+      toggleCancelacionEstancia(cancelSwitch);
+    }
+    
     new bootstrap.Modal(document.getElementById('modalReembolso')).show();
+  }
+
+  function toggleCancelacionEstancia(checkbox) {
+    const divEstado = document.getElementById('pago_div_estado_hab');
+    if (divEstado) {
+      divEstado.classList.toggle('d-none', !checkbox.checked);
+    }
   }
 
   // Cargar habitaciones disponibles al abrir modal de cambio

@@ -15,7 +15,12 @@ from views_frontend import (
     usuarios_lista, usuario_editar, usuario_nuevo, usuario_eliminar,
     api_habitaciones_disponibles, api_consulta_dni,
     reserva_editar, reserva_cancelar, registrar_pago_anticipo,
-    solicitar_reembolso, aprobar_reembolso, cambiar_habitacion
+    solicitar_reembolso, aprobar_reembolso, cambiar_habitacion,
+    cancelar_estancia_sin_pago,
+    tickets_lista, ticket_nuevo, ticket_detalle, ticket_iniciar,
+    ticket_resolver, ticket_cerrar, ticket_reabrir, ticket_seguimiento,
+    ticket_agregar_cargo, reembolsos_lista_admin,
+    api_ocupacion_habitaciones, api_habitaciones_housekeeping_recientes
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_yasg.views import get_schema_view
@@ -90,7 +95,20 @@ urlpatterns = [
     path('estancias/<int:estancia_id>/pago/', registrar_pago, name='registrar_pago'),
     path('estancias/<int:estancia_id>/checkout/', checkout_view, name='checkout'),
     path('estancias/<int:estancia_id>/cambiar-habitacion/', cambiar_habitacion, name='cambiar_habitacion'),
+    path('estancias/<int:estancia_id>/cancelar-sin-pago/', cancelar_estancia_sin_pago, name='cancelar_estancia_sin_pago'),
+    path('api/ocupacion/', api_ocupacion_habitaciones, name='api_ocupacion'),
+    path('api/housekeeping-recientes/', api_habitaciones_housekeeping_recientes, name='api_housekeeping_recientes'),
     path('housekeeping/', housekeeping_view, name='housekeeping'),
+    path('tickets/', tickets_lista, name='tickets_lista'),
+    path('tickets/nuevo/', ticket_nuevo, name='ticket_nuevo'),
+    path('tickets/<int:ticket_id>/', ticket_detalle, name='ticket_detalle'),
+    path('tickets/<int:ticket_id>/iniciar/', ticket_iniciar, name='ticket_iniciar'),
+    path('tickets/<int:ticket_id>/resolver/', ticket_resolver, name='ticket_resolver'),
+    path('tickets/<int:ticket_id>/cerrar/', ticket_cerrar, name='ticket_cerrar'),
+    path('tickets/<int:ticket_id>/reabrir/', ticket_reabrir, name='ticket_reabrir'),
+    path('tickets/<int:ticket_id>/seguimiento/', ticket_seguimiento, name='ticket_seguimiento'),
+    path('tickets/<int:ticket_id>/cargo/', ticket_agregar_cargo, name='ticket_agregar_cargo'),
+    path('reembolsos/', reembolsos_lista_admin, name='reembolsos_lista_admin'),
     path('housekeeping/<int:hab_id>/estado/', housekeeping_estado, name='housekeeping_estado'),
     path('reportes/', reportes_view, name='reportes'),
     path('usuarios/', usuarios_lista, name='usuarios_lista'),

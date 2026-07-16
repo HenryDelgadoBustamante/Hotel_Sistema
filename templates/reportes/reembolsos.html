@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+{% block title %}Gestión de Reembolsos{% endblock %}
+{% block page_title %}Administración - Gestión de Reembolsos{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h5 class="text-secondary mb-0">Solicitudes de Reembolsos de Clientes</h5>
+  </div>
+  <div>
+    <div class="btn-group btn-group-sm" role="group">
+      <a href="?" class="btn btn-outline-secondary {% if not f_estado %}active{% endif %}">Todos</a>
+      <a href="?estado=SOLICITADO" class="btn btn-outline-warning {% if f_estado == 'SOLICITADO' %}active{% endif %}">Solicitados</a>
+      <a href="?estado=APROBADO" class="btn btn-outline-success {% if f_estado == 'APROBADO' %}active{% endif %}">Aprobados</a>
+      <a href="?estado=RECHAZADO" class="btn btn-outline-danger {% if f_estado == 'RECHAZADO' %}active{% endif %}">Rechazados</a>
+    </div>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" style="min-width: 900px;">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-4" style="width: 130px;">Fecha Solicitud</th>
+            <th style="width: 140px;">Hab. / Estancia</th>
+            <th>Cliente</th>
+            <th>Pago Original</th>
+            <th>Monto Reembolso</th>
+            <th>Motivo de Solicitud</th>
+            <th style="width: 120px;">Estado</th>
+            <th>Resolución / Obs.</th>
+            <th class="pe-4 text-end" style="width: 120px;">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in reembolsos %}
+          <tr>
+            <td class="ps-4">
+              <div class="d-flex flex-column text-xs text-muted">
+                <span class="fw-semibold text-dark-emphasis">{{ r.fecha_solicitud|date:"d/m/Y" }}</span>
+                <span>{{ r.fecha_solicitud|time:"H:i" }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="d-flex flex-column">
+                <span class="badge bg-secondary-subtle text-secondary px-2 py-1 rounded fw-bold text-xs" style="max-width: 80px;">
+                  {% if r.pago.folio %}
+                  Hab. {{ r.pago.folio.estancia.habitacion.numero }}
+                  {% else %}
+                  Hab. {{ r.pago.reserva.habitacion.numero }}
+                  {% endif %}
+                </span>
+                <small class="text-muted text-xs mt-1">
+                  {% if r.pago.folio %}
+                  Estancia #{{ r.pago.folio.estancia.id }}
+                  {% else %}
+                  Reserva #{{ r.pago.reserva.id }}
+                  {% endif %}
+                </small>
+              </div>
+            </td>
+            <td>
+              <div class="d-flex flex-column">
+                <span class="fw-semibold text-dark">
+                  {% if r.pago.folio %}
+                  {{ r.pago.folio.estancia.reserva.huesped.nombres }} {{ r.pago.folio.estancia.reserva.huesped.apellidos }}
+                  {% else %}
+                  {{ r.pago.reserva.huesped.nombres }} {{ r.pago.reserva.huesped.apellidos }}
+                  {% endif %}
+                </span>
+                <small class="text-muted text-xs">
+                  Doc: 
+                  {% if r.pago.folio %}
+                  {{ r.pago.folio.estancia.reserva.huesped.num_doc }}
+                  {% else %}
+                  {{ r.pago.reserva.huesped.num_doc }}
+                  {% endif %}
+                </small>
+              </div>
+            </td>
+            <td>
+              <div class="d-flex flex-column text-xs">
+                <span class="fw-medium text-dark">S/. {{ r.pago.monto }}</span>
+                <span class="text-muted text-uppercase">{{ r.pago.metodo_pago }}</span>
+              </div>
+            </td>
+            <td>
+              <span class="fw-bold text-danger fs-6">S/. {{ r.monto }}</span>
+            </td>
+            <td>
+              <span class="text-muted text-xs text-truncate d-inline-block" style="max-width: 200px;" title="{{ r.motivo }}">{{ r.motivo }}</span>
+              <div class="text-muted" style="font-size: 10px;">Solicitó: {{ r.solicitado_por.username }}</div>
+            </td>
+            <td>
+              {% if r.estado == 'SOLICITADO' %}
+              <span class="badge bg-warning text-dark px-2 rounded">Solicitado</span>
+              {% elif r.estado == 'APROBADO' %}
+              <span class="badge bg-success px-2 rounded">Aprobado</span>
+              {% elif r.estado == 'RECHAZADO' %}
+              <span class="badge bg-danger px-2 rounded">Rechazado</span>
+              {% endif %}
+            </td>
+            <td class="text-xs">
+              {% if r.estado != 'SOLICITADO' %}
+              <div class="d-flex flex-column">
+                <span class="fw-medium text-dark">{{ r.observacion|default:"Sin observaciones" }}</span>
+                <span class="text-muted" style="font-size: 10px;">Resuelto por: {{ r.aprobado_por.username }} el {{ r.fecha_resolucion|date:"d/m/Y H:i" }}</span>
+              </div>
+              {% else %}
+              <span class="text-muted italic">Pendiente de resolución</span>
+              {% endif %}
+            </td>
+            <td class="pe-4 text-end">
+              {% if r.estado == 'SOLICITADO' %}
+              <button class="btn btn-sm btn-primary py-1 px-2.5 fw-semibold" onclick="abrirResolverModal('{{ r.id }}', '{{ r.monto }}', '{{ r.motivo|escapejs }}')">
+                Resolver
+              </button>
+              {% else %}
+              <button class="btn btn-sm btn-light border-0 py-1 px-2.5 text-muted fw-semibold" disabled>
+                Resuelto
+              </button>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="9" class="text-center py-5 text-muted">
+              <i class="bi bi-wallet2 fs-1 d-block mb-3 opacity-50"></i>
+              No hay solicitudes de reembolsos en este estado.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RESOLVER REEMBOLSO -->
+<div class="modal fade" id="resolverReembolsoModal" tabindex="-1" aria-labelledby="resolverReembolsoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-dark text-white border-0 py-3">
+        <h5 class="modal-title fw-bold" id="resolverReembolsoModalLabel"><i class="bi bi-shield-check me-2"></i>Resolver Solicitud de Reembolso</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="resolverReembolsoForm" method="post" action="">
+        {% csrf_token %}
+        <input type="hidden" name="accion" id="reembolsoAccion" value="APROBAR">
+        
+        <div class="modal-body p-4 text-sm">
+          <div class="p-3 bg-light rounded mb-3">
+            <div class="row">
+              <div class="col-6 mb-2">
+                <span class="fw-semibold text-secondary d-block">Monto a Reembolsar:</span>
+                <span class="fw-bold text-danger fs-5" id="modalReembolsoMonto">S/. 0.00</span>
+              </div>
+              <div class="col-12">
+                <span class="fw-semibold text-secondary d-block">Motivo de Solicitud:</span>
+                <span class="text-dark italic" id="modalReembolsoMotivo"></span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label for="observacionReembolso" class="form-label fw-semibold text-secondary">Observación de la Resolución <span class="text-danger">*</span></label>
+            <textarea name="observacion" id="observacionReembolso" rows="3" class="form-control" placeholder="Escribe el motivo de la aprobación o del rechazo..." required></textarea>
+            <div class="form-text">Esta nota quedará en el historial contable y auditorías.</div>
+          </div>
+          
+          <div class="alert alert-info py-2 px-3 text-xs mb-0">
+            <i class="bi bi-info-circle-fill me-1"></i> **Aprobar el reembolso** exonerará los cargos pendientes de la estancia en el folio, cerrará el folio y finalizará la estancia del huésped de forma automática.
+          </div>
+        </div>
+        
+        <div class="modal-footer border-top-0 pt-0 gap-2">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
+          <button type="submit" class="btn btn-danger" onclick="setReembolsoAccion('RECHAZAR')"><i class="bi bi-x-circle me-1"></i>Rechazar Reembolso</button>
+          <button type="submit" class="btn btn-success" onclick="setReembolsoAccion('APROBAR')"><i class="bi bi-check-circle me-1"></i>Aprobar y Finalizar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  let modalInstance = null;
+  
+  function abrirResolverModal(reembolsoId, monto, motivo) {
+    const form = document.getElementById('resolverReembolsoForm');
+    form.action = `/reembolsos/${reembolsoId}/resolver/`;
+    
+    document.getElementById('modalReembolsoMonto').innerText = `S/. ${parseFloat(monto).toFixed(2)}`;
+    document.getElementById('modalReembolsoMotivo').innerText = motivo;
+    document.getElementById('observacionReembolso').value = '';
+    
+    if(!modalInstance){
+      modalInstance = new bootstrap.Modal(document.getElementById('resolverReembolsoModal'));
+    }
+    modalInstance.show();
+  }
+  
+  function setReembolsoAccion(accion) {
+    document.getElementById('reembolsoAccion').value = accion;
+  }
+</script>
+
+{% endblock %}

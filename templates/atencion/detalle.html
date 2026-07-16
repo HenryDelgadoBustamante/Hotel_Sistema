@@ -1,0 +1,326 @@
+{% extends 'base.html' %}
+{% block title %}Ticket {{ ticket.numero_atencion }}{% endblock %}
+{% block page_title %}Atención al Cliente - Detalle de Ticket{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h5 class="text-secondary mb-0">Gestión de Ticket de Atención</h5>
+  </div>
+  <div>
+    <a href="{% url 'tickets_lista' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Regresar a la Lista</a>
+  </div>
+</div>
+
+<div class="row g-4">
+  
+  <!-- Info Ficha Ticket -->
+  <div class="col-lg-4">
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-light border-0 py-3 d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-ticket-perforated-fill text-primary me-2"></i>Ficha de Ticket</h6>
+        <span class="badge {% if ticket.estado == 'ABIERTA' %}bg-primary{% elif ticket.estado == 'PROCESO' %}bg-info text-dark{% elif ticket.estado == 'RESUELTA' %}bg-success{% elif ticket.estado == 'CERRADA' %}bg-secondary{% else %}bg-warning text-dark{% endif %} px-2.5 rounded">
+          {{ ticket.get_estado_display }}
+        </span>
+      </div>
+      
+      <div class="card-body">
+        <div class="mb-3 text-center py-2 bg-light rounded">
+          <span class="fs-4 fw-bold text-primary">{{ ticket.numero_atencion }}</span>
+        </div>
+        
+        <table class="table table-sm table-borderless text-sm mb-0">
+          <tbody>
+            <tr>
+              <td class="fw-semibold text-secondary py-1.5" style="width: 120px;">Habitación:</td>
+              <td class="py-1.5"><span class="badge bg-secondary-subtle text-secondary fw-bold px-2 py-1 rounded">Hab. {{ ticket.estancia.habitacion.numero }}</span></td>
+            </tr>
+            <tr>
+              <td class="fw-semibold text-secondary py-1.5">Huésped:</td>
+              <td class="py-1.5 fw-semibold text-dark">{{ ticket.estancia.reserva.huesped.nombres }} {{ ticket.estancia.reserva.huesped.apellidos }}</td>
+            </tr>
+            <tr>
+              <td class="fw-semibold text-secondary py-1.5">Documento:</td>
+              <td class="py-1.5 text-muted">{{ ticket.estancia.reserva.huesped.num_doc }}</td>
+            </tr>
+            <tr>
+              <td class="fw-semibold text-secondary py-1.5">Categoría:</td>
+              <td class="py-1.5 fw-medium text-dark-emphasis">{{ ticket.get_categoria_display }}</td>
+            </tr>
+            <tr>
+              <td class="fw-semibold text-secondary py-1.5">Prioridad:</td>
+              <td class="py-1.5">
+                {% if ticket.prioridad == 'URGENTE' %}
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2">Urgente</span>
+                {% elif ticket.prioridad == 'ALTA' %}
+                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2">Alta</span>
+                {% elif ticket.prioridad == 'MEDIA' %}
+                <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-2">Media</span>
+                {% else %}
+                <span class="badge bg-light text-dark border px-2">Baja</span>
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <td class="fw-semibold text-secondary py-1.5">Responsable:</td>
+              <td class="py-1.5 fw-semibold text-dark">{{ ticket.get_responsable_display }}</td>
+            </tr>
+            <tr>
+              <td class="fw-semibold text-secondary py-1.5">Recepcionista:</td>
+              <td class="py-1.5 text-muted">{{ ticket.recepcionista.username|default:"Sistema" }}</td>
+            </tr>
+            <tr>
+              <td class="fw-semibold text-secondary py-1.5">Registro:</td>
+              <td class="py-1.5 text-muted">{{ ticket.fecha|date:"d/m/Y" }} {{ ticket.hora|time:"H:i" }}</td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <hr class="my-3 text-muted opacity-25">
+        
+        <div class="mb-3">
+          <label class="fw-semibold text-secondary text-xs text-uppercase mb-1 d-block">Descripción Inicial:</label>
+          <div class="p-2.5 bg-light rounded text-sm text-dark-emphasis border-start border-primary border-3" style="white-space: pre-wrap;">{{ ticket.descripcion }}</div>
+        </div>
+
+        {% if ticket.solucion %}
+        <div class="mb-3">
+          <label class="fw-semibold text-success text-xs text-uppercase mb-1 d-block">Solución Aplicada:</label>
+          <div class="p-2.5 bg-success-subtle rounded text-sm text-success-emphasis border-start border-success border-3" style="white-space: pre-wrap;">{{ ticket.solucion }}</div>
+        </div>
+        {% endif %}
+
+        {% if ticket.motivo_reapertura %}
+        <div class="mb-3">
+          <label class="fw-semibold text-danger text-xs text-uppercase mb-1 d-block">Motivo de Reapertura:</label>
+          <div class="p-2.5 bg-danger-subtle rounded text-sm text-danger-emphasis border-start border-danger border-3" style="white-space: pre-wrap;">{{ ticket.motivo_reapertura }}</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    
+    <!-- Integración Caja: Registrar Cargo extra -->
+    {% if ticket.estancia.estado == 'ACTIVA' and ticket.estado != 'CERRADA' %}
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-light border-0 py-3">
+        <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-wallet2 text-primary me-2"></i>Cargar a la Habitación</h6>
+      </div>
+      <div class="card-body">
+        <form method="post" action="{% url 'ticket_agregar_cargo' ticket.id %}">
+          {% csrf_token %}
+          <div class="mb-2">
+            <input type="text" name="concepto" class="form-control form-control-sm" placeholder="Ej. Servicio Minibar, Late Check-out..." required>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text">S/.</span>
+                <input type="number" step="0.01" name="monto" class="form-control" placeholder="Monto" min="0.01" required>
+              </div>
+            </div>
+            <div class="col-6">
+              <select name="tipo" class="form-select form-select-sm">
+                <option value="CONSUMO">Consumo/Minibar</option>
+                <option value="SERVICIOS">Servicios/Tours</option>
+                <option value="OTRO">Otros Cargos</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-sm btn-outline-success w-100"><i class="bi bi-plus-lg me-1"></i>Asociar Cargo al Folio</button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Gestión de Flujo y Seguimiento -->
+  <div class="col-lg-8">
+    
+    <!-- Botones de Acción de Estado -->
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body p-3 d-flex flex-wrap gap-2 align-items-center">
+        <span class="fw-bold text-secondary me-2 text-sm">Flujo de Atención:</span>
+        
+        <!-- Iniciar trabajo (Abierta -> Proceso) -->
+        {% if ticket.estado == 'ABIERTA' %}
+        <form method="post" action="{% url 'ticket_iniciar' ticket.id %}" class="m-0">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-outline-primary px-3 fw-semibold"><i class="bi bi-play-fill me-1"></i>Iniciar Trabajo</button>
+        </form>
+        {% endif %}
+        
+        <!-- Resolver (Proceso/Pendiente -> Resuelta) -->
+        {% if ticket.estado == 'ABIERTA' or ticket.estado == 'PROCESO' or ticket.estado == 'PENDIENTE' %}
+        <button type="button" class="btn btn-sm btn-success px-3 fw-semibold" data-bs-toggle="modal" data-bs-target="#modalResolver">
+          <i class="bi bi-check-circle-fill me-1"></i>Resolver Solicitud
+        </button>
+        {% endif %}
+        
+        <!-- Cerrar definitivamente (Resuelta -> Cerrada) -->
+        {% if ticket.estado == 'RESUELTA' %}
+        <form method="post" action="{% url 'ticket_cerrar' ticket.id %}" class="m-0">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-primary px-3 fw-semibold"><i class="bi bi-lock-fill me-1"></i>Cerrar Atención</button>
+        </form>
+        {% endif %}
+        
+        <!-- Reabrir (Resuelta/Cerrada -> Proceso) -->
+        {% if ticket.estado == 'RESUELTA' or ticket.estado == 'CERRADA' %}
+        <button type="button" class="btn btn-sm btn-outline-danger px-3 fw-semibold" data-bs-toggle="modal" data-bs-target="#modalReabrir">
+          <i class="bi bi-arrow-repeat me-1"></i>Reabrir Solicitud
+        </button>
+        {% endif %}
+        
+        {% if ticket.estado == 'CERRADA' %}
+        <span class="text-muted text-xs ms-auto"><i class="bi bi-info-circle-fill"></i> El ticket está cerrado y ya no admite seguimientos o modificaciones.</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Timeline Seguimiento -->
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-light border-0 py-3">
+        <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-activity text-primary me-2"></i>Historial de Seguimiento e Interacciones</h6>
+      </div>
+      
+      <div class="card-body p-4">
+        <!-- Timeline CSS minimalista -->
+        <style>
+          .timeline-steps {
+            position: relative;
+            padding-left: 2rem;
+            border-left: 2px solid #e2e8f0;
+          }
+          .timeline-item {
+            position: relative;
+            margin-bottom: 2rem;
+          }
+          .timeline-item:last-child {
+            margin-bottom: 0;
+          }
+          .timeline-badge {
+            position: absolute;
+            left: -2.75rem;
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 50%;
+            background-color: #cbd5e1;
+            border: 4px solid #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .timeline-badge.active {
+            background-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+          }
+        </style>
+        
+        <div class="timeline-steps">
+          {% for seg in seguimientos %}
+          <div class="timeline-item">
+            <!-- Badge de punto con sombra -->
+            <div class="timeline-badge {% if forloop.last %}active{% endif %}"></div>
+            
+            <div class="d-flex justify-content-between align-items-center mb-1 flex-wrap">
+              <span class="fw-bold text-dark text-sm">{{ seg.usuario.username|default:"Sistema" }}</span>
+              <span class="text-muted text-xs"><i class="bi bi-clock me-1"></i>{{ seg.fecha|date:"d/m/Y" }} a las {{ seg.hora|time:"H:i" }}</span>
+            </div>
+            
+            <div class="p-3 bg-light rounded text-sm text-dark-emphasis mb-2 shadow-xs border">
+              {{ seg.comentario }}
+            </div>
+            
+            <span class="badge bg-secondary-subtle text-secondary text-xs">Estado del ticket: {{ seg.estado_ticket }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    
+    <!-- Agregar Comentario Rápido -->
+    {% if ticket.estado != 'CERRADA' %}
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-light border-0 py-3">
+        <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-chat-dots text-primary me-2"></i>Agregar Comentario / Actualización</h6>
+      </div>
+      <div class="card-body">
+        <form method="post" action="{% url 'ticket_seguimiento' ticket.id %}">
+          {% csrf_token %}
+          <div class="mb-3">
+            <textarea name="comentario" rows="3" class="form-control" placeholder="Escribe un avance, comentario o consulta aquí..." required></textarea>
+          </div>
+          
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+              <label class="text-sm fw-medium text-secondary mb-0">Cambiar estado a:</label>
+              <select name="estado" class="form-select form-select-sm" style="width: 150px;">
+                <option value="">Mantener estado</option>
+                <option value="PROCESO" {% if ticket.estado == 'PROCESO' %}selected{% endif %}>En Proceso</option>
+                <option value="PENDIENTE" {% if ticket.estado == 'PENDIENTE' %}selected{% endif %}>Pendiente</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-sm btn-primary px-4"><i class="bi bi-send-fill me-1"></i>Enviar Comentario</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- MODAL RESOLVER TICKET -->
+<div class="modal fade" id="modalResolver" tabindex="-1" aria-labelledby="modalResolverLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-success text-white border-0 py-3">
+        <h5 class="modal-title fw-bold" id="modalResolverLabel"><i class="bi bi-check-circle me-2"></i>Resolver Solicitud</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post" action="{% url 'ticket_resolver' ticket.id %}">
+        {% csrf_token %}
+        <div class="modal-body p-4">
+          <div class="mb-3">
+            <label for="solucion" class="form-label fw-semibold text-secondary">Solución Implementada <span class="text-danger">*</span></label>
+            <textarea name="solucion" id="solucion" rows="3" class="form-control" placeholder="Detalla qué acciones realizaste para dar solución al requerimiento..." required></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="observacion_resolucion" class="form-label fw-semibold text-secondary">Observaciones Adicionales (Opcional)</label>
+            <textarea name="observacion_resolucion" id="observacion_resolucion" rows="2" class="form-control" placeholder="Alguna nota extra para el cierre..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer border-top-0 pt-0">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success px-4">Confirmar Solución</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL REABRIR TICKET -->
+<div class="modal fade" id="modalReabrir" tabindex="-1" aria-labelledby="modalReabrirLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-danger text-white border-0 py-3">
+        <h5 class="modal-title fw-bold" id="modalReabrirLabel"><i class="bi bi-arrow-repeat me-2"></i>Reabrir Solicitud</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post" action="{% url 'ticket_reabrir' ticket.id %}">
+        {% csrf_token %}
+        <div class="modal-body p-4">
+          <div class="mb-3">
+            <label for="motivo_reapertura" class="form-label fw-semibold text-secondary">Motivo de Reapertura <span class="text-danger">*</span></label>
+            <textarea name="motivo_reapertura" id="motivo_reapertura" rows="3" class="form-control" placeholder="Detalla por qué se reabre el ticket o el inconveniente reportado..." required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer border-top-0 pt-0">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-danger px-4">Reabrir Ticket</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

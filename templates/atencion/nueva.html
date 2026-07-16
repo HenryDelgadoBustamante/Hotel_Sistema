@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% block title %}Registrar Solicitud{% endblock %}
+{% block page_title %}Atención al Cliente - Nueva Solicitud{% endblock %}
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-light border-0 py-3 d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0 text-dark fw-bold"><i class="bi bi-chat-left-text me-2 text-primary"></i>Registrar Solicitud / Incidencia</h5>
+        <a href="{% url 'tickets_lista' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Regresar</a>
+      </div>
+      
+      <div class="card-body p-4">
+        <form method="post" action="" id="formNuevoTicket">
+          {% csrf_token %}
+          
+          <!-- Selector de Hospedaje Activo -->
+          <div class="mb-4">
+            <label for="estancia" class="form-label fw-semibold text-secondary">Hospedaje Activo (Habitación - Huésped) <span class="text-danger">*</span></label>
+            <select name="estancia" id="estancia" class="form-select" required>
+              <option value="" disabled selected>-- Selecciona la Habitación Activa --</option>
+              {% for est in estancias %}
+              <option value="{{ est.id }}">
+                Hab. {{ est.habitacion.numero }} – {{ est.reserva.huesped.nombres }} {{ est.reserva.huesped.apellidos }} (Doc: {{ est.reserva.huesped.num_doc }})
+              </option>
+              {% endfor %}
+            </select>
+            <div class="form-text">Solo las habitaciones con huéspedes actualmente hospedados pueden registrar atenciones.</div>
+          </div>
+          
+          <div class="row g-3 mb-4">
+            <!-- Categoría -->
+            <div class="col-md-6">
+              <label for="categoria" class="form-label fw-semibold text-secondary">Categoría de la Solicitud <span class="text-danger">*</span></label>
+              <select name="categoria" id="categoria" class="form-select" onchange="autoAsignarArea()" required>
+                <option value="" disabled selected>-- Elige una Categoría --</option>
+                {% for cod, nom in categorias %}
+                <option value="{{ cod }}">{{ nom }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <!-- Prioridad -->
+            <div class="col-md-6">
+              <label for="prioridad" class="form-label fw-semibold text-secondary">Prioridad <span class="text-danger">*</span></label>
+              <select name="prioridad" id="prioridad" class="form-select" required>
+                {% for cod, nom in prioridades %}
+                <option value="{{ cod }}" {% if cod == 'MEDIA' %}selected{% endif %}>{{ nom }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <!-- Responsable (Área) -->
+          <div class="mb-4">
+            <label for="responsable" class="form-label fw-semibold text-secondary">Área Responsable <span class="text-danger">*</span></label>
+            <select name="responsable" id="responsable" class="form-select" required>
+              {% for cod, nom in areas %}
+              <option value="{{ cod }}" {% if cod == 'RECEPCION' %}selected{% endif %}>{{ nom }}</option>
+              {% endfor %}
+            </select>
+            <div class="form-text" id="responsableHelp">Área responsable de procesar y solucionar esta solicitud.</div>
+          </div>
+
+          <!-- Descripción -->
+          <div class="mb-4">
+            <label for="descripcion" class="form-label fw-semibold text-secondary">Detalle de la Solicitud / Incidencia <span class="text-danger">*</span></label>
+            <textarea name="descripcion" id="descripcion" rows="4" class="form-control" placeholder="Describe claramente lo que el huésped solicita o el problema reportado..." required></textarea>
+          </div>
+
+          <!-- Botones de Acción -->
+          <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+            <a href="{% url 'tickets_lista' %}" class="btn btn-light">Cancelar</a>
+            <button type="submit" class="btn btn-primary px-4"><i class="bi bi-check-lg me-1"></i>Generar Ticket de Atención</button>
+          </div>
+          
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function autoAsignarArea() {
+    const categoriaSelect = document.getElementById('categoria');
+    const responsableSelect = document.getElementById('responsable');
+    const helpText = document.getElementById('responsableHelp');
+    const valor = categoriaSelect.value;
+    
+    if (valor === 'LIMPIEZA') {
+      responsableSelect.value = 'HOUSEKEEPING';
+      helpText.innerHTML = '<span class="text-success"><i class="bi bi-info-circle-fill"></i> Asignado automáticamente a Housekeeping. La habitación pasará a estado En Limpieza.</span>';
+    } else if (valor === 'MANTENIMIENTO') {
+      responsableSelect.value = 'MANTENIMIENTO';
+      helpText.innerHTML = '<span class="text-warning"><i class="bi bi-info-circle-fill"></i> Asignado automáticamente a Mantenimiento. La habitación pasará a Mantenimiento.</span>';
+    } else {
+      responsableSelect.value = 'RECEPCION';
+      helpText.innerText = 'Área responsable de procesar y solucionar esta solicitud.';
+    }
+  }
+</script>
+
+{% endblock %}

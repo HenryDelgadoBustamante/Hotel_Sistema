@@ -218,6 +218,7 @@ def reserva_nueva(request):
     if not _es_recepcionista(request.user):
         return _acceso_denegado(request)
     if request.method == 'POST':
+        from django.db import transaction
         try:
             huesped_id = request.POST.get('huesped_id')
             if huesped_id:
@@ -243,36 +244,72 @@ def reserva_nueva(request):
                 if not fecha_entrada or not fecha_salida:
                     raise ValidationError('Debes indicar las fechas de entrada y salida.')
 
-            reserva = Reserva.objects.create(
-                hotel=habitacion.hotel,
-                huesped=huesped,
-                habitacion=habitacion,
-                fecha_entrada=fecha_entrada,
-                fecha_salida=fecha_salida,
-                fecha_hora_entrada=fecha_hora_entrada,
-                modalidad=modalidad,
-                duracion_horas=duracion_horas,
-                num_adultos=int(request.POST.get('num_adultos', 1)),
-                origen=request.POST.get('origen', 'DIRECTO'),
-                observaciones=request.POST.get('observaciones', ''),
-            )
-            reserva.precio_total = reserva.calcular_precio()
-            reserva.save()
+            with transaction.atomic():
+                reserva = Reserva.objects.create(
+                    hotel=habitacion.hotel,
+                    huesped=huesped,
+                    habitacion=habitacion,
+                    fecha_entrada=fecha_entrada,
+                    fecha_salida=fecha_salida,
+                    fecha_hora_entrada=fecha_hora_entrada,
+                    modalidad=modalidad,
+                    duracion_horas=duracion_horas,
+                    num_adultos=int(request.POST.get('num_adultos', 1)),
+                    origen=request.POST.get('origen', 'DIRECTO'),
+                    observaciones=request.POST.get('observaciones', ''),
+                )
+                reserva.precio_total = reserva.calcular_precio()
+                reserva.save()
 
-            # Registrar auditoria
-            from reportes.models import registrar_auditoria
-            registrar_auditoria(
-                usuario=request.user,
-                accion="Crear Reserva",
-                registro_id=reserva.id,
-                tabla_afectada="reservas_reserva",
-                estado_nuevo=f"ID: {reserva.id}, Huesped: {reserva.huesped.nombres} {reserva.huesped.apellidos}, Hab: {reserva.habitacion.numero}, Total: S/. {reserva.precio_total}"
-            )
+                # Pago anticipado opcional
+                registrar_pago = request.POST.get('registrar_pago') == 'on'
+                if registrar_pago:
+                    monto = request.POST.get('pago_monto')
+                    metodo_pago = request.POST.get('pago_metodo_pago', Pago.EFECTIVO)
+                    transaccion_id = request.POST.get('pago_transaccion_id') or None
 
-            messages.success(request, f'Reserva #{reserva.id} creada correctamente.')
-            if request.POST.get('accion') == 'checkin':
-                return redirect('reserva_checkin', reserva_id=reserva.id)
-            return redirect('reservas_lista')
+                    if not monto:
+                        raise ValidationError('Debes especificar un monto para el pago anticipado.')
+                    
+                    monto_decimal = Decimal(monto)
+                    if monto_decimal <= 0:
+                        raise ValidationError('El monto del pago debe ser mayor a cero.')
+                    if monto_decimal > reserva.precio_total:
+                        raise ValidationError(f'El monto del pago no puede ser mayor que el total de la reserva (S/. {reserva.precio_total:.2f}).')
+                    if metodo_pago != Pago.EFECTIVO and not transaccion_id:
+                        raise ValidationError('Debes ingresar el ID de transacción para pagos electrónicos/bancarios.')
+                    
+                    pago = Pago.objects.create(
+                        reserva=reserva,
+                        monto=monto_decimal,
+                        metodo_pago=metodo_pago,
+                        transaccion_id=transaccion_id
+                    )
+
+                    # Registrar auditoría de pago
+                    from reportes.models import registrar_auditoria
+                    registrar_auditoria(
+                        usuario=request.user,
+                        accion="Registrar Pago Anticipado",
+                        registro_id=pago.id,
+                        tabla_afectada="estancias_pago",
+                        estado_nuevo=f"ID: {pago.id}, Reserva: {reserva.id}, Monto: S/. {monto_decimal}, Metodo: {metodo_pago}"
+                    )
+
+                # Registrar auditoria
+                from reportes.models import registrar_auditoria
+                registrar_auditoria(
+                    usuario=request.user,
+                    accion="Crear Reserva",
+                    registro_id=reserva.id,
+                    tabla_afectada="reservas_reserva",
+                    estado_nuevo=f"ID: {reserva.id}, Huesped: {reserva.huesped.nombres} {reserva.huesped.apellidos}, Hab: {reserva.habitacion.numero}, Total: S/. {reserva.precio_total}"
+                )
+
+                messages.success(request, f'Reserva #{reserva.id} creada correctamente.')
+                if request.POST.get('accion') == 'checkin':
+                    return redirect('reserva_checkin', reserva_id=reserva.id)
+                return redirect('reservas_lista')
         except Exception as e:
             messages.error(request, f'Error al crear la reserva: {str(e)}')
 
@@ -1463,8 +1500,11 @@ def solicitar_reembolso(request, pago_id):
         redirect_url = redirect('reserva_detalle', reserva_id=pago.reserva.id)
 
     if request.method == 'POST':
+        from django.db import transaction
         monto_str = request.POST.get('monto')
         motivo = request.POST.get('motivo', '').strip()
+        cancelar_estancia_problema = 'cancelar_estancia_problema' in request.POST
+        estado_habitacion = request.POST.get('estado_habitacion', 'MANTENIMIENTO')
         
         if not monto_str or not motivo:
             messages.error(request, 'Debes ingresar monto y motivo del reembolso.')
@@ -1492,25 +1532,118 @@ def solicitar_reembolso(request, pago_id):
                 messages.error(request, f'Monto disponible para reembolsar: S/. {monto_disponible:.2f}')
                 return redirect_url
                 
-            reembolso = Reembolso.objects.create(
-                pago=pago,
-                monto=monto_decimal,
-                motivo=motivo,
-                estado=Reembolso.SOLICITADO,
-                solicitado_por=request.user
-            )
-            
-            # Registrar auditoria
-            from reportes.models import registrar_auditoria
-            registrar_auditoria(
-                usuario=request.user,
-                accion="Solicitar Reembolso",
-                registro_id=reembolso.id,
-                tabla_afectada="estancias_reembolso",
-                estado_nuevo=f"ID: {reembolso.id}, Pago: {pago.id}, Monto: S/. {monto_decimal}"
-            )
-            
-            messages.success(request, 'Solicitud de reembolso registrada correctamente.')
+            with transaction.atomic():
+                if cancelar_estancia_problema:
+                    # Caso 2: Cancelación total por problemas de la habitación (Responsabilidad del hotel)
+                    estancia = pago.folio.estancia if pago.folio else getattr(pago.reserva, 'estancia', None)
+                    reserva = pago.reserva if pago.reserva else (estancia.reserva if estancia else None)
+                    
+                    if estancia and estancia.estado == Estancia.ACTIVA:
+                        # 1. Exonerar todos los cargos de la estancia
+                        cargos = CargoEstancia.objects.filter(estancia=estancia)
+                        for cargo in cargos:
+                            cargo.exonerado = True
+                            cargo.motivo_exoneracion = f"Cancelación por problema en la habitación: {motivo}"
+                            cargo.exonerado_por = request.user
+                            cargo.save()
+                            
+                            # Auditoría de cada cargo exonerado
+                            from reportes.models import registrar_auditoria
+                            registrar_auditoria(
+                                usuario=request.user,
+                                accion="Cargo Exonerado (Problema de Hab.)",
+                                registro_id=cargo.id,
+                                tabla_afectada="estancias_cargoestancia",
+                                estado_nuevo=f"ID: {cargo.id}, Concepto: {cargo.concepto}, Monto: S/. {cargo.monto} -> Exonerado por problema"
+                            )
+                        
+                        # 2. Recalcular totales del folio
+                        folio = estancia.folio
+                        folio.calcular_totales()
+                        
+                        # 3. Finalizar la estancia con precio_final 0 y registrar check-out
+                        estancia.estado = Estancia.FINALIZADA
+                        estancia.fecha_checkout = timezone.now()
+                        estancia.precio_final = Decimal('0.00')
+                        estancia.save()
+                        
+                        # 4. Cerrar Folio
+                        folio.estado = Folio.CERRADO
+                        folio.save()
+                        
+                        # 5. Cancelar Reserva (se guarda antes de poner la habitación en mantenimiento para evitar ValidationError en clean())
+                        if reserva:
+                            reserva.estado = Reserva.CANCELADA
+                            reserva.motivo_cancelacion = f"Cancelada por problema en habitación ({estancia.habitacion.numero}): {motivo}"
+                            reserva.save()
+                            
+                        # 6. Cambiar estado de la habitación (Mantenimiento o Limpieza)
+                        habitacion = estancia.habitacion
+                        habitacion.estado = estado_habitacion
+                        habitacion.save()
+                            
+                        # Registrar Auditoría de Cancelación de Estancia
+                        from reportes.models import registrar_auditoria
+                        registrar_auditoria(
+                            usuario=request.user,
+                            accion="Cancelar Estancia (Problema de Hab.)",
+                            registro_id=estancia.id,
+                            tabla_afectada="estancias_estancia",
+                            estado_nuevo=f"ID: {estancia.id}, Hab: {habitacion.numero} -> {estado_habitacion}, Reserva: {reserva.id if reserva else 'N/A'}"
+                        )
+                    elif reserva and reserva.estado in [Reserva.PENDIENTE, Reserva.CONFIRMADA]:
+                        # Cancelar reserva antes del check-in
+                        reserva.estado = Reserva.CANCELADA
+                        reserva.motivo_cancelacion = f"Cancelada por problema en habitación antes de check-in: {motivo}"
+                        reserva.save()
+                        if reserva.habitacion:
+                            reserva.habitacion.estado = Habitacion.DISPONIBLE
+                            reserva.habitacion.save()
+                    
+                    # 7. Crear el reembolso directamente APROBADO por ser un problema de habitación
+                    reembolso = Reembolso.objects.create(
+                        pago=pago,
+                        monto=monto_decimal,
+                        motivo=motivo,
+                        estado=Reembolso.APROBADO,
+                        solicitado_por=request.user,
+                        aprobado_por=request.user,
+                        fecha_resolucion=timezone.now(),
+                        observacion=f"Aprobado automáticamente por cancelación de estancia debido a problemas de habitación: {motivo}"
+                    )
+                    
+                    # Registrar auditoría de reembolso aprobado
+                    from reportes.models import registrar_auditoria
+                    registrar_auditoria(
+                        usuario=request.user,
+                        accion="Resolver Reembolso",
+                        registro_id=reembolso.id,
+                        tabla_afectada="estancias_reembolso",
+                        estado_nuevo=f"ID: {reembolso.id}, Estado: APROBADO (Aut. por Problema Hab.), Monto: S/. {monto_decimal}"
+                    )
+                    
+                    messages.success(request, 'Estancia cancelada, cargos exonerados, habitación liberada y reembolso procesado correctamente.')
+                else:
+                    # Caso 1: Reembolso normal (comportamiento por defecto)
+                    reembolso = Reembolso.objects.create(
+                        pago=pago,
+                        monto=monto_decimal,
+                        motivo=motivo,
+                        estado=Reembolso.SOLICITADO,
+                        solicitado_por=request.user
+                    )
+                    
+                    # Registrar auditoria
+                    from reportes.models import registrar_auditoria
+                    registrar_auditoria(
+                        usuario=request.user,
+                        accion="Solicitar Reembolso",
+                        registro_id=reembolso.id,
+                        tabla_afectada="estancias_reembolso",
+                        estado_nuevo=f"ID: {reembolso.id}, Pago: {pago.id}, Monto: S/. {monto_decimal}"
+                    )
+                    
+                    messages.success(request, 'Solicitud de reembolso registrada correctamente.')
         except Exception as e:
             messages.error(request, f'Error al registrar la solicitud: {str(e)}')
             
@@ -1518,7 +1651,110 @@ def solicitar_reembolso(request, pago_id):
 
 
 @login_required
+def cancelar_estancia_sin_pago(request, estancia_id):
+    """
+    Obs. 1 – Escenario 3: Cancela una estancia activa cuando NO existe pago anticipado.
+    No genera ningún objeto Reembolso. Exonera cargos, finaliza estancia/reserva
+    y cambia estado de la habitación a Mantenimiento o Limpieza.
+    """
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
+    estancia = get_object_or_404(Estancia, id=estancia_id)
+
+    if request.method == 'POST':
+        motivo = request.POST.get('motivo', '').strip()
+        estado_habitacion = request.POST.get('estado_habitacion_nopago', 'MANTENIMIENTO')
+
+        if not motivo:
+            messages.error(request, 'El motivo de la cancelación es obligatorio.')
+            return redirect('folio', estancia_id=estancia_id)
+
+        # Guardia: verificar que realmente no hay pagos registrados
+        folio = getattr(estancia, 'folio', None)
+        if folio and folio.total_pagado > 0:
+            messages.error(
+                request,
+                'Esta estancia tiene pagos registrados. Use la opción "Solicitar Reembolso" para cancelarla.'
+            )
+            return redirect('folio', estancia_id=estancia_id)
+
+        if estancia.estado != Estancia.ACTIVA:
+            messages.error(request, 'Solo se pueden cancelar estancias activas.')
+            return redirect('folio', estancia_id=estancia_id)
+
+        try:
+            from django.db import transaction
+            from reportes.models import registrar_auditoria
+            with transaction.atomic():
+                # 1. Exonerar todos los cargos del folio
+                cargos = CargoEstancia.objects.filter(estancia=estancia)
+                for cargo in cargos:
+                    cargo.exonerado = True
+                    cargo.motivo_exoneracion = f"Cancelación por problema de habitación (sin pago previo): {motivo}"
+                    cargo.exonerado_por = request.user
+                    cargo.save()
+                    registrar_auditoria(
+                        usuario=request.user,
+                        accion="Cargo Exonerado (Cancelación Sin Pago)",
+                        registro_id=cargo.id,
+                        tabla_afectada="estancias_cargoestancia",
+                        estado_nuevo=f"ID: {cargo.id}, {cargo.concepto} -> Exonerado (sin pago)"
+                    )
+
+                # 2. Recalcular totales del folio -> saldo queda en S/. 0.00
+                if folio:
+                    folio.calcular_totales()
+                    folio.estado = Folio.CERRADO
+                    folio.save()
+
+                # 3. Finalizar estancia
+                estancia.estado = Estancia.FINALIZADA
+                estancia.fecha_checkout = timezone.now()
+                estancia.precio_final = Decimal('0.00')
+                estancia.save()
+
+                # 4. Cancelar reserva asociada
+                reserva = estancia.reserva
+                if reserva:
+                    reserva.estado = Reserva.CANCELADA
+                    reserva.motivo_cancelacion = (
+                        f"Cancelada por problema de habitación "
+                        f"({estancia.habitacion.numero}) sin pago previo: {motivo}"
+                    )
+                    reserva.save()
+
+                # 5. Cambiar estado de la habitación
+                habitacion = estancia.habitacion
+                habitacion.estado = estado_habitacion
+                habitacion.save()
+
+                # 6. Auditoría de cancelación sin pago
+                registrar_auditoria(
+                    usuario=request.user,
+                    accion="Cancelar Estancia Sin Pago (Problema Hab.)",
+                    registro_id=estancia.id,
+                    tabla_afectada="estancias_estancia",
+                    estado_nuevo=(
+                        f"ID: {estancia.id}, Hab: {habitacion.numero} -> {estado_habitacion}, "
+                        f"Reserva: {reserva.id if reserva else 'N/A'}, Sin reembolso"
+                    )
+                )
+
+            messages.success(
+                request,
+                f'Estancia cancelada correctamente. Cargos exonerados. '
+                f'Habitación {habitacion.numero} enviada a {habitacion.get_estado_display()}. '
+                f'No se generó reembolso ya que no existía pago registrado.'
+            )
+        except Exception as e:
+            messages.error(request, f'Error al cancelar la estancia: {str(e)}')
+
+    return redirect('dashboard')
+
+
+@login_required
 def cambiar_habitacion(request, estancia_id):
+
     if not _es_recepcionista(request.user):
         return _acceso_denegado(request)
     estancia = get_object_or_404(Estancia, id=estancia_id)
@@ -1637,4 +1873,527 @@ def aprobar_reembolso(request, reembolso_id):
     return redirect_url
 
 
+# ==============================================================================
+#  ÉPICO 05 – ATENCIÓN AL CLIENTE (TICKETS DE SERVICIO) Y REEMBOLSOS
+# ==============================================================================
+from django.db import transaction
+from atencion.models import TicketServicio, SeguimientoTicket
 
+@login_required
+def tickets_lista(request):
+    if not _es_recepcionista(request.user) and not _es_housekeeping(request.user):
+        return _acceso_denegado(request)
+        
+    tickets = TicketServicio.objects.select_related('estancia__habitacion', 'estancia__reserva__huesped', 'recepcionista').all()
+    
+    # Filtros
+    cliente_q = request.GET.get('cliente', '').strip()
+    habitacion_q = request.GET.get('habitacion', '').strip()
+    estado_q = request.GET.get('estado', '').strip()
+    categoria_q = request.GET.get('categoria', '').strip()
+    prioridad_q = request.GET.get('prioridad', '').strip()
+    responsable_q = request.GET.get('responsable', '').strip()
+    fecha_q = request.GET.get('fecha', '').strip()
+
+    if cliente_q:
+        tickets = tickets.filter(
+            Q(estancia__reserva__huesped__nombres__icontains=cliente_q) |
+            Q(estancia__reserva__huesped__apellidos__icontains=cliente_q) |
+            Q(estancia__reserva__huesped__num_doc__icontains=cliente_q)
+        )
+    if habitacion_q:
+        tickets = tickets.filter(estancia__habitacion__numero=habitacion_q)
+    if estado_q:
+        tickets = tickets.filter(estado=estado_q)
+    if categoria_q:
+        tickets = tickets.filter(categoria=categoria_q)
+    if prioridad_q:
+        tickets = tickets.filter(prioridad=prioridad_q)
+    if responsable_q:
+        tickets = tickets.filter(responsable=responsable_q)
+    if fecha_q:
+        try:
+            fecha_d = date.fromisoformat(fecha_q)
+            tickets = tickets.filter(fecha=fecha_d)
+        except ValueError:
+            pass
+
+    return render(request, 'atencion/lista.html', {
+        'tickets': tickets,
+        'categorias': TicketServicio.CATEGORIAS,
+        'prioridades': TicketServicio.PRIORIDADES,
+        'estados': TicketServicio.ESTADOS,
+        'areas': TicketServicio.AREAS,
+        'f_cliente': cliente_q,
+        'f_habitacion': habitacion_q,
+        'f_estado': estado_q,
+        'f_categoria': categoria_q,
+        'f_prioridad': prioridad_q,
+        'f_responsable': responsable_q,
+        'f_fecha': fecha_q,
+    })
+
+
+@login_required
+def ticket_nuevo(request):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
+        
+    estancias_activas = Estancia.objects.filter(estado=Estancia.ACTIVA).select_related('habitacion', 'reserva__huesped')
+    
+    if request.method == 'POST':
+        estancia_id = request.POST.get('estancia')
+        categoria = request.POST.get('categoria')
+        prioridad = request.POST.get('prioridad', 'MEDIA')
+        responsable = request.POST.get('responsable', 'RECEPCION')
+        descripcion = request.POST.get('descripcion', '').strip()
+        
+        if not estancia_id or not categoria or not descripcion:
+            messages.error(request, 'Todos los campos marcados como obligatorios son requeridos.')
+            return redirect('ticket_nuevo')
+            
+        try:
+            estancia = Estancia.objects.get(id=estancia_id)
+            if estancia.estado != Estancia.ACTIVA:
+                messages.error(request, 'La habitación seleccionada no tiene un hospedaje activo.')
+                return redirect('ticket_nuevo')
+                
+            with transaction.atomic():
+                ticket = TicketServicio.objects.create(
+                    estancia=estancia,
+                    categoria=categoria,
+                    prioridad=prioridad,
+                    responsable=responsable,
+                    descripcion=descripcion,
+                    recepcionista=request.user
+                )
+                
+                # Crear seguimiento inicial
+                SeguimientoTicket.objects.create(
+                    ticket=ticket,
+                    usuario=request.user,
+                    comentario=f"Se abre el ticket de atención en estado Abierta. Descripción inicial: {descripcion}",
+                    estado_ticket=ticket.estado
+                )
+                
+                # Automatizaciones (Limpieza -> Housekeeping)
+                if categoria == 'LIMPIEZA':
+                    habitacion = estancia.habitacion
+                    habitacion.estado = Habitacion.LIMPIEZA
+                    habitacion.save()
+                    
+                    # Registrar auditoría de housekeeping automático
+                    from reportes.models import registrar_auditoria
+                    registrar_auditoria(
+                        usuario=request.user,
+                        accion="Housekeeping Estado Modificado (Aut.)",
+                        registro_id=habitacion.id,
+                        tabla_afectada="hotel_habitacion",
+                        estado_nuevo=Habitacion.LIMPIEZA,
+                        observacion=f"Ticket {ticket.numero_atencion} de limpieza abrió orden automática para Hab. {habitacion.numero}"
+                    )
+                elif categoria == 'MANTENIMIENTO':
+                    habitacion = estancia.habitacion
+                    habitacion.estado = Habitacion.MANTENIMIENTO
+                    habitacion.save()
+                    
+                    # Registrar auditoría de mantenimiento automático
+                    from reportes.models import registrar_auditoria
+                    registrar_auditoria(
+                        usuario=request.user,
+                        accion="Habitación puesta en Mantenimiento (Aut.)",
+                        registro_id=habitacion.id,
+                        tabla_afectada="hotel_habitacion",
+                        estado_nuevo=Habitacion.MANTENIMIENTO,
+                        observacion=f"Ticket {ticket.numero_atencion} de mantenimiento bloqueó Hab. {habitacion.numero}"
+                    )
+                
+                # Registrar auditoría del ticket creado
+                from reportes.models import registrar_auditoria
+                registrar_auditoria(
+                    usuario=request.user,
+                    accion="Crear Ticket de Servicio",
+                    registro_id=ticket.id,
+                    tabla_afectada="atencion_ticketservicio",
+                    estado_nuevo=f"Ticket {ticket.numero_atencion} creado para Hab. {estancia.habitacion.numero}"
+                )
+                
+                messages.success(request, f'Ticket {ticket.numero_atencion} registrado correctamente.')
+                return redirect('ticket_detalle', ticket_id=ticket.id)
+        except Exception as e:
+            messages.error(request, f'Error al registrar el ticket: {str(e)}')
+            
+    return render(request, 'atencion/nueva.html', {
+        'estancias': estancias_activas,
+        'categorias': TicketServicio.CATEGORIAS,
+        'prioridades': TicketServicio.PRIORIDADES,
+        'areas': TicketServicio.AREAS,
+    })
+
+
+@login_required
+def ticket_detalle(request, ticket_id):
+    if not _es_recepcionista(request.user) and not _es_housekeeping(request.user):
+        return _acceso_denegado(request)
+        
+    ticket = get_object_or_404(TicketServicio.objects.select_related('estancia__habitacion', 'estancia__reserva__huesped', 'recepcionista'), id=ticket_id)
+    seguimientos = ticket.seguimientos.select_related('usuario').all()
+    
+    return render(request, 'atencion/detalle.html', {
+        'ticket': ticket,
+        'seguimientos': seguimientos,
+        'estados': TicketServicio.ESTADOS,
+        'areas': TicketServicio.AREAS,
+    })
+
+
+@login_required
+def ticket_iniciar(request, ticket_id):
+    if not _es_recepcionista(request.user) and not _es_housekeeping(request.user):
+        return _acceso_denegado(request)
+        
+    ticket = get_object_or_404(TicketServicio, id=ticket_id)
+    if request.method == 'POST':
+        if ticket.estado != 'ABIERTA':
+            messages.error(request, 'El ticket ya fue iniciado o resuelto.')
+            return redirect('ticket_detalle', ticket_id=ticket.id)
+            
+        with transaction.atomic():
+            ticket.estado = 'PROCESO'
+            ticket.save()
+            
+            SeguimientoTicket.objects.create(
+                ticket=ticket,
+                usuario=request.user,
+                comentario="Se inicia el trabajo sobre la solicitud. Estado cambiado a En Proceso.",
+                estado_ticket=ticket.estado
+            )
+            messages.success(request, 'Trabajo iniciado.')
+            
+    return redirect('ticket_detalle', ticket_id=ticket.id)
+
+
+@login_required
+def ticket_resolver(request, ticket_id):
+    if not _es_recepcionista(request.user) and not _es_housekeeping(request.user):
+        return _acceso_denegado(request)
+        
+    ticket = get_object_or_404(TicketServicio, id=ticket_id)
+    if request.method == 'POST':
+        solucion = request.POST.get('solucion', '').strip()
+        observacion = request.POST.get('observacion_resolucion', '').strip()
+        
+        if not solucion:
+            messages.error(request, 'Debes detallar la solución implementada.')
+            return redirect('ticket_detalle', ticket_id=ticket.id)
+            
+        with transaction.atomic():
+            ticket.estado = 'RESUELTA'
+            ticket.solucion = solucion
+            ticket.observacion_resolucion = observacion
+            ticket.resolved_at = timezone.now()
+            ticket.save()
+            
+            SeguimientoTicket.objects.create(
+                ticket=ticket,
+                usuario=request.user,
+                comentario=f"Solicitud resuelta. Solución: {solucion}. Observaciones: {observacion}",
+                estado_ticket=ticket.estado
+            )
+            
+            # Automatización: Si el estado de la habitación estaba en LIMPIEZA y se resuelve, vuelve a OCUPADA
+            if ticket.categoria == 'LIMPIEZA' and ticket.estancia.habitacion.estado == Habitacion.LIMPIEZA:
+                habitacion = ticket.estancia.habitacion
+                habitacion.estado = Habitacion.OCUPADA if ticket.estancia.estado == Estancia.ACTIVA else Habitacion.DISPONIBLE
+                habitacion.save()
+                
+                # Registrar auditoría de housekeeping automático resuelto
+                from reportes.models import registrar_auditoria
+                registrar_auditoria(
+                    usuario=request.user,
+                    accion="Housekeeping Completado (Ticket)",
+                    registro_id=habitacion.id,
+                    tabla_afectada="hotel_habitacion",
+                    estado_nuevo=habitacion.estado,
+                    observacion=f"Habitación {habitacion.numero} marcada como {habitacion.estado} al resolverse ticket {ticket.numero_atencion}"
+                )
+                
+            messages.success(request, 'Solicitud marcada como Resuelta.')
+            
+    return redirect('ticket_detalle', ticket_id=ticket.id)
+
+
+@login_required
+def ticket_cerrar(request, ticket_id):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
+        
+    ticket = get_object_or_404(TicketServicio, id=ticket_id)
+    if request.method == 'POST':
+        if ticket.estado != 'RESUELTA':
+            messages.error(request, 'Solo se pueden cerrar tickets previamente resueltos.')
+            return redirect('ticket_detalle', ticket_id=ticket.id)
+            
+        with transaction.atomic():
+            ticket.estado = 'CERRADA'
+            ticket.closed_at = timezone.now()
+            ticket.save()
+            
+            SeguimientoTicket.objects.create(
+                ticket=ticket,
+                usuario=request.user,
+                comentario="Atención cerrada definitivamente.",
+                estado_ticket=ticket.estado
+            )
+            messages.success(request, 'Ticket cerrado definitivamente.')
+            
+    return redirect('ticket_detalle', ticket_id=ticket.id)
+
+
+@login_required
+def ticket_reabrir(request, ticket_id):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
+        
+    ticket = get_object_or_404(TicketServicio, id=ticket_id)
+    if request.method == 'POST':
+        motivo = request.POST.get('motivo_reapertura', '').strip()
+        if not motivo:
+            messages.error(request, 'Debes indicar el motivo de la reapertura.')
+            return redirect('ticket_detalle', ticket_id=ticket.id)
+            
+        with transaction.atomic():
+            ticket.estado = 'PROCESO'  # Reabierta -> pasa a En Proceso
+            ticket.motivo_reapertura = motivo
+            ticket.solucion = None
+            ticket.observacion_resolucion = None
+            ticket.resolved_at = None
+            ticket.closed_at = None
+            ticket.save()
+            
+            SeguimientoTicket.objects.create(
+                ticket=ticket,
+                usuario=request.user,
+                comentario=f"Ticket reabierto. Motivo: {motivo}",
+                estado_ticket=ticket.estado
+            )
+            messages.success(request, 'Ticket reabierto y asignado en proceso.')
+            
+    return redirect('ticket_detalle', ticket_id=ticket.id)
+
+
+@login_required
+def ticket_seguimiento(request, ticket_id):
+    if not _es_recepcionista(request.user) and not _es_housekeeping(request.user):
+        return _acceso_denegado(request)
+        
+    ticket = get_object_or_404(TicketServicio, id=ticket_id)
+    if request.method == 'POST':
+        comentario = request.POST.get('comentario', '').strip()
+        nuevo_estado = request.POST.get('estado')
+        
+        if not comentario:
+            messages.error(request, 'Debes ingresar un comentario.')
+            return redirect('ticket_detalle', ticket_id=ticket.id)
+            
+        with transaction.atomic():
+            if nuevo_estado and nuevo_estado in dict(TicketServicio.ESTADOS):
+                ticket.estado = nuevo_estado
+                ticket.save()
+                
+            SeguimientoTicket.objects.create(
+                ticket=ticket,
+                usuario=request.user,
+                comentario=comentario,
+                estado_ticket=ticket.estado
+            )
+            messages.success(request, 'Seguimiento registrado.')
+            
+    return redirect('ticket_detalle', ticket_id=ticket.id)
+
+
+@login_required
+def ticket_agregar_cargo(request, ticket_id):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
+        
+    ticket = get_object_or_404(TicketServicio, id=ticket_id)
+    if request.method == 'POST':
+        concepto = request.POST.get('concepto', '').strip()
+        monto = request.POST.get('monto')
+        tipo_cargo = request.POST.get('tipo', CargoEstancia.OTRO)
+        
+        if not concepto or not monto:
+            messages.error(request, 'Concepto y monto son obligatorios.')
+            return redirect('ticket_detalle', ticket_id=ticket.id)
+            
+        try:
+            monto_decimal = Decimal(monto)
+            if monto_decimal <= 0:
+                messages.error(request, 'El monto debe ser mayor a cero.')
+                return redirect('ticket_detalle', ticket_id=ticket.id)
+                
+            estancia = ticket.estancia
+            with transaction.atomic():
+                cargo = CargoEstancia.objects.create(
+                    estancia=estancia,
+                    concepto=f"{concepto} (Ticket: {ticket.numero_atencion})",
+                    monto=monto_decimal,
+                    tipo=tipo_cargo
+                )
+                
+                # Recalcular totales del folio
+                if hasattr(estancia, 'folio'):
+                    estancia.folio.calcular_totales()
+                    
+                # Registrar seguimiento en el ticket
+                SeguimientoTicket.objects.create(
+                    ticket=ticket,
+                    usuario=request.user,
+                    comentario=f"Se asoció cargo extra al folio del hospedaje: {concepto} por S/. {monto_decimal}",
+                    estado_ticket=ticket.estado
+                )
+                
+                # Registrar auditoría de caja
+                from reportes.models import registrar_auditoria
+                registrar_auditoria(
+                    usuario=request.user,
+                    accion="Cargo Extra de Ticket Registrado",
+                    registro_id=cargo.id,
+                    tabla_afectada="estancias_cargoestancia",
+                    estado_nuevo=f"ID: {cargo.id}, Ticket: {ticket.numero_atencion}, Monto: S/. {monto_decimal}"
+                )
+                
+                messages.success(request, 'Cargo asociado al folio de la estancia correctamente.')
+        except Exception as e:
+            messages.error(request, f'Error al registrar cargo: {str(e)}')
+            
+    return redirect('ticket_detalle', ticket_id=ticket.id)
+
+
+@login_required
+def reembolsos_lista_admin(request):
+    if not _es_admin(request.user):
+        return _acceso_denegado(request, 'Solo los administradores pueden ver la lista de reembolsos.')
+        
+    from estancias.models import Reembolso
+    reembolsos = Reembolso.objects.select_related('pago__folio__estancia__habitacion', 'pago__reserva__huesped', 'solicitado_por', 'aprobado_por').all().order_by('-fecha_solicitud')
+    
+    estado_q = request.GET.get('estado', '').strip()
+    if estado_q:
+        reembolsos = reembolsos.filter(estado=estado_q)
+        
+    return render(request, 'reportes/reembolsos.html', {
+        'reembolsos': reembolsos,
+        'f_estado': estado_q,
+    })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Obs. 2 – API de Ocupación en Tiempo Real y Alertas de Check-Out
+# ─────────────────────────────────────────────────────────────────────────────
+
+@login_required
+def api_ocupacion_habitaciones(request):
+    """
+    Obs. 2: Retorna JSON con el estado de ocupación en tiempo real de todas las
+    estancias activas. Incluye tiempos transcurridos, restantes y el flag
+    `proxima_salida` que activa la alerta visual de check-out próximo.
+    """
+    from django.http import JsonResponse
+    from datetime import timedelta
+
+    now = timezone.localtime(timezone.now())
+    try:
+        from hotel.models import Hotel
+        hotel = Hotel.objects.first()
+        alerta_minutos = getattr(hotel, 'alerta_checkout_minutos', 30) if hotel else 30
+    except Exception:
+        alerta_minutos = 30
+
+    estancias_activas = Estancia.objects.filter(
+        estado=Estancia.ACTIVA
+    ).select_related('reserva', 'reserva__huesped', 'habitacion')
+
+    data = []
+    for est in estancias_activas:
+        checkin_local = timezone.localtime(est.fecha_checkin)
+        tiempo_transcurrido = now - checkin_local
+        minutos_transcurridos = int(tiempo_transcurrido.total_seconds() // 60)
+        horas_t = minutos_transcurridos // 60
+        mins_t = minutos_transcurridos % 60
+
+        fecha_salida = getattr(est.reserva, 'fecha_hora_salida', None)
+        minutos_restantes = None
+        proxima_salida = False
+        salida_vencida = False
+        salida_str = '—'
+
+        if fecha_salida:
+            salida_local = timezone.localtime(fecha_salida)
+            salida_str = salida_local.strftime('%H:%M %d/%m')
+            diff = salida_local - now
+            minutos_restantes = int(diff.total_seconds() // 60)
+            proxima_salida = 0 < minutos_restantes <= alerta_minutos
+            salida_vencida = minutos_restantes < 0
+
+        huesped = est.reserva.huesped
+        data.append({
+            'estancia_id': est.id,
+            'habitacion': est.habitacion.numero,
+            'huesped': f"{huesped.nombres} {huesped.apellidos}",
+            'checkin': checkin_local.strftime('%H:%M'),
+            'salida_estimada': salida_str,
+            'minutos_transcurridos': minutos_transcurridos,
+            'tiempo_transcurrido_str': f"{horas_t}h {mins_t:02d}m",
+            'minutos_restantes': minutos_restantes,
+            'proxima_salida': proxima_salida,
+            'salida_vencida': salida_vencida,
+            'folio_url': f"/estancias/{est.id}/folio/",
+        })
+
+    return JsonResponse({
+        'estancias': data,
+        'alerta_minutos': alerta_minutos,
+        'total': len(data),
+    })
+
+
+@login_required
+def api_habitaciones_housekeeping_recientes(request):
+    """
+    Obs. 2: Retorna habitaciones cuyo check-out se realizó hace ≤ 10 minutos.
+    Estas deben ser inspeccionadas urgentemente por Housekeeping.
+    """
+    from django.http import JsonResponse
+    from datetime import timedelta
+
+    now = timezone.now()
+    limite = now - timedelta(minutes=10)
+
+    estancias_recientes = Estancia.objects.filter(
+        estado=Estancia.FINALIZADA,
+        habitacion__estado=Habitacion.LIMPIEZA,
+        fecha_checkout__gte=limite
+    ).select_related('habitacion', 'habitacion__tipo', 'reserva__huesped').order_by('-fecha_checkout')
+
+    data = []
+    for e in estancias_recientes:
+        checkout_local = timezone.localtime(e.fecha_checkout)
+        minutos_desde_checkout = int((now - e.fecha_checkout).total_seconds() // 60)
+        huesped = e.reserva.huesped
+        data.append({
+            'estancia_id': e.id,
+            'habitacion': e.habitacion.numero,
+            'piso': e.habitacion.piso,
+            'tipo': e.habitacion.tipo.nombre,
+            'huesped': f"{huesped.nombres} {huesped.apellidos}",
+            'checkout_hora': checkout_local.strftime('%H:%M'),
+            'minutos_desde_checkout': minutos_desde_checkout,
+            'urgente': True,
+        })
+
+    return JsonResponse({
+        'habitaciones_urgentes': data,
+        'total': len(data),
+    })
