@@ -5,7 +5,7 @@
 
 ### Sistema de Gestión Hotelera — Full Stack con Django
 
-[![Django](https://img.shields.io/badge/Django-6.0-092E20?style=flat-square&logo=django&logoColor=white)](https://www.djangoproject.com/)
+[![Django](https://img.shields.io/badge/Django-5.x-092E20?style=flat-square&logo=django&logoColor=white)](https://www.djangoproject.com/)
 [![DRF](https://img.shields.io/badge/REST_Framework-3.17-red?style=flat-square&logo=django&logoColor=white)](https://www.django-rest-framework.org/)
 [![JWT](https://img.shields.io/badge/Auth-JWT-black?style=flat-square&logo=jsonwebtokens)](https://django-rest-framework-simplejwt.readthedocs.io/)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com/)
@@ -119,24 +119,35 @@ documento       por hora      habitación     extra          + IGV
 
 ##  Inicio rápido
 
-### Con Docker (Recomendado)
+### Con Docker (Recomendado ✅)
+
+> **Solo necesitas tener instalado [Docker Desktop](https://www.docker.com/products/docker-desktop/).**
 
 ```bash
 # 1. Clonar el repositorio
 git clone https://github.com/HenryDelgadoBustamante/Hotel_Sistema.git
 cd Hotel_Sistema
 
-# 2. Configurar variables de entorno
-cp .env.example .env
+# 2. Crear archivo de entorno (copiar el ejemplo)
+copy .env.example .env
 
-# 3. Levantar los contenedores (App + PostgreSQL)
-docker compose up -d
-
-# 4. Correr migraciones y crear superusuario
-docker compose exec web python manage.py migrate
-docker compose exec web python manage.py createsuperuser
+# 3. Construir y levantar los contenedores
+docker compose up --build
 ```
-El sistema estará disponible en **http://localhost:8000** 🚀
+
+✅ Eso es todo. El sistema automáticamente:
+- Levanta PostgreSQL
+- Aplica las migraciones
+- **Carga los datos de demostración** (hotel, habitaciones, huéspedes, reservas)
+- Inicia el servidor
+
+🌐 Accede en **http://localhost:8000**
+
+| Usuario | Contraseña | Rol |
+|---------|-----------|-----|
+| `admin` | `admin` | Administrador |
+| `Recepcionista` | *(ver backup)* | Recepcionista |
+| `Limpieza` | *(ver backup)* | Housekeeping |
 
 ---
 
