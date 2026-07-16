@@ -142,4 +142,6 @@ class FrontendViewsIntegrationTest(TestCase):
         # Delete
         response_delete = self.client.post(reverse('usuario_eliminar', kwargs={'user_id': test_u.id}))
         self.assertEqual(response_delete.status_code, 302)
-        self.assertFalse(User.objects.filter(id=test_u.id).exists())
+        test_u.refresh_from_db()
+        self.assertFalse(test_u.is_active)
+

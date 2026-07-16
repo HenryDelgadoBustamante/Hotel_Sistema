@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% block page_title %}Configuración General del Hotel{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+  <div class="row justify-content-center">
+    <div class="col-12 col-xl-10">
+      
+      <!-- Mensajes -->
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show border-0 shadow-sm mb-3" style="border-radius: 8px;" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close shadow-none" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      <form method="post" class="needs-validation" novalidate>
+        {% csrf_token %}
+        
+        <!-- DATOS BÁSICOS -->
+        <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px;">
+          <div class="card-header bg-white border-0 pt-4 pb-0">
+            <h6 class="fw-bold text-dark m-0"><i class="bi bi-building me-2 text-primary"></i>Datos Básicos del Hotel</h6>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Nombre Comercial *</label>
+                <input type="text" name="nombre" class="form-control form-control-sm shadow-none" required value="{{ hotel.nombre }}" {% if not es_admin %}readonly disabled{% endif %}>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Razón Social</label>
+                <input type="text" name="razon_social" class="form-control form-control-sm shadow-none" value="{{ hotel.razon_social|default:'' }}" {% if not es_admin %}readonly disabled{% endif %}>
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Identificación Fiscal (RUC) *</label>
+                <input type="text" name="ruc" class="form-control form-control-sm shadow-none" required value="{{ hotel.ruc }}" {% if not es_admin %}readonly disabled{% endif %}>
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Teléfono</label>
+                <input type="text" name="telefono" class="form-control form-control-sm shadow-none" value="{{ hotel.telefono }}" {% if not es_admin %}readonly disabled{% endif %}>
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Correo Electrónico</label>
+                <input type="email" name="correo" class="form-control form-control-sm shadow-none" value="{{ hotel.correo|default:'' }}" {% if not es_admin %}readonly disabled{% endif %}>
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Dirección Física</label>
+                <textarea name="direccion" class="form-control form-control-sm shadow-none" rows="2" {% if not es_admin %}readonly disabled{% endif %}>{{ hotel.direccion }}</textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- HORARIOS Y POLÍTICAS -->
+        <div class="row g-4 mb-4">
+          <!-- Horarios Estándar -->
+          <div class="col-12 col-md-4">
+            <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
+              <div class="card-header bg-white border-0 pt-4 pb-0">
+                <h6 class="fw-bold text-dark m-0"><i class="bi bi-clock me-2 text-warning"></i>Horarios Operativos</h6>
+              </div>
+              <div class="card-body">
+                <div class="mb-3">
+                  <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Hora Oficial de Check-In *</label>
+                  <input type="time" name="hora_checkin_estandar" class="form-control form-control-sm shadow-none" required value="{{ hotel.hora_checkin_estandar|time:'H:i' }}" {% if not es_admin %}readonly disabled{% endif %}>
+                </div>
+                <div>
+                  <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Hora Oficial de Check-Out *</label>
+                  <input type="time" name="hora_checkout_estandar" class="form-control form-control-sm shadow-none" required value="{{ hotel.hora_checkout_estandar|time:'H:i' }}" {% if not es_admin %}readonly disabled{% endif %}>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Early Check-In -->
+          <div class="col-12 col-md-4">
+            <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
+              <div class="card-header bg-white border-0 pt-4 pb-0">
+                <h6 class="fw-bold text-dark m-0"><i class="bi bi-box-arrow-in-right me-2 text-success"></i>Early Check-In</h6>
+              </div>
+              <div class="card-body">
+                <div class="form-check form-switch mb-3">
+                  <input class="form-check-input shadow-none" type="checkbox" name="permitir_early_checkin" id="id_permitir_early" {% if hotel.permitir_early_checkin %}checked{% endif %} {% if not es_admin %}disabled{% endif %}>
+                  <label class="form-check-label fw-semibold text-dark" for="id_permitir_early" style="font-size:12px;">Permitir Early Check-In</label>
+                </div>
+                
+                {% if mostrar_costos %}
+                <div id="div_costo_early">
+                  <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Costo de Recargo (S/.)</label>
+                  <input type="number" step="0.01" min="0.00" name="costo_early_checkin" class="form-control form-control-sm shadow-none" value="{{ hotel.early_checkin_monto_porcentaje|floatformat:2 }}" {% if not es_admin %}readonly disabled{% endif %}>
+                  <span class="text-muted text-xs d-block mt-1">Coloque 0.00 si el ingreso anticipado es gratuito.</span>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Late Check-Out -->
+          <div class="col-12 col-md-4">
+            <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
+              <div class="card-header bg-white border-0 pt-4 pb-0">
+                <h6 class="fw-bold text-dark m-0"><i class="bi bi-box-arrow-left me-2 text-danger"></i>Late Check-Out</h6>
+              </div>
+              <div class="card-body">
+                <div class="form-check form-switch mb-3">
+                  <input class="form-check-input shadow-none" type="checkbox" name="permitir_late_checkout" id="id_permitir_late" {% if hotel.permitir_late_checkout %}checked{% endif %} {% if not es_admin %}disabled{% endif %}>
+                  <label class="form-check-label fw-semibold text-dark" for="id_permitir_late" style="font-size:12px;">Permitir Late Check-Out</label>
+                </div>
+
+                {% if mostrar_costos %}
+                <div id="div_costo_late">
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Costo de Recargo (S/.)</label>
+                    <input type="number" step="0.01" min="0.00" name="costo_late_checkout" class="form-control form-control-sm shadow-none" value="{{ hotel.late_checkout_monto_porcentaje|floatformat:2 }}" {% if not es_admin %}readonly disabled{% endif %}>
+                    <span class="text-muted text-xs d-block mt-1">Cargo por bloques aplicable a la salida tardía.</span>
+                  </div>
+                  <div>
+                    <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Hora Máxima Permitida</label>
+                    <input type="time" name="late_checkout_hora_maxima" class="form-control form-control-sm shadow-none" value="{{ hotel.late_checkout_hora_maxima|time:'H:i' }}" {% if not es_admin %}readonly disabled{% endif %}>
+                  </div>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {% if es_admin %}
+        <div class="d-flex justify-content-end gap-2 mb-4">
+          <button type="submit" class="btn btn-sm btn-primary py-2 px-4 fw-semibold border-0" style="background: #6366f1; border-radius: 8px;">
+            <i class="bi bi-save me-2"></i>Guardar Parámetros
+          </button>
+        </div>
+        {% endif %}
+      </form>
+
+      <!-- BITÁCORA DE HISTORIAL -->
+      {% if mostrar_historial %}
+      <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px;">
+        <div class="card-header bg-white border-0 pt-4 pb-0">
+          <h6 class="fw-bold text-dark m-0"><i class="bi bi-list-check me-2 text-info"></i>Historial de Cambios Operacionales</h6>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size: 12px;">
+              <thead class="table-light">
+                <tr>
+                  <th class="ps-3 py-3 text-muted fw-semibold">Fecha y Hora</th>
+                  <th class="py-3 text-muted fw-semibold">Usuario</th>
+                  <th class="py-3 text-muted fw-semibold">Parámetro Modificado</th>
+                  <th class="py-3 text-muted fw-semibold">Valor Anterior</th>
+                  <th class="py-3 text-muted fw-semibold">Valor Nuevo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for log in historial %}
+                <tr>
+                  <td class="ps-3 text-dark">{{ log.fecha|date:"d/m/Y H:i:s" }}</td>
+                  <td><span class="badge bg-secondary-subtle text-secondary px-2"><i class="bi bi-person me-1"></i>{{ log.usuario.username }}</span></td>
+                  <td class="fw-semibold text-dark">{{ log.observacion|default:"Configuración"|cut:"Modificó el parámetro: " }}</td>
+                  <td class="text-danger fw-medium">{{ log.estado_anterior|default:"-" }}</td>
+                  <td class="text-success fw-bold">{{ log.estado_nuevo|default:"-" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="5" class="text-center py-4 text-muted">No se registran cambios operacionales en la bitácora.</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'estancias',
     'reportes',
     'atencion',
+    'inventario',
 ]
 
 MIDDLEWARE = [

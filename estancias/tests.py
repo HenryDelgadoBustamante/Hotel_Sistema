@@ -652,3 +652,351 @@ class ApiOcupacionTest(TestCase):
         self.assertEqual(hab['habitacion'], '201')
         self.assertTrue(hab['urgente'])
         self.assertLessEqual(hab['minutos_desde_checkout'], 10)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HOT-HOS-001 – Tests de Registro de Hospedaje y Validaciones
+# ─────────────────────────────────────────────────────────────────────────────
+class CheckinValidacionesTest(TestCase):
+    """
+    Prueba las validaciones del proceso de Check-in para garantizar el cumplimiento
+    de RN-HOS-004 (Documento obligatorio) y RN-HOS-005 (Mínimo de huéspedes).
+    """
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='recep_val', password='test123')
+        grupo, _ = Group.objects.get_or_create(name='recepcionista')
+        self.user.groups.add(grupo)
+        self.client.login(username='recep_val', password='test123')
+
+        self.hotel = Hotel.objects.create(
+            nombre="Hotel Val Test", ruc="77777777701", direccion="Test", estrellas=3, telefono="900000002"
+        )
+        self.tipo_hab = TipoHabitacion.objects.create(
+            hotel=self.hotel, nombre="Doble", capacidad=2, precio_base=Decimal("120.00")
+        )
+        self.habitacion = Habitacion.objects.create(
+            hotel=self.hotel, tipo=self.tipo_hab, numero="301", piso=3, estado=Habitacion.DISPONIBLE
+        )
+        
+        # Huésped sin documento
+        self.huesped_sin_doc = Huesped.objects.create(
+            tipo_doc=Huesped.DNI, num_doc="", nombres="Sin", apellidos="Doc"
+        )
+        # Huésped válido
+        self.huesped_valido = Huesped.objects.create(
+            tipo_doc=Huesped.DNI, num_doc="77778888", nombres="Con", apellidos="Doc"
+        )
+
+    def test_checkin_falla_sin_documento_identidad(self):
+        """RN-HOS-004: No permitir check-in si el huésped no cuenta con documento."""
+        reserva = Reserva.objects.create(
+            hotel=self.hotel, huesped=self.huesped_sin_doc, habitacion=self.habitacion,
+            fecha_entrada=date.today(), fecha_salida=date.today() + timedelta(days=1),
+            modalidad=Reserva.POR_DIA, estado=Reserva.CONFIRMADA, precio_total=Decimal("120.00"),
+            num_adultos=1
+        )
+        
+        from estancias.services import procesar_checkin
+        with self.assertRaises(ValidationError) as ctx:
+            procesar_checkin(reserva_id=reserva.id, habitacion_id=self.habitacion.id, usuario=self.user)
+        self.assertIn("no tiene documento de identidad registrado", str(ctx.exception))
+
+    def test_checkin_falla_sin_cantidad_huespedes(self):
+        """RN-HOS-005: No permitir check-in si la cantidad de huéspedes es menor a 1."""
+        with self.assertRaises(ValidationError):
+            reserva = Reserva.objects.create(
+                hotel=self.hotel, huesped=self.huesped_valido, habitacion=self.habitacion,
+                fecha_entrada=date.today(), fecha_salida=date.today() + timedelta(days=1),
+                modalidad=Reserva.POR_DIA, estado=Reserva.CONFIRMADA, precio_total=Decimal("120.00"),
+                num_adultos=0  # Inválido, disparará ValidationError en save()
+            )
+
+
+
+class CheckinDirectoTest(TestCase):
+    """
+    Prueba el check-in directo (Walk-in) sin reserva previa.
+    """
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='recep_dir', password='test123')
+        grupo, _ = Group.objects.get_or_create(name='recepcionista')
+        self.user.groups.add(grupo)
+        self.client.login(username='recep_dir', password='test123')
+
+        self.hotel = Hotel.objects.create(
+            nombre="Hotel Directo Test", ruc="66666666601", direccion="Test", estrellas=3, telefono="900000003"
+        )
+        self.tipo_hab = TipoHabitacion.objects.create(
+            hotel=self.hotel, nombre="Matrimonial", capacidad=2, precio_base=Decimal("150.00")
+        )
+        self.habitacion = Habitacion.objects.create(
+            hotel=self.hotel, tipo=self.tipo_hab, numero="302", piso=3, estado=Habitacion.DISPONIBLE
+        )
+        self.huesped = Huesped.objects.create(
+            tipo_doc=Huesped.DNI, num_doc="55556666", nombres="Lucas", apellidos="Walkin"
+        )
+
+    def test_checkin_directo_exitoso(self):
+        """Verifica que el flujo de check-in directo crea reserva, estancia y folio correctamente."""
+        url = reverse('checkin_directo')
+        resp = self.client.post(url, {
+            'habitacion_id': self.habitacion.id,
+            'num_doc': self.huesped.num_doc,
+            'num_adultos': 1,
+            'modalidad': Reserva.POR_DIA,
+            'fecha_salida': (date.today() + timedelta(days=2)).isoformat(),
+            'observaciones': 'Ingreso directo sin reserva.'
+        })
+
+        # Debe redirigir al folio de la nueva estancia
+        self.assertEqual(resp.status_code, 302)
+        
+        # Verificar que la habitación ahora está ocupada
+        self.habitacion.refresh_from_db()
+        self.assertEqual(self.habitacion.estado, Habitacion.OCUPADA)
+
+        # Verificar que se creó una estancia activa
+        estancia = Estancia.objects.filter(habitacion=self.habitacion, estado=Estancia.ACTIVA).first()
+        self.assertIsNotNone(estancia)
+        self.assertEqual(estancia.reserva.origen, Reserva.DIRECTO)
+        self.assertEqual(estancia.reserva.huesped, self.huesped)
+
+        # Verificar que el folio se creó y está abierto
+        self.assertIsNotNone(estancia.folio)
+        self.assertEqual(estancia.folio.estado, Folio.ABIERTO)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HOT-HOS-002 – Tests del Proceso de Check-In
+# ─────────────────────────────────────────────────────────────────────────────
+class CheckInFlowTest(TestCase):
+    """
+    Verifica las reglas del FEATURE HOT-HOS-002:
+    - Escenario feliz (Check In exitoso, cambia estado hab., registra fecha, registra usuario).
+    - Impedir doble check-in.
+    - Impedir check-in de reserva cancelada.
+    """
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='recep_hos2', password='test123')
+        grupo, _ = Group.objects.get_or_create(name='recepcionista')
+        self.user.groups.add(grupo)
+        self.client.login(username='recep_hos2', password='test123')
+
+        self.hotel = Hotel.objects.create(
+            nombre="Hotel Checkin Test", ruc="44444444401", direccion="Test", estrellas=3, telefono="900000004"
+        )
+        self.tipo_hab = TipoHabitacion.objects.create(
+            hotel=self.hotel, nombre="Suite", capacidad=3, precio_base=Decimal("200.00")
+        )
+        self.habitacion = Habitacion.objects.create(
+            hotel=self.hotel, tipo=self.tipo_hab, numero="401", piso=4, estado=Habitacion.DISPONIBLE
+        )
+        self.huesped = Huesped.objects.create(
+            tipo_doc=Huesped.DNI, num_doc="44445555", nombres="Carlos", apellidos="Checkin"
+        )
+
+    def test_checkin_exitoso_cumple_todas_las_reglas(self):
+        """Verifica que el check-in exitoso registra fecha, usuario, actualiza hab. y reserva."""
+        reserva = Reserva.objects.create(
+            hotel=self.hotel, huesped=self.huesped, habitacion=self.habitacion,
+            fecha_entrada=date.today(), fecha_salida=date.today() + timedelta(days=1),
+            modalidad=Reserva.POR_DIA, estado=Reserva.CONFIRMADA, precio_total=Decimal("200.00"),
+            num_adultos=1
+        )
+
+        from estancias.services import procesar_checkin
+        estancia = procesar_checkin(
+            reserva_id=reserva.id,
+            habitacion_id=self.habitacion.id,
+            usuario=self.user
+        )
+
+        # 1. Verificar estados
+        self.habitacion.refresh_from_db()
+        self.assertEqual(self.habitacion.estado, Habitacion.OCUPADA)
+
+        reserva.refresh_from_db()
+        self.assertEqual(reserva.estado, Reserva.CHECKIN)
+
+        # 2. Registrar hora y usuario
+        self.assertIsNotNone(estancia.fecha_checkin)
+        self.assertEqual(estancia.registrado_por, self.user)
+
+    def test_impedir_doble_checkin(self):
+        """No realizar dos Check In."""
+        reserva = Reserva.objects.create(
+            hotel=self.hotel, huesped=self.huesped, habitacion=self.habitacion,
+            fecha_entrada=date.today(), fecha_salida=date.today() + timedelta(days=1),
+            modalidad=Reserva.POR_DIA, estado=Reserva.CHECKIN, precio_total=Decimal("200.00"),
+            num_adultos=1
+        )
+
+        from estancias.services import procesar_checkin
+        with self.assertRaises(ValidationError) as ctx:
+            procesar_checkin(reserva_id=reserva.id, habitacion_id=self.habitacion.id, usuario=self.user)
+        self.assertIn("no está en estado válido para Check-In", str(ctx.exception))
+
+    def test_impedir_checkin_reserva_cancelada(self):
+        """Given la reserva está cancelada, When intento hacer Check In, Then el sistema lo impide."""
+        reserva = Reserva.objects.create(
+            hotel=self.hotel, huesped=self.huesped, habitacion=self.habitacion,
+            fecha_entrada=date.today(), fecha_salida=date.today() + timedelta(days=1),
+            modalidad=Reserva.POR_DIA, estado=Reserva.CANCELADA, precio_total=Decimal("200.00"),
+            num_adultos=1
+        )
+
+        from estancias.services import procesar_checkin
+        with self.assertRaises(ValidationError) as ctx:
+            procesar_checkin(reserva_id=reserva.id, habitacion_id=self.habitacion.id, usuario=self.user)
+        self.assertIn("no está en estado válido para Check-In", str(ctx.exception))
+
+
+class RoomAssignmentTest(TestCase):
+    """
+    HOT-HOS-003 – Asignar Habitación
+    Conjunto de pruebas para validar la asignación, traslado, liberación e historial de habitaciones.
+    """
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='recep_assign', password='testpassword123')
+        self.grupo_recep, _ = Group.objects.get_or_create(name='recepcionista')
+        self.user.groups.add(self.grupo_recep)
+        self.client.login(username='recep_assign', password='testpassword123')
+
+        self.hotel = Hotel.objects.create(
+            nombre="Hotel Asignacion Test", ruc="55555555501", direccion="Test", estrellas=4, telefono="900000005"
+        )
+        
+        # Room categories from the SRS: VIP, Suite, Matrimonial, Airbnb
+        self.tipo_vip = TipoHabitacion.objects.create(
+            hotel=self.hotel, nombre="VIP", capacidad=2, precio_base=Decimal("150.00")
+        )
+        self.tipo_suite = TipoHabitacion.objects.create(
+            hotel=self.hotel, nombre="Suite", capacidad=4, precio_base=Decimal("250.00")
+        )
+        self.tipo_matrimonial = TipoHabitacion.objects.create(
+            hotel=self.hotel, nombre="Matrimonial", capacidad=2, precio_base=Decimal("120.00")
+        )
+        self.tipo_airbnb = TipoHabitacion.objects.create(
+            hotel=self.hotel, nombre="Airbnb", capacidad=3, precio_base=Decimal("90.00")
+        )
+
+        self.hab_vip = Habitacion.objects.create(
+            hotel=self.hotel, tipo=self.tipo_vip, numero="901", piso=9, estado=Habitacion.DISPONIBLE
+        )
+        self.hab_suite = Habitacion.objects.create(
+            hotel=self.hotel, tipo=self.tipo_suite, numero="801", piso=8, estado=Habitacion.DISPONIBLE
+        )
+        self.hab_matr = Habitacion.objects.create(
+            hotel=self.hotel, tipo=self.tipo_matrimonial, numero="701", piso=7, estado=Habitacion.DISPONIBLE
+        )
+
+        self.huesped = Huesped.objects.create(
+            tipo_doc=Huesped.DNI, num_doc="77778888", nombres="Julio", apellidos="Mendoza"
+        )
+
+    def test_asignacion_habitacion_checkin_exitoso(self):
+        """Asignación correcta: Given existe habitación disponible, When selecciono habitación, Then queda asociada al hospedaje."""
+        reserva = Reserva.objects.create(
+            hotel=self.hotel, huesped=self.huesped, habitacion=self.hab_vip,
+            fecha_entrada=date.today(), fecha_salida=date.today() + timedelta(days=1),
+            modalidad=Reserva.POR_DIA, estado=Reserva.CONFIRMADA, precio_total=Decimal("150.00"),
+            num_adultos=2
+        )
+
+        from estancias.services import procesar_checkin
+        estancia = procesar_checkin(reserva_id=reserva.id, habitacion_id=self.hab_vip.id, usuario=self.user)
+
+        self.assertEqual(estancia.habitacion, self.hab_vip)
+        self.hab_vip.refresh_from_db()
+        self.assertEqual(self.hab_vip.estado, Habitacion.OCUPADA)
+
+    def test_impedir_checkin_habitacion_no_disponible(self):
+        """Solo habitaciones disponibles: Intentar hacer check-in en una habitación ocupada, limpieza o mantenimiento debe fallar."""
+        reserva = Reserva.objects.create(
+            hotel=self.hotel, huesped=self.huesped, habitacion=self.hab_vip,
+            fecha_entrada=date.today(), fecha_salida=date.today() + timedelta(days=1),
+            modalidad=Reserva.POR_DIA, estado=Reserva.CONFIRMADA, precio_total=Decimal("150.00"),
+            num_adultos=2
+        )
+
+        # Ocupar la habitación Suite para la prueba
+        self.hab_suite.estado = Habitacion.MANTENIMIENTO
+        self.hab_suite.save()
+
+        from estancias.services import procesar_checkin
+        with self.assertRaises(ValidationError):
+            procesar_checkin(reserva_id=reserva.id, habitacion_id=self.hab_suite.id, usuario=self.user)
+
+    def test_cambiar_habitacion_activo_con_historial_y_disponibilidad(self):
+        """Cambiar habitación: Cambia la habitación del hospedaje, actualiza estados y registra el historial."""
+        reserva = Reserva.objects.create(
+            hotel=self.hotel, huesped=self.huesped, habitacion=self.hab_vip,
+            fecha_entrada=date.today(), fecha_salida=date.today() + timedelta(days=1),
+            modalidad=Reserva.POR_DIA, estado=Reserva.CONFIRMADA, precio_total=Decimal("150.00"),
+            num_adultos=2
+        )
+
+        from estancias.services import procesar_checkin, cambiar_habitacion_activo
+        estancia = procesar_checkin(reserva_id=reserva.id, habitacion_id=self.hab_vip.id, usuario=self.user)
+
+        # Realizar el traslado a la habitación Suite (Upgrade)
+        from estancias.models import HistorialHabitacionEstancia
+        historial_count_antes = HistorialHabitacionEstancia.objects.filter(estancia=estancia).count()
+
+        cambiar_habitacion_activo(
+            estancia_id=estancia.id,
+            nueva_habitacion_id=self.hab_suite.id,
+            motivo="Huésped solicitó cambio de habitación",
+            usuario=self.user
+        )
+
+        # Verificar estados
+        self.hab_vip.refresh_from_db()
+        self.hab_suite.refresh_from_db()
+        self.assertEqual(self.hab_vip.estado, Habitacion.LIMPIEZA) # Antigua pasa a Limpieza (liberada)
+        self.assertEqual(self.hab_suite.estado, Habitacion.OCUPADA)  # Nueva pasa a Ocupada
+        
+        # Verificar historial registrado
+        estancia.refresh_from_db()
+        self.assertEqual(estancia.habitacion, self.hab_suite)
+        self.assertEqual(HistorialHabitacionEstancia.objects.filter(estancia=estancia).count(), historial_count_antes + 1)
+        
+        hist = HistorialHabitacionEstancia.objects.filter(estancia=estancia).first()
+        self.assertEqual(hist.habitacion_anterior, self.hab_vip)
+        self.assertEqual(hist.habitacion_nueva, self.hab_suite)
+        self.assertEqual(hist.usuario, self.user)
+        self.assertEqual(hist.motivo, "Huésped solicitó cambio de habitación")
+
+    def test_actualizar_estado_habitacion_vista_manual_liberar(self):
+        """Liberar Habitación: Cambiar estado manualmente de LIMPIEZA o MANTENIMIENTO a DISPONIBLE."""
+        self.hab_vip.estado = Habitacion.LIMPIEZA
+        self.hab_vip.save()
+
+        # Liberar a DISPONIBLE mediante post
+        from django.urls import reverse
+        url = reverse('actualizar_estado_habitacion', kwargs={'hab_id': self.hab_vip.id})
+        response = self.client.post(url, {'estado': 'DISPONIBLE'})
+
+        self.assertEqual(response.status_code, 302) # Redirect to dashboard
+        self.hab_vip.refresh_from_db()
+        self.assertEqual(self.hab_vip.estado, Habitacion.DISPONIBLE)
+
+    def test_actualizar_estado_habitacion_vista_manual_impedir_ocupada(self):
+        """Liberar Habitación: Impedir cambiar directamente una habitación ocupada."""
+        self.hab_vip.estado = Habitacion.OCUPADA
+        self.hab_vip.save()
+
+        from django.urls import reverse
+        url = reverse('actualizar_estado_habitacion', kwargs={'hab_id': self.hab_vip.id})
+        response = self.client.post(url, {'estado': 'DISPONIBLE'})
+
+        self.assertEqual(response.status_code, 302)
+        self.hab_vip.refresh_from_db()
+        self.assertEqual(self.hab_vip.estado, Habitacion.OCUPADA) # Debe seguir ocupada
+
+
+

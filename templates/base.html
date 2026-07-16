@@ -882,6 +882,12 @@
       </a>
       {% endif %}
       
+      {% if request.user.is_superuser or 'admin' in groups or 'recepcionista' in groups or 'housekeeping' in groups or 'inventario' in groups %}
+      <a href="/inventario/" class="nav-link {% if '/inventario/' in request.path %}active{% endif %}">
+        <i class="bi bi-box-seam"></i>Inventario
+      </a>
+      {% endif %}
+
       {% if request.user.is_superuser or 'admin' in groups or 'recepcionista' in groups or 'housekeeping' in groups %}
       <a href="/tickets/" class="nav-link {% if '/tickets/' in request.path %}active{% endif %}">
         <i class="bi bi-chat-left-dots"></i>Atención al Cliente
@@ -897,8 +903,14 @@
       </a>
       {% endif %}
 
-      {% if request.user.is_superuser or 'admin' in groups %}
+      {% if request.user.is_superuser or 'admin' in groups or 'recepcionista' in groups or 'housekeeping' in groups %}
       <div class="sidebar-section">Configuración</div>
+
+      <a href="/configuracion/" class="nav-link {% if '/configuracion/' in request.path %}active{% endif %}">
+        <i class="bi bi-gear"></i>Configuración del Hotel
+      </a>
+
+      {% if request.user.is_superuser or 'admin' in groups %}
       <div class="nav-dropdown-toggle {% if '/usuarios/' in request.path or '/sesiones/' in request.path %}expanded{% endif %}" onclick="toggleDropdown(this)">
         <a href="/usuarios/" class="nav-link {% if '/usuarios/' in request.path %}active{% endif %}" style="flex:1;">
           <i class="bi bi-person-gear"></i>Usuarios y Roles
@@ -912,6 +924,7 @@
           </a>
         </div>
       </div>
+      {% endif %}
       {% endif %}
       {% endwith %}
     </nav>

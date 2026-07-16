@@ -17,10 +17,7 @@ def detectar_early_checkin(reserva, hotel, now_local):
     Detecta si una reservación está intentando ingresar de manera anticipada
     con respecto a la hora de check-in estándar configurada.
     """
-    if not hotel.permitir_early_checkin:
-        return False, Decimal('0.00')
-
-    hora_std = time(15, 0)
+    hora_std = hotel.hora_checkin_estandar if (hotel and hasattr(hotel, 'hora_checkin_estandar')) else time(15, 0)
     dt_std = timezone.make_aware(datetime.combine(reserva.fecha_entrada, hora_std))
 
     if now_local < dt_std:
@@ -50,6 +47,7 @@ def detectar_late_checkout(estancia, hotel, now_local):
 
     if now_local > dt_salida + tolerancia:
         minutos_retraso = int((now_local - dt_salida).total_seconds() // 60)
+        cargo_tardanza = Decimal('0.00')
         if hotel.permitir_late_checkout:
             horas_bloque = hotel.late_checkout_horas_bloque or 3
             bloques = max(1, int(((minutos_retraso / 60) + (horas_bloque - 0.01)) // horas_bloque))
@@ -62,11 +60,11 @@ def detectar_late_checkout(estancia, hotel, now_local):
                 monto_bloque = hotel.late_checkout_monto_porcentaje
 
             cargo_tardanza = monto_bloque * bloques
-            return True, round(cargo_tardanza, 2), minutos_retraso
+        return True, round(cargo_tardanza, 2), minutos_retraso
     return False, Decimal('0.00'), 0
 
 
-def procesar_checkin(reserva_id, habitacion_id, usuario, exonerar_early=False, motivo_exoneracion_early=None):
+def procesar_checkin(reserva_id, habitacion_id, usuario, exonerar_early=False, motivo_exoneracion_early=None, now_local_override=None):
     """
     Completa de manera transaccional e indexada el check-in (RN-HOS-001).
     """
@@ -75,16 +73,37 @@ def procesar_checkin(reserva_id, habitacion_id, usuario, exonerar_early=False, m
         if reserva.estado in [Reserva.CHECKIN, Reserva.CHECKOUT, Reserva.CANCELADA]:
             raise ValidationError(f"La reserva #{reserva.id} no está en estado válido para Check-In (Estado: {reserva.estado}).")
 
+        # RN-HOS-004: El huésped debe tener documento de identidad registrado
+        huesped = reserva.huesped
+        if not huesped.num_doc or not huesped.num_doc.strip():
+            raise ValidationError(
+                f"El huésped '{huesped.nombres} {huesped.apellidos}' no tiene documento de identidad registrado. "
+                "Es obligatorio contar con un documento válido para el ingreso (RN-HOS-004)."
+            )
+
+        # RN-HOS-005: Debe registrarse la cantidad de huéspedes (mínimo 1 adulto)
+        if not reserva.num_adultos or reserva.num_adultos < 1:
+            raise ValidationError(
+                "La cantidad de huéspedes debe ser al menos 1 adulto (RN-HOS-005). "
+                "Verifique los datos de la reserva."
+            )
+
         # Habitación
         habitacion = Habitacion.objects.select_for_update().get(id=habitacion_id) if habitacion_id else reserva.habitacion
         if not habitacion:
             raise ValidationError("No se pre-asignó ni especificó ninguna habitación válida.")
 
-        # Validamos ocupación activa real o estado físico
-        if Estancia.objects.filter(habitacion=habitacion, estado=Estancia.ACTIVA).exists() or habitacion.estado == Habitacion.OCUPADA:
-            raise ValidationError(f"La habitación ocupada #{habitacion.numero} no se encuentra disponible.")
+        # Validamos ocupación activa real: bloqueamos sólo si hay una estancia
+        # ACTIVA de OTRA reserva en esta habitación.
+        estancia_activa_ajena = Estancia.objects.filter(
+            habitacion=habitacion, estado=Estancia.ACTIVA
+        ).exclude(reserva=reserva).exists()
+        if estancia_activa_ajena:
+            raise ValidationError(f"La habitación #{habitacion.numero} ya tiene una estancia activa de otra reserva.")
 
-        if habitacion.estado in [Habitacion.LIMPIEZA, Habitacion.MANTENIMIENTO] and habitacion.id != (reserva.habitacion.id if reserva.habitacion else None):
+        # Si la habitación está en limpieza o mantenimiento y NO es la propia de la reserva, bloquear.
+        habitacion_propia = reserva.habitacion and reserva.habitacion.id == habitacion.id
+        if habitacion.estado in [Habitacion.LIMPIEZA, Habitacion.MANTENIMIENTO] and not habitacion_propia:
             raise ValidationError(f"La habitación #{habitacion.numero} no se encuentra disponible (Estado: {habitacion.estado}).")
 
         # Capacidad física
@@ -92,7 +111,7 @@ def procesar_checkin(reserva_id, habitacion_id, usuario, exonerar_early=False, m
             raise ValidationError(f"La cantidad de pasajeros ({reserva.num_adultos}) supera la capacidad física ({habitacion.tipo.capacidad}).")
 
         hotel = habitacion.hotel
-        now_local = timezone.localtime(timezone.now())
+        now_local = now_local_override or timezone.localtime(timezone.now())
 
         # Check de Early Check-In
         es_early, early_monto = detectar_early_checkin(reserva, hotel, now_local)
@@ -111,7 +130,8 @@ def procesar_checkin(reserva_id, habitacion_id, usuario, exonerar_early=False, m
         estancia = Estancia.objects.create(
             reserva=reserva,
             habitacion=habitacion,
-            precio_final=reserva.precio_total
+            precio_final=reserva.precio_total,
+            registrado_por=usuario
         )
         folio = Folio.objects.create(estancia=estancia, estado=Folio.ABIERTO)
 
@@ -177,7 +197,7 @@ def procesar_checkin(reserva_id, habitacion_id, usuario, exonerar_early=False, m
         return estancia
 
 
-def procesar_checkout(estancia_id, usuario, exonerar_late_checkout=False, motivo_exoneracion_late=None):
+def procesar_checkout(estancia_id, usuario, exonerar_late_checkout=False, motivo_exoneracion_late=None, now_local_override=None):
     """
     Completa de manera transaccional e indexada el check-out de la estancia (RN-HOS-041).
     """
@@ -187,10 +207,12 @@ def procesar_checkout(estancia_id, usuario, exonerar_late_checkout=False, motivo
             return estancia
 
         hotel = estancia.habitacion.hotel
-        now_local = timezone.localtime(timezone.now())
+        now_local = now_local_override or timezone.localtime(timezone.now())
 
         # Check de Late Check-Out
         es_late, late_monto, minutos_tarde = detectar_late_checkout(estancia, hotel, now_local)
+        if es_late and not hotel.permitir_late_checkout:
+            raise ValidationError("El hotel no permite Late Check-Out en este momento. La salida excede la hora estándar.")
         
         # Cargo de Late Checkout si aplica
         if es_late and late_monto > 0:
@@ -256,23 +278,65 @@ def procesar_checkout(estancia_id, usuario, exonerar_late_checkout=False, motivo
         return estancia
 
 
-def registrar_consumo(estancia_id, concepto, monto, tipo, usuario):
+def registrar_consumo(estancia_id, concepto, monto, tipo, usuario, producto_id=None, cantidad=1):
     """
-    Registra consumos en un folio activo (RN-HOS-031).
+    Registra consumos en un folio activo (RN-HOS-031), integrando control de inventario (EPIC 10).
     """
-    if monto <= 0:
+    from inventario.models import Producto, MovimientoInventario
+
+    if monto <= 0 and producto_id is None:
         raise ValidationError("El monto del cargo debe ser mayor a cero.")
+    if cantidad <= 0:
+        raise ValidationError("La cantidad del producto debe ser mayor a cero.")
 
     with transaction.atomic():
         estancia = Estancia.objects.select_for_update().get(id=estancia_id)
         if estancia.estado != Estancia.ACTIVA:
             raise ValidationError("No se pueden registrar cargos en una estancia que no esté abierta (ACTIVA).")
 
+        producto = None
+        if producto_id:
+            producto = Producto.objects.select_for_update().get(id=producto_id)
+            if producto.estado != 'ACTIVO':
+                raise ValidationError("El producto seleccionado está inactivo.")
+            if not producto.es_vendible:
+                raise ValidationError("El producto seleccionado no está habilitado para la venta.")
+            
+            # Si controla stock y no hay suficiente
+            if producto.controla_stock:
+                if producto.stock_actual < cantidad:
+                    raise ValidationError(f"Stock insuficiente para {producto.nombre}. Disponible: {producto.stock_actual:.0f}")
+                
+                # Descontar stock
+                existencia_anterior = producto.stock_actual
+                producto.stock_actual -= Decimal(str(cantidad))
+                producto.save()
+                
+                # Registrar movimiento
+                MovimientoInventario.objects.create(
+                    producto=producto,
+                    tipo_movimiento='CONSUMO',
+                    cantidad=Decimal(str(cantidad)),
+                    existencia_anterior=existencia_anterior,
+                    existencia_posterior=producto.stock_actual,
+                    motivo=f"Consumo en Estancia #{estancia.id}",
+                    costo_referencial=producto.costo_referencial,
+                    usuario=usuario,
+                    estancia=estancia,
+                    documento_referencia=f"Estancia #{estancia.id}"
+                )
+            
+            # Concepto y monto automáticos
+            concepto = f"{producto.nombre} x {cantidad}"
+            monto = producto.precio_venta * Decimal(str(cantidad))
+
         cargo = CargoEstancia.objects.create(
             estancia=estancia,
             concepto=concepto,
             monto=monto,
-            tipo=tipo
+            tipo=tipo,
+            producto=producto,
+            cantidad=cantidad
         )
         
         folio = estancia.folio
@@ -284,6 +348,62 @@ def registrar_consumo(estancia_id, concepto, monto, tipo, usuario):
             registro_id=cargo.id,
             tabla_afectada="estancias_cargoestancia",
             estado_nuevo=f"Cargo: {concepto} S/.{monto}"
+        )
+        return cargo
+
+
+def exonerar_cargo_servicio(cargo_id, motivo, devolver_a_stock, usuario):
+    """
+    Exonera un cargo y opcionalmente devuelve el producto al inventario (RN-INV-070 a RN-INV-075).
+    """
+    from inventario.models import MovimientoInventario
+
+    if not motivo or not motivo.strip():
+        raise ValidationError("Debe proporcionar un motivo para la exoneración.")
+
+    with transaction.atomic():
+        cargo = CargoEstancia.objects.select_for_update().get(id=cargo_id)
+        if cargo.exonerado:
+            raise ValidationError("El cargo ya se encuentra exonerado.")
+
+        # Marcar como exonerado
+        cargo.exonerado = True
+        cargo.motivo_exoneracion = motivo
+        cargo.exonerado_por = usuario
+        cargo.save()
+
+        # Recalcular totales del folio
+        folio = cargo.estancia.folio
+        folio.calcular_totales()
+
+        # Si hay producto y se autoriza devolución al stock
+        if cargo.producto and devolver_a_stock:
+            producto = cargo.producto
+            if producto.controla_stock:
+                existencia_anterior = producto.stock_actual
+                producto.stock_actual += Decimal(str(cargo.cantidad))
+                producto.save()
+
+                # Registrar movimiento de devolución/anulación
+                MovimientoInventario.objects.create(
+                    producto=producto,
+                    tipo_movimiento='ANULACION',
+                    cantidad=Decimal(str(cargo.cantidad)),
+                    existencia_anterior=existencia_anterior,
+                    existencia_posterior=producto.stock_actual,
+                    motivo=f"Anulación de cargo #{cargo.id}: {motivo}",
+                    costo_referencial=producto.costo_referencial,
+                    usuario=usuario,
+                    estancia=cargo.estancia,
+                    documento_referencia=f"Cargo #{cargo.id}"
+                )
+
+        registrar_auditoria(
+            usuario=usuario,
+            accion="Cargo Exonerado",
+            registro_id=cargo.id,
+            tabla_afectada="estancias_cargoestancia",
+            estado_nuevo=f"Cargo #{cargo.id} exonerado. Devuelve stock: {devolver_a_stock}"
         )
         return cargo
 

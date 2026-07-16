@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from django.utils import timezone
 from rest_framework import viewsets, status
+from utils.auditoria import log_action
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -38,6 +39,13 @@ class ReservaViewSet(viewsets.ModelViewSet):
         precio = reserva.calcular_precio()
         reserva.precio_total = precio
         reserva.save()
+        log_action(
+            user=self.request.user,
+            accion="Reserva Creada",
+            registro_id=reserva.id,
+            tabla_afectada="reservas_reserva",
+            observacion=f"Precio total: {precio}"
+        )
 
     def perform_update(self, serializer):
         instance = self.get_object()
@@ -64,11 +72,25 @@ class ReservaViewSet(viewsets.ModelViewSet):
         reserva = serializer.save()
         reserva.precio_total = reserva.calcular_precio()
         reserva.save()
+        log_action(
+            user=self.request.user,
+            accion="Reserva Modificada",
+            registro_id=reserva.id,
+            tabla_afectada="reservas_reserva",
+            observacion=f"Precio total actualizado: {reserva.precio_total}"
+        )
 
     def perform_destroy(self, instance):
         if instance.estado in [Reserva.CHECKIN, Reserva.CHECKOUT, Reserva.CANCELADA]:
             from rest_framework.exceptions import ValidationError as DRFValidationError
             raise DRFValidationError('No se puede eliminar una reserva en estado check-in, check-out o cancelada.')
+        log_action(
+            user=self.request.user,
+            accion="Reserva Eliminada",
+            registro_id=instance.id,
+            tabla_afectada="reservas_reserva",
+            observacion="Reserva eliminada vía API"
+        )
         instance.delete()
 
     @action(detail=True, methods=['post'], url_path='checkin')
@@ -88,6 +110,13 @@ class ReservaViewSet(viewsets.ModelViewSet):
                 usuario=request.user,
                 exonerar_early=exonerar_early,
                 motivo_exoneracion_early=motivo_early
+            )
+            log_action(
+                user=request.user,
+                accion="Check-in Reserva",
+                registro_id=reserva.id,
+                tabla_afectada="reservas_reserva",
+                observacion=f"Habitación asignada: {habitacion_id}"
             )
             return Response({
                 'mensaje': 'Check-in realizado correctamente',
@@ -191,13 +220,12 @@ class ReservaViewSet(viewsets.ModelViewSet):
             transaccion_id=transaccion_id
         )
 
-        from reportes.models import registrar_auditoria
-        registrar_auditoria(
-            usuario=request.user,
+        log_action(
+            user=request.user,
             accion="Pago Anticipado Registrado",
             registro_id=pago.id,
             tabla_afectada="estancias_pago",
-            estado_nuevo=f"Pago S/.{monto} ({metodo_pago}) - Reserva #{reserva.id}"
+            observacion=f"Pago S/.{monto} ({metodo_pago}) - Reserva #{reserva.id}"
         )
 
         return Response({
@@ -231,15 +259,12 @@ class ReservaViewSet(viewsets.ModelViewSet):
             reserva.habitacion.estado = Habitacion.DISPONIBLE
             reserva.habitacion.save()
 
-        # Registrar auditoria
-        from reportes.models import registrar_auditoria
-        registrar_auditoria(
-            usuario=request.user,
+        log_action(
+            user=request.user,
             accion="Cancelar Reserva",
             registro_id=reserva.id,
             tabla_afectada="reservas_reserva",
-            estado_nuevo=f"Estado: CANCELADA, Motivo: {motivo}"
+            observacion=f"Estado: CANCELADA, Motivo: {motivo}"
         )
 
         return Response({'mensaje': 'Reserva cancelada correctamente'})
-

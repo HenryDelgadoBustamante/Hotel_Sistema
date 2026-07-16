@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+{% block page_title %}Proveedores de Inventario{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- Listado -->
+  <div class="col-12 col-md-8">
+    <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+      <div class="card-header bg-white border-0 pt-4">
+        <h5 class="fw-bold text-dark m-0">Proveedores Registrados</h5>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-3 py-3 text-muted fw-semibold">Razón Social</th>
+                <th class="py-3 text-muted fw-semibold">RUC / Doc</th>
+                <th class="py-3 text-muted fw-semibold">Contacto</th>
+                <th class="py-3 text-muted fw-semibold">Estado</th>
+                <th class="py-3 text-muted fw-semibold text-center" style="width: 100px;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for prov in proveedores %}
+              <tr>
+                <td class="ps-3">
+                  <div class="fw-semibold text-dark">{{ prov.razon_social }}</div>
+                  <div class="text-muted text-xs">{{ prov.direccion }}</div>
+                </td>
+                <td class="fw-bold text-dark">{{ prov.documento_fiscal }}</td>
+                <td>
+                  <div>{{ prov.persona_contacto|default:"-" }}</div>
+                  <div class="text-muted text-xs">{{ prov.telefono }} | {{ prov.correo }}</div>
+                </td>
+                <td>
+                  {% if prov.estado == 'ACTIVO' %}
+                  <span class="badge bg-success-subtle text-success">Activo</span>
+                  {% else %}
+                  <span class="badge bg-danger-subtle text-danger">Inactivo</span>
+                  {% endif %}
+                </td>
+                <td class="text-center">
+                  <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 btn-editar" 
+                    data-id="{{ prov.id }}" 
+                    data-rs="{{ prov.razon_social }}" 
+                    data-doc="{{ prov.documento_fiscal }}"
+                    data-tel="{{ prov.telefono }}"
+                    data-corr="{{ prov.correo }}"
+                    data-dir="{{ prov.direccion }}"
+                    data-cont="{{ prov.persona_contacto }}"
+                    data-obs="{{ prov.observaciones }}"
+                    data-estado="{{ prov.estado }}" style="border-radius:4px; font-size:11px;">
+                    Editar
+                  </button>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="5" class="text-center py-4 text-muted">No hay proveedores registrados.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Formulario Registro / Edición -->
+  <div class="col-12 col-md-4">
+    <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+      <div class="card-header bg-white border-0 pt-4">
+        <h5 class="fw-bold text-dark m-0" id="form-titulo">Nuevo Proveedor</h5>
+      </div>
+      <div class="card-body">
+        <form method="post" id="form-proveedor">
+          {% csrf_token %}
+          <input type="hidden" name="proveedor_id" id="input-prov-id">
+          
+          <div class="mb-2">
+            <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Razón Social *</label>
+            <input type="text" name="razon_social" id="input-prov-rs" class="form-control form-control-sm" required placeholder="Ej. Distribuidores SAC">
+          </div>
+          <div class="mb-2">
+            <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">RUC / Doc *</label>
+            <input type="text" name="documento_fiscal" id="input-prov-doc" class="form-control form-control-sm" required placeholder="Ej. 20123456789">
+          </div>
+          <div class="mb-2">
+            <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Teléfono</label>
+            <input type="text" name="telefono" id="input-prov-tel" class="form-control form-control-sm" placeholder="Ej. 987654321">
+          </div>
+          <div class="mb-2">
+            <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Correo Electrónico</label>
+            <input type="email" name="correo" id="input-prov-corr" class="form-control form-control-sm" placeholder="proveedor@empresa.com">
+          </div>
+          <div class="mb-2">
+            <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Dirección</label>
+            <input type="text" name="direccion" id="input-prov-dir" class="form-control form-control-sm" placeholder="Calle Real 123">
+          </div>
+          <div class="mb-2">
+            <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Persona de Contacto</label>
+            <input type="text" name="persona_contacto" id="input-prov-cont" class="form-control form-control-sm" placeholder="Nombre de ejecutivo">
+          </div>
+          <div class="mb-3" id="div-estado" style="display:none;">
+            <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Estado</label>
+            <select name="estado" id="select-prov-estado" class="form-select form-select-sm">
+              <option value="ACTIVO">Activo</option>
+              <option value="INACTIVO">Inactivo</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Observaciones</label>
+            <textarea name="observaciones" id="input-prov-obs" class="form-control form-control-sm" rows="2" placeholder="Notas adicionales..."></textarea>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary w-50" id="btn-cancelar" style="display:none; border-radius: 8px;">Cancelar</button>
+            <button type="submit" class="btn btn-sm btn-primary w-100" style="background: #6366f1; border-color: #6366f1; border-radius: 8px; font-weight:600;">Guardar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const btnsEditar = document.querySelectorAll('.btn-editar');
+  const provIdInput = document.getElementById('input-prov-id');
+  const provRsInput = document.getElementById('input-prov-rs');
+  const provDocInput = document.getElementById('input-prov-doc');
+  const provTelInput = document.getElementById('input-prov-tel');
+  const provCorrInput = document.getElementById('input-prov-corr');
+  const provDirInput = document.getElementById('input-prov-dir');
+  const provContInput = document.getElementById('input-prov-cont');
+  const provObsInput = document.getElementById('input-prov-obs');
+  const provEstadoSelect = document.getElementById('select-prov-estado');
+  const formTitulo = document.getElementById('form-titulo');
+  const divEstado = document.getElementById('div-estado');
+  const btnCancelar = document.getElementById('btn-cancelar');
+
+  btnsEditar.forEach(btn => {
+    btn.addEventListener('click', () => {
+      provIdInput.value = btn.dataset.id;
+      provRsInput.value = btn.dataset.rs;
+      provDocInput.value = btn.dataset.doc;
+      provTelInput.value = btn.dataset.tel;
+      provCorrInput.value = btn.dataset.corr;
+      provDirInput.value = btn.dataset.dir;
+      provContInput.value = btn.dataset.cont;
+      provObsInput.value = btn.dataset.obs;
+      provEstadoSelect.value = btn.dataset.estado;
+      formTitulo.innerText = "Editar Proveedor";
+      divEstado.style.display = 'block';
+      btnCancelar.style.display = 'block';
+    });
+  });
+
+  btnCancelar.addEventListener('click', () => {
+    provIdInput.value = '';
+    provRsInput.value = '';
+    provDocInput.value = '';
+    provTelInput.value = '';
+    provCorrInput.value = '';
+    provDirInput.value = '';
+    provContInput.value = '';
+    provObsInput.value = '';
+    formTitulo.innerText = "Nuevo Proveedor";
+    divEstado.style.display = 'none';
+    btnCancelar.style.display = 'none';
+  });
+</script>
+{% endblock %}

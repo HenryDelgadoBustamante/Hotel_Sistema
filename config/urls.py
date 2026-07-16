@@ -6,14 +6,14 @@ from django.conf.urls.static import static
 from django.shortcuts import redirect
 from views_frontend import (
     login_view, logout_view, dashboard, reservas_lista, reserva_nueva,
-    reserva_detalle, reserva_checkin, folio_view, agregar_cargo, registrar_pago, checkout_view,
+    reserva_detalle, checkin_directo, reserva_checkin, folio_view, agregar_cargo, registrar_pago, checkout_view,
     housekeeping_view, housekeeping_estado, reportes_view,
     huespedes_lista, huesped_nuevo, huesped_editar, exportar_huespedes_excel,
     habitaciones_lista, habitacion_nueva, habitacion_editar,
     estancias_lista, reservas_calendario, consultar_disponibilidad,
     reserva_imprimir_ficha, folio_imprimir,
     usuarios_lista, usuario_editar, usuario_nuevo, usuario_eliminar,
-    api_habitaciones_disponibles, api_consulta_dni,
+    api_habitaciones_disponibles, api_consulta_dni, api_buscar_huesped,
     reserva_editar, reserva_cancelar, registrar_pago_anticipo,
     solicitar_reembolso, aprobar_reembolso, cambiar_habitacion,
     cancelar_estancia_sin_pago,
@@ -23,7 +23,7 @@ from views_frontend import (
     api_ocupacion_habitaciones, api_habitaciones_housekeeping_recientes,
     mi_perfil, cambiar_password,
     recuperar_contrasena, reset_confirmar, desbloquear_usuario,
-    sesiones_activas, cerrar_sesion
+    sesiones_activas, cerrar_sesion, actualizar_estado_habitacion, hotel_configuracion
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_yasg.views import get_schema_view
@@ -67,6 +67,7 @@ urlpatterns = [
     path('api/', include('reservas.urls')),
     path('api/', include('estancias.urls')),
     path('api/', include('reportes.urls')),
+    path('', include('inventario.urls')),
     path('login/', login_view, name='login'),
     path('logout/', logout_view, name='logout'),
     path('dashboard/', dashboard, name='dashboard'),
@@ -89,8 +90,11 @@ urlpatterns = [
     path('reservas/disponibilidad/', consultar_disponibilidad, name='consultar_disponibilidad'),
     path('reservas/nueva/', reserva_nueva, name='reserva_nueva'),
     path('reservas/<int:reserva_id>/checkin/', reserva_checkin, name='reserva_checkin'),
+    path('checkin-directo/', checkin_directo, name='checkin_directo'),
+    path('checkin-directo/<int:huesped_id>/', checkin_directo, name='checkin_directo_huesped'),
     path('api/habitaciones-disponibles/', api_habitaciones_disponibles, name='api_habitaciones_disponibles'),
     path('api/dni/', api_consulta_dni, name='api_consulta_dni'),
+    path('api/buscar-huesped/', api_buscar_huesped, name='api_buscar_huesped'),
     path('estancias/<int:estancia_id>/folio/', folio_view, name='folio'),
     path('estancias/<int:estancia_id>/imprimir-folio/', folio_imprimir, name='folio_imprimir'),
     path('estancias/<int:estancia_id>/cargo/', agregar_cargo, name='agregar_cargo'),
@@ -113,6 +117,7 @@ urlpatterns = [
     path('tickets/<int:ticket_id>/cargo/', ticket_agregar_cargo, name='ticket_agregar_cargo'),
     path('reembolsos/', reembolsos_lista_admin, name='reembolsos_lista_admin'),
     path('housekeeping/<int:hab_id>/estado/', housekeeping_estado, name='housekeeping_estado'),
+    path('habitaciones/<int:hab_id>/estado/', actualizar_estado_habitacion, name='actualizar_estado_habitacion'),
     path('reportes/', reportes_view, name='reportes'),
     path('usuarios/', usuarios_lista, name='usuarios_lista'),
     path('usuarios/nuevo/', usuario_nuevo, name='usuario_nuevo'),
@@ -125,6 +130,7 @@ urlpatterns = [
     path('usuarios/<int:user_id>/desbloquear/', desbloquear_usuario, name='desbloquear_usuario'),
     path('sesiones/', sesiones_activas, name='sesiones_activas'),
     path('sesiones/<session_key>/cerrar/', cerrar_sesion, name='cerrar_sesion'),
+    path('configuracion/', hotel_configuracion, name='configuracion_hotel'),
     path('', lambda request: redirect('dashboard'), name='home'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

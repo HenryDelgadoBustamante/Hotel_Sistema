@@ -412,6 +412,58 @@
   </div>
 </div>
 
+<div class="row g-4 mb-4">
+  <div class="col-md-3">
+    <div class="metric-box" style="border-left: 4px solid #6366f1; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border-radius: 12px; padding: 16px; display: flex; align-items: center; gap: 16px; min-height: 80px;">
+      <div class="metric-icon" style="color: #6366f1; font-size: 24px; background: #eef2ff; width: 48px; height: 48px; border-radius: 10px; display: grid; place-items: center;"><i class="bi bi-bell"></i></div>
+      <div class="metric-content">
+        <div class="metric-val" style="font-size: 22px; font-weight: 700; color: #1e293b;">{{ tickets_pendientes }}</div>
+        <div class="metric-label" style="font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase;">Atenciones Pendientes</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="metric-box" style="border-left: 4px solid #f59e0b; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border-radius: 12px; padding: 16px; display: flex; align-items: center; gap: 16px; min-height: 80px;">
+      <div class="metric-icon" style="color: #f59e0b; font-size: 24px; background: #fff7ed; width: 48px; height: 48px; border-radius: 10px; display: grid; place-items: center;"><i class="bi bi-clock-history"></i></div>
+      <div class="metric-content">
+        <div class="metric-val" style="font-size: 22px; font-weight: 700; color: #1e293b;">{{ reservas_vencer_hoy }}</div>
+        <div class="metric-label" style="font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase;">Llegadas Pendientes</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-2 col-sm-4">
+    <div class="metric-box" style="border-left: 4px solid #06b6d4; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border-radius: 12px; padding: 16px; display: flex; align-items: center; gap: 12px; min-height: 80px;">
+      <div class="metric-icon" style="color: #06b6d4; font-size: 20px; background: #ecfeff; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center;"><i class="bi bi-hourglass-top"></i></div>
+      <div class="metric-content">
+        <div class="metric-val" style="font-size: 20px; font-weight: 700; color: #1e293b;">{{ early_checkins_hoy }}</div>
+        <div class="metric-label" style="font-size: 10px; font-weight: 600; color: #64748b; text-transform: uppercase;">Early Check-In</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-2 col-sm-4">
+    <div class="metric-box" style="border-left: 4px solid #ec4899; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border-radius: 12px; padding: 16px; display: flex; align-items: center; gap: 12px; min-height: 80px;">
+      <div class="metric-icon" style="color: #ec4899; font-size: 20px; background: #fdf2f8; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center;"><i class="bi bi-hourglass-bottom"></i></div>
+      <div class="metric-content">
+        <div class="metric-val" style="font-size: 20px; font-weight: 700; color: #1e293b;">{{ late_checkouts_hoy }}</div>
+        <div class="metric-label" style="font-size: 10px; font-weight: 600; color: #64748b; text-transform: uppercase;">Late Check-Out</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-2 col-sm-4">
+    <div class="metric-box" style="border-left: 4px solid #10b981; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border-radius: 12px; padding: 16px; display: flex; align-items: center; gap: 12px; min-height: 80px;">
+      <div class="metric-icon" style="color: #10b981; font-size: 20px; background: #ecfdf5; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center;"><i class="bi bi-wallet2"></i></div>
+      <div class="metric-content">
+        {% if mostrar_financiero %}
+        <div class="metric-val" style="font-size: 18px; font-weight: 700; color: #1e293b;">S/. {{ saldos_activos }}</div>
+        {% else %}
+        <div class="metric-val" style="font-size: 18px; font-weight: 700; color: #1e293b;">••••••</div>
+        {% endif %}
+        <div class="metric-label" style="font-size: 10px; font-weight: 600; color: #64748b; text-transform: uppercase;">Saldos Activos</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ============================================================ -->
 <!-- Obs. 2 – Monitor de Ocupación en Tiempo Real                 -->
 <!-- ============================================================ -->
@@ -640,6 +692,71 @@
         Plano del Hotel
       </div>
 
+      <!-- Filtros de Búsqueda de Habitaciones (HOT-HOS-003) -->
+      <div class="row g-2 mb-3 p-3 rounded" style="background-color: #f8fafc; border: 1px solid #e2e8f0; margin-left: 0; margin-right: 0;">
+        <div class="col-md-4">
+          <div class="input-group">
+            <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+            <input type="text" id="searchRoomNum" class="form-control border-start-0" placeholder="Buscar por número..." onkeyup="filterDashboardRooms()">
+          </div>
+        </div>
+        <div class="col-md-4">
+          <select id="filterRoomType" class="form-select" onchange="filterDashboardRooms()">
+            <option value="">Todos los tipos</option>
+            <option value="VIP">VIP</option>
+            <option value="Suite">Suite</option>
+            <option value="Matrimonial">Matrimonial</option>
+            <option value="Airbnb">Airbnb</option>
+            <option value="Doble">Doble</option>
+            <option value="Individual">Individual</option>
+            <option value="Triple">Triple</option>
+            <option value="Cuádruple">Cuádruple</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <select id="filterRoomState" class="form-select" onchange="filterDashboardRooms()">
+            <option value="">Todos los estados</option>
+            <option value="DISPONIBLE">Disponible</option>
+            <option value="OCUPADA">Ocupada</option>
+            <option value="LIMPIEZA">En Limpieza</option>
+            <option value="MANTENIMIENTO">En Mantenimiento</option>
+            <option value="RESERVADA">Reservada (Hoy)</option>
+          </select>
+        </div>
+      </div>
+
+      <script>
+        function filterDashboardRooms() {
+          const searchVal = document.getElementById('searchRoomNum').value.trim().toLowerCase();
+          const typeVal = document.getElementById('filterRoomType').value.toUpperCase();
+          const stateVal = document.getElementById('filterRoomState').value.toUpperCase();
+
+          const buttons = document.querySelectorAll('.dashboard-room-button');
+          buttons.forEach(btn => {
+            const card = btn.querySelector('.hab-card');
+            const num = btn.querySelector('.hab-num').textContent.trim().toLowerCase();
+            const type = btn.querySelector('.hab-type').getAttribute('title').trim().toUpperCase();
+            
+            let state = "";
+            if (card.classList.contains('hab-disponible')) state = "DISPONIBLE";
+            else if (card.classList.contains('hab-ocupada')) state = "OCUPADA";
+            else if (card.classList.contains('hab-limpieza')) state = "LIMPIEZA";
+            else if (card.classList.contains('hab-mantenimiento')) state = "MANTENIMIENTO";
+            else if (card.classList.contains('hab-reservada') || card.classList.contains('hab-retraso')) state = "RESERVADA";
+
+            const matchesSearch = !searchVal || num.includes(searchVal);
+            const matchesType = !typeVal || type.includes(typeVal);
+            const matchesState = !stateVal || state === stateVal;
+
+            if (matchesSearch && matchesType && matchesState) {
+              btn.style.display = 'block';
+            } else {
+              btn.style.display = 'none';
+            }
+          });
+        }
+      </script>
+
       <div class="d-flex flex-wrap gap-2 mb-4">
         {% for hab in habitaciones %}
         <button type="button" class="dashboard-room-button" data-bs-toggle="modal"
@@ -744,22 +861,75 @@
                   </div>
                 </div>
               </div>
-              <div class="modal-footer px-4 py-3 bg-light border-top" style="border-color: #f1f5f9 !important;">
-                <a href="{% url 'habitacion_editar' hab.id %}" class="btn btn-light"
-                  style="border: 1px solid #e2e8f0; font-weight: 500; color: #475569; border-radius: 8px;">
-                  <i class="bi bi-pencil me-1"></i> Editar
-                </a>
-                {% if hab.estado_visual == 'RESERVADA' or hab.estado_visual == 'RETRASO' %}
-                <a href="{% url 'reserva_checkin' hab.reserva_hoy.id %}" class="btn btn-success"
-                  style="font-weight: 600; border-radius: 8px;">
-                  <i class="bi bi-box-arrow-in-right me-1"></i> Check-in
-                </a>
-                {% elif hab.estado == 'DISPONIBLE' %}
-                <a href="/reservas/nueva/?habitacion={{ hab.id }}" class="btn"
-                  style="background: linear-gradient(135deg, #c9a84c 0%, #f0c040 100%); color: white; font-weight: 600; border-radius: 8px;">
-                  <i class="bi bi-calendar-plus me-1"></i> Reservar
-                </a>
-                {% endif %}
+              <div class="modal-footer px-4 py-3 bg-light border-top d-flex justify-content-between align-items-center flex-wrap gap-2" style="border-color: #f1f5f9 !important;">
+                <div>
+                  <a href="{% url 'habitacion_editar' hab.id %}" class="btn btn-light"
+                    style="border: 1px solid #e2e8f0; font-weight: 500; color: #475569; border-radius: 8px;">
+                    <i class="bi bi-pencil me-1"></i> Editar
+                  </a>
+                </div>
+                <div class="d-flex gap-2 align-items-center">
+                  {% if hab.estado_visual == 'RESERVADA' or hab.estado_visual == 'RETRASO' %}
+                  <a href="{% url 'reserva_checkin' hab.reserva_hoy.id %}" class="btn btn-success"
+                    style="font-weight: 600; border-radius: 8px;">
+                    <i class="bi bi-box-arrow-in-right me-1"></i> Check-in
+                  </a>
+                  {% elif hab.estado == 'DISPONIBLE' %}
+                  <!-- Mandar a Limpieza / Mantenimiento -->
+                  <form method="post" action="{% url 'actualizar_estado_habitacion' hab.id %}" style="margin: 0; display: inline-block;">
+                    {% csrf_token %}
+                    <input type="hidden" name="estado" value="LIMPIEZA">
+                    <button type="submit" class="btn btn-outline-warning" style="font-weight: 600; border-radius: 8px;">
+                      <i class="bi bi-wind me-1"></i> Limpieza
+                    </button>
+                  </form>
+                  <form method="post" action="{% url 'actualizar_estado_habitacion' hab.id %}" style="margin: 0; display: inline-block;">
+                    {% csrf_token %}
+                    <input type="hidden" name="estado" value="MANTENIMIENTO">
+                    <button type="submit" class="btn btn-outline-secondary" style="font-weight: 600; border-radius: 8px;">
+                      <i class="bi bi-tools me-1"></i> Mantenimiento
+                    </button>
+                  </form>
+                  <a href="/reservas/nueva/?habitacion={{ hab.id }}" class="btn"
+                    style="background: linear-gradient(135deg, #c9a84c 0%, #f0c040 100%); color: white; font-weight: 600; border-radius: 8px;">
+                    <i class="bi bi-calendar-plus me-1"></i> Reservar
+                  </a>
+                  {% elif hab.estado == 'LIMPIEZA' %}
+                  <!-- Liberar o pasar a Mantenimiento -->
+                  <form method="post" action="{% url 'actualizar_estado_habitacion' hab.id %}" style="margin: 0; display: inline-block;">
+                    {% csrf_token %}
+                    <input type="hidden" name="estado" value="MANTENIMIENTO">
+                    <button type="submit" class="btn btn-outline-secondary" style="font-weight: 600; border-radius: 8px;">
+                      <i class="bi bi-tools me-1"></i> Mantenimiento
+                    </button>
+                  </form>
+                  <form method="post" action="{% url 'actualizar_estado_habitacion' hab.id %}" style="margin: 0; display: inline-block;">
+                    {% csrf_token %}
+                    <input type="hidden" name="estado" value="DISPONIBLE">
+                    <button type="submit" class="btn btn-success" style="font-weight: 600; border-radius: 8px;">
+                      <i class="bi bi-check-circle-fill me-1"></i> Liberar (Disponible)
+                    </button>
+                  </form>
+                  {% elif hab.estado == 'MANTENIMIENTO' %}
+                  <!-- Sacar de Mantenimiento (Mandar a Limpieza) -->
+                  <form method="post" action="{% url 'actualizar_estado_habitacion' hab.id %}" style="margin: 0; display: inline-block;">
+                    {% csrf_token %}
+                    <input type="hidden" name="estado" value="LIMPIEZA">
+                    <button type="submit" class="btn btn-outline-warning" style="font-weight: 600; border-radius: 8px;">
+                      <i class="bi bi-wind me-1"></i> Limpieza
+                    </button>
+                  </form>
+                  <form method="post" action="{% url 'actualizar_estado_habitacion' hab.id %}" style="margin: 0; display: inline-block;">
+                    {% csrf_token %}
+                    <input type="hidden" name="estado" value="DISPONIBLE">
+                    <button type="submit" class="btn btn-success" style="font-weight: 600; border-radius: 8px;">
+                      <i class="bi bi-check-circle-fill me-1"></i> Liberar (Disponible)
+                    </button>
+                  </form>
+                  {% elif hab.estado == 'OCUPADA' %}
+                  <span class="text-muted small"><i class="bi bi-info-circle me-1"></i> Habitación ocupada. Para liberarla realice Check-Out o Cambio.</span>
+                  {% endif %}
+                </div>
               </div>
             </div>
           </div>
@@ -798,11 +968,15 @@
   <!-- Panel de Reservas -->
   <div class="col-lg-5 col-xl-4">
     <div class="res-panel-card">
-      <div class="pt-4 pb-2">
-        <div class="section-title px-4 mb-3">
+      <div class="pt-4 pb-2 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="section-title mb-0">
           <i class="bi bi-calendar4-week text-muted" style="font-size: 20px;"></i>
           Recepción Hoy
         </div>
+        <a href="{% url 'checkin_directo' %}" class="btn btn-sm btn-outline-success" style="font-weight: 600; border-radius: 8px;">
+          <i class="bi bi-lightning-fill"></i> Check-In Directo
+        </a>
+      </div>
 
         <ul class="nav nav-pills reservas-panel-tabs" id="reservaTabs" role="tablist">
           <li class="nav-item" role="presentation">

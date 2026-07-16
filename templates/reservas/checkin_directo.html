@@ -1,0 +1,580 @@
+{% extends 'base.html' %}
+{% block title %}Check-In Directo (Sin Reserva){% endblock %}
+{% block page_title %}Hospedaje Directo - Check-In{% endblock %}
+
+{% block content %}
+<style>
+  /* ── Autocomplete Dropdown ── */
+  .autocomplete-wrapper { position: relative; }
+  .autocomplete-dropdown {
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 1000;
+    background: #fff; border: 1px solid #cbd5e1; border-top: none;
+    border-radius: 0 0 8px 8px; max-height: 260px; overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  }
+  .autocomplete-item {
+    padding: 10px 14px; cursor: pointer; display: flex;
+    align-items: center; gap: 10px; border-bottom: 1px solid #f1f5f9;
+    transition: background .15s;
+  }
+  .autocomplete-item:last-child { border-bottom: none; }
+  .autocomplete-item:hover { background: #f0f7ff; }
+  .autocomplete-item .ac-icon {
+    width: 36px; height: 36px; border-radius: 50%; background: #e0e7ff;
+    color: #4f46e5; display: flex; align-items: center; justify-content: center;
+    font-size: 15px; flex-shrink: 0;
+  }
+  .autocomplete-item .ac-name { font-weight: 600; font-size: 13.5px; color: #1e293b; }
+  .autocomplete-item .ac-meta { font-size: 11.5px; color: #64748b; }
+  .no-results-item { padding: 12px 14px; color: #94a3b8; font-size: 13px; text-align: center; }
+
+  /* ── Resumen Estadía ── */
+  .resumen-card {
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    color: #f8fafc; border-radius: 12px; padding: 18px 20px;
+    margin-top: 16px;
+  }
+  .resumen-card .res-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; }
+  .resumen-card .res-label { font-size: 12.5px; color: #94a3b8; }
+  .resumen-card .res-value { font-size: 13px; font-weight: 600; color: #f1f5f9; }
+  .resumen-card .res-total { border-top: 1px solid #334155; margin-top: 8px; padding-top: 10px; }
+  .resumen-card .res-total .res-label { font-size: 14px; color: #cbd5e1; font-weight: 600; }
+  .resumen-card .res-total .res-value { font-size: 20px; color: #4ade80; font-weight: 700; }
+
+  /* ── Huesped Info Card ── */
+  #huesped-info-panel {
+    border-radius: 10px; border: 1.5px solid #bbf7d0;
+    background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  }
+  #huesped-info-panel.not-found {
+    border-color: #fecaca; background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  }
+
+  /* ── Room pill list ── */
+  .room-list { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow-y: auto; padding-right: 2px; }
+  .room-pill {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; border-radius: 8px; border: 2px solid #e2e8f0;
+    background: #fff; cursor: pointer; transition: all .18s; font-size: 13px;
+  }
+  .room-pill:hover { border-color: #6366f1; background: #eef2ff; }
+  .room-pill.selected { border-color: #6366f1; background: #eef2ff; box-shadow: 0 0 0 3px #c7d2fe; }
+  .room-pill .room-num { font-weight: 700; color: #1e293b; }
+  .room-pill .room-info { color: #64748b; font-size: 12px; }
+  .room-pill .room-price { font-weight: 700; color: #059669; white-space: nowrap; }
+  /* hidden real select */
+  #habitacion_id { display: none; }
+</style>
+
+<div class="form-shell">
+  <div class="row g-3">
+
+    <!-- ╔══ ENCABEZADO ══╗ -->
+    <div class="col-12">
+      <div class="form-panel mb-1" style="background: linear-gradient(135deg, #0a1628, #1e293b); color: white; padding: 18px 24px;">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <div>
+            <h4 class="fw-bold mb-1"><i class="bi bi-lightning-fill text-warning me-2"></i>Hospedaje Directo (Walk-In)</h4>
+            <p class="mb-0" style="color: #94a3b8; font-size: 13.5px;">
+              Registrar el ingreso inmediato de un huésped sin reserva previa (HOT-HOS-001).
+            </p>
+          </div>
+          <span class="badge bg-success px-3 py-2" style="font-size: 13px;">
+            <i class="bi bi-shield-check me-1"></i>Ingreso Rápido
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ╔══ FORMULARIO PRINCIPAL ══╗ -->
+    <form id="form-checkin-directo" method="post" class="needs-validation row g-3" novalidate style="width:100%; margin:0;">
+      {% csrf_token %}
+
+    <!-- ╔══ COLUMNA IZQUIERDA ══╗ -->
+    <div class="col-lg-7">
+
+
+        <!-- ── 1. Identificación del Huésped ── -->
+        <div class="form-panel mb-3">
+          <div class="form-section-title">
+            <i class="bi bi-person-badge me-2 text-indigo-500"></i>1. Identificación del Huésped
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label fw-semibold">Número de Documento / Nombre <span class="text-danger">*</span></label>
+              <div class="autocomplete-wrapper">
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-card-text"></i></span>
+                  <input type="text" id="search_doc" class="form-control"
+                         placeholder="DNI, pasaporte o nombre del huésped..."
+                         autocomplete="off" required>
+                  <button class="btn btn-outline-secondary" type="button" id="btn-buscar-huesped">
+                    <i class="bi bi-search me-1"></i>Buscar
+                  </button>
+                </div>
+                <div id="autocomplete-dropdown" class="autocomplete-dropdown" style="display:none;"></div>
+              </div>
+              <!-- campo oculto con el doc para el POST -->
+              <input type="hidden" id="num_doc" name="num_doc" value="{% if huesped_presel %}{{ huesped_presel.num_doc }}{% endif %}">
+              <div class="form-text text-muted mt-1" id="search-status">
+                El documento es obligatorio para el check-in (RN-HOS-004).
+              </div>
+            </div>
+
+            <div class="col-md-4 d-flex align-items-end">
+              <a href="{% url 'huesped_nuevo' %}?next=checkin_directo" class="btn btn-outline-primary w-100" target="_blank">
+                <i class="bi bi-person-plus-fill me-1"></i>Nuevo Huésped
+              </a>
+            </div>
+          </div>
+
+          <!-- Panel datos Huésped encontrado -->
+          <div id="huesped-info-panel" class="mt-3 p-3" style="display: {% if huesped_presel %}flex{% else %}none{% endif %}; align-items:center; gap:14px; border-radius:10px; border:1.5px solid #bbf7d0; background: linear-gradient(135deg, #f0fdf4, #dcfce7);">
+            <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:50px;height:50px;font-size:22px;">
+              <i class="bi bi-person-check-fill"></i>
+            </div>
+            <div class="flex-grow-1">
+              <div class="fw-bold text-dark" id="huesped-nombre" style="font-size:15px;">
+                {% if huesped_presel %}{{ huesped_presel.nombres }} {{ huesped_presel.apellidos }}{% endif %}
+              </div>
+              <div class="text-muted small" id="huesped-detalles">
+                {% if huesped_presel %}{{ huesped_presel.tipo_doc }}: {{ huesped_presel.num_doc }} | Tel: {{ huesped_presel.telefono|default:"—" }} | {{ huesped_presel.nacionalidad }}{% endif %}
+              </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-danger" id="btn-limpiar-huesped" title="Cambiar huésped">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- ── 2. Detalles de la Estadía ── -->
+        <div class="form-panel">
+          <div class="form-section-title">
+            <i class="bi bi-sliders me-2 text-indigo-500"></i>2. Detalles de la Estadía
+          </div>
+
+          <div class="row g-3">
+            <!-- Modalidad -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Modalidad <span class="text-danger">*</span></label>
+              <select id="modalidad" name="modalidad" class="form-select" required>
+                <option value="DIA" selected>Por Día (Check-out 12:00 PM)</option>
+                <option value="HORA">Por Horas</option>
+              </select>
+            </div>
+
+            <!-- Cantidad de huéspedes -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Cantidad de Huéspedes <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-people"></i></span>
+                <input type="number" id="num_adultos" name="num_adultos" class="form-control" value="1" min="1" max="10" required>
+              </div>
+              <div class="form-text text-muted">Mínimo 1 huésped (RN-HOS-005).</div>
+            </div>
+
+            <!-- Fecha de entrada (solo lectura) -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Fecha de Ingreso</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-calendar-check"></i></span>
+                <input type="text" class="form-control bg-light" value="{{ today }}" readonly>
+              </div>
+              <div class="form-text text-muted">Ingreso inmediato — hoy.</div>
+            </div>
+
+            <!-- Fecha Salida (modo día) -->
+            <div class="col-md-6" id="div-fecha-salida">
+              <label class="form-label fw-semibold">Fecha de Salida Estimada</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-calendar-x"></i></span>
+                <input type="date" id="fecha_salida" name="fecha_salida"
+                       class="form-control" value="{{ manana }}" min="{{ today }}">
+              </div>
+            </div>
+
+            <!-- Horas contratadas (modo hora) -->
+            <div class="col-md-6" id="div-horas" style="display:none;">
+              <label class="form-label fw-semibold">Horas Contratadas</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-clock"></i></span>
+                <input type="number" id="duracion_horas" name="duracion_horas"
+                       class="form-control" value="3" min="1" max="24">
+                <span class="input-group-text">hrs</span>
+              </div>
+            </div>
+
+            <!-- Observaciones -->
+            <div class="col-12">
+              <label class="form-label fw-semibold">Observaciones / Notas Especiales</label>
+              <textarea name="observaciones" class="form-control" rows="2"
+                        placeholder="Restricciones, solicitudes adicionales, etc."></textarea>
+            </div>
+          </div>
+
+          <!-- ── Resumen Estadía (dinámico) ── -->
+          <div class="resumen-card mt-3" id="resumen-estadia" style="display:none;">
+            <div class="fw-bold mb-2" style="font-size:13px; color:#94a3b8; text-transform:uppercase; letter-spacing:.06em;">
+              <i class="bi bi-receipt me-1"></i> Resumen de la Estadía
+            </div>
+            <div class="res-row">
+              <span class="res-label">Habitación</span>
+              <span class="res-value" id="res-habitacion">—</span>
+            </div>
+            <div class="res-row">
+              <span class="res-label">Modalidad</span>
+              <span class="res-value" id="res-modalidad">Por Día</span>
+            </div>
+            <div class="res-row" id="res-row-noches">
+              <span class="res-label">Noches</span>
+              <span class="res-value" id="res-noches">—</span>
+            </div>
+            <div class="res-row" id="res-row-horas" style="display:none;">
+              <span class="res-label">Horas</span>
+              <span class="res-value" id="res-horas">—</span>
+            </div>
+            <div class="res-row">
+              <span class="res-label">Precio por noche/hora</span>
+              <span class="res-value">S/. <span id="res-precio-base">—</span></span>
+            </div>
+            <div class="res-row">
+              <span class="res-label">Huéspedes</span>
+              <span class="res-value" id="res-huespedes">1</span>
+            </div>
+            <div class="res-row res-total">
+              <span class="res-label">Total Estimado</span>
+              <span class="res-value">S/. <span id="res-total">0.00</span></span>
+            </div>
+          </div>
+        </div>
+    </div><!-- end col-lg-7 -->
+
+    <!-- ╔══ COLUMNA DERECHA ══╗ -->
+    <div class="col-lg-5">
+      <div class="form-panel h-100 d-flex flex-column justify-content-between">
+        <div>
+          <div class="form-section-title">
+            <i class="bi bi-door-closed me-2 text-indigo-500"></i>3. Asignación de Habitación
+          </div>
+
+          <label class="form-label fw-semibold">Seleccionar Habitación Disponible <span class="text-danger">*</span></label>
+
+          <!-- Filtro de habitaciones -->
+          <div class="input-group mb-2">
+            <span class="input-group-text bg-white text-muted py-1 px-2"><i class="bi bi-search"></i></span>
+            <input type="text" id="searchCheckinRoom" class="form-control form-control-sm"
+                   placeholder="Filtrar por número, tipo o piso...">
+          </div>
+
+          <!-- Lista visual de habitaciones -->
+          <div class="room-list" id="room-list">
+            {% for hab in habitaciones %}
+            <div class="room-pill" data-id="{{ hab.id }}"
+                 data-capacidad="{{ hab.tipo.capacidad }}"
+                 data-precio="{{ hab.tipo.precio_base }}"
+                 data-tipo="{{ hab.tipo.nombre }}"
+                 data-numero="{{ hab.numero }}"
+                 data-piso="{{ hab.piso }}"
+                 onclick="selectRoom(this)">
+              <div>
+                <div class="room-num">Hab. {{ hab.numero }}</div>
+                <div class="room-info">{{ hab.tipo.nombre }} · Piso {{ hab.piso }} · Cap. {{ hab.tipo.capacidad }} pax</div>
+              </div>
+              <div class="room-price">S/. {{ hab.tipo.precio_base }}</div>
+            </div>
+            {% empty %}
+            <div class="text-center py-4 text-muted">
+              <i class="bi bi-door-open" style="font-size:2rem;"></i>
+              <p class="mt-2">No hay habitaciones disponibles en este momento.</p>
+            </div>
+            {% endfor %}
+          </div>
+
+          <!-- Select oculto para el POST -->
+          <select id="habitacion_id" name="habitacion_id" required>
+            {% for hab in habitaciones %}
+            <option value="{{ hab.id }}">{{ hab.numero }}</option>
+            {% endfor %}
+          </select>
+
+          <!-- Panel detalle habitación seleccionada -->
+          <div id="room-detail-panel" class="p-3 rounded mt-3"
+               style="background:#f0fdf4; border:1px solid #bbf7d0; display:none;">
+            <h6 class="fw-bold text-success mb-2" id="room-title">Habitación —</h6>
+            <div class="row g-2 text-dark" style="font-size:13px;">
+              <div class="col-6"><strong>Tipo:</strong> <span id="room-type">—</span></div>
+              <div class="col-6"><strong>Capacidad Máx:</strong> <span id="room-cap">—</span> pax</div>
+              <div class="col-6"><strong>Precio Base:</strong> S/. <span id="room-price">—</span></div>
+              <div class="col-6"><strong>Estado:</strong> <span class="badge bg-success">Disponible</span></div>
+            </div>
+            <div id="capacidad-alerta" class="alert alert-danger py-1 px-2 mt-2 mb-0"
+                 style="display:none; font-size:12px;">
+              <i class="bi bi-exclamation-triangle-fill me-1"></i>
+              La cantidad de huéspedes supera la capacidad de la habitación.
+            </div>
+          </div>
+        </div>
+
+        <div class="d-grid gap-2 mt-4">
+          <button type="submit" form="form-checkin-directo" class="btn btn-success btn-lg" id="btn-submit-checkin" disabled>
+            <i class="bi bi-check-circle-fill me-2"></i>Completar Hospedaje Directo
+          </button>
+          <a href="/dashboard/" class="btn btn-outline-secondary">Cancelar y Volver</a>
+        </div>
+      </div>
+    </div><!-- end col-lg-5 -->
+
+    </form><!-- end form-checkin-directo -->
+  </div><!-- end .row -->
+</div><!-- end .form-shell -->
+
+<script>
+/* ════════════════════════════════════════════
+   STATE
+════════════════════════════════════════════ */
+let selectedHuesped = null;
+let selectedRoom    = null;
+
+/* ════════════════════════════════════════════
+   AUTOCOMPLETE DE HUÉSPEDES
+════════════════════════════════════════════ */
+const searchInput  = document.getElementById('search_doc');
+const numDocHidden = document.getElementById('num_doc');
+const dropdown     = document.getElementById('autocomplete-dropdown');
+const statusEl     = document.getElementById('search-status');
+const infoPanel    = document.getElementById('huesped-info-panel');
+
+let debounceTimer;
+
+searchInput.addEventListener('input', function() {
+  const q = this.value.trim();
+  clearTimeout(debounceTimer);
+  if (q.length < 2) { hideDropdown(); return; }
+  debounceTimer = setTimeout(() => fetchHuespedes(q), 280);
+});
+
+searchInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') hideDropdown();
+});
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.autocomplete-wrapper') && !e.target.closest('#btn-buscar-huesped'))
+    hideDropdown();
+});
+
+document.getElementById('btn-buscar-huesped').addEventListener('click', function() {
+  const q = searchInput.value.trim();
+  if (q) fetchHuespedes(q, true);
+});
+
+function fetchHuespedes(q, force = false) {
+  statusEl.textContent = 'Buscando...';
+  statusEl.className   = 'form-text text-primary';
+
+  fetch(`/api/buscar-huesped/?q=${encodeURIComponent(q)}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.results && data.results.length > 0) {
+        renderDropdown(data.results);
+        statusEl.textContent = `${data.results.length} huésped(es) encontrado(s).`;
+        statusEl.className   = 'form-text text-success';
+      } else {
+        renderDropdownEmpty(q);
+        statusEl.innerHTML  = `<span class="text-warning"><i class="bi bi-exclamation-circle me-1"></i>No encontrado en el sistema.</span>
+          &nbsp;<a href="{% url 'huesped_nuevo' %}?num_doc=${encodeURIComponent(q)}&next=checkin_directo" target="_blank" class="fw-bold">Registrar huésped</a>`;
+        statusEl.className  = 'form-text';
+      }
+    })
+    .catch(() => {
+      statusEl.textContent = 'Error al buscar. Intente de nuevo.';
+      statusEl.className   = 'form-text text-danger';
+    });
+}
+
+function renderDropdown(results) {
+  dropdown.innerHTML = '';
+  results.forEach(h => {
+    const item = document.createElement('div');
+    item.className = 'autocomplete-item';
+    item.innerHTML = `
+      <div class="ac-icon"><i class="bi bi-person-fill"></i></div>
+      <div>
+        <div class="ac-name">${h.nombre_completo}</div>
+        <div class="ac-meta">${h.tipo_doc}: ${h.num_doc}${h.telefono ? ' · Tel: ' + h.telefono : ''}${h.nacionalidad ? ' · ' + h.nacionalidad : ''}</div>
+      </div>`;
+    item.addEventListener('click', () => selectHuesped(h));
+    dropdown.appendChild(item);
+  });
+  dropdown.style.display = 'block';
+}
+
+function renderDropdownEmpty(q) {
+  dropdown.innerHTML = `<div class="no-results-item"><i class="bi bi-search me-1"></i>Sin resultados para "${q}"</div>`;
+  dropdown.style.display = 'block';
+}
+
+function hideDropdown() {
+  dropdown.style.display = 'none';
+}
+
+function selectHuesped(h) {
+  selectedHuesped = h;
+  searchInput.value    = `${h.nombre_completo} (${h.num_doc})`;
+  numDocHidden.value   = h.num_doc;
+  document.getElementById('huesped-nombre').textContent = h.nombre_completo;
+  document.getElementById('huesped-detalles').textContent =
+    `${h.tipo_doc}: ${h.num_doc}${h.telefono ? ' | Tel: ' + h.telefono : ''}${h.email ? ' | ' + h.email : ''} | ${h.nacionalidad}`;
+  infoPanel.style.display   = 'flex';
+  infoPanel.className       = infoPanel.className.replace('not-found', '');
+  infoPanel.style.borderColor = '#bbf7d0';
+  infoPanel.style.background  = 'linear-gradient(135deg, #f0fdf4, #dcfce7)';
+  statusEl.textContent        = 'Huésped verificado correctamente.';
+  statusEl.className          = 'form-text text-success';
+  hideDropdown();
+  validateSubmit();
+  recalcular();
+}
+
+document.getElementById('btn-limpiar-huesped').addEventListener('click', function() {
+  selectedHuesped     = null;
+  searchInput.value   = '';
+  numDocHidden.value  = '';
+  infoPanel.style.display = 'none';
+  statusEl.textContent    = 'El documento es obligatorio para el check-in (RN-HOS-004).';
+  statusEl.className      = 'form-text text-muted';
+  validateSubmit();
+});
+
+/* ════════════════════════════════════════════
+   SELECTOR VISUAL DE HABITACIONES
+════════════════════════════════════════════ */
+function selectRoom(pill) {
+  document.querySelectorAll('.room-pill').forEach(p => p.classList.remove('selected'));
+  pill.classList.add('selected');
+  const id      = pill.dataset.id;
+  const select  = document.getElementById('habitacion_id');
+  select.value  = id;
+  selectedRoom  = {
+    id:        id,
+    numero:    pill.dataset.numero,
+    tipo:      pill.dataset.tipo,
+    capacidad: parseInt(pill.dataset.capacidad),
+    precio:    parseFloat(pill.dataset.precio),
+    piso:      pill.dataset.piso,
+  };
+  updateRoomDetail();
+  validateSubmit();
+  recalcular();
+}
+
+function updateRoomDetail() {
+  if (!selectedRoom) { document.getElementById('room-detail-panel').style.display = 'none'; return; }
+  document.getElementById('room-title').textContent = `Habitación ${selectedRoom.numero}`;
+  document.getElementById('room-type').textContent  = selectedRoom.tipo;
+  document.getElementById('room-cap').textContent   = selectedRoom.capacidad;
+  document.getElementById('room-price').textContent = selectedRoom.precio.toFixed(2);
+  document.getElementById('room-detail-panel').style.display = 'block';
+  checkCapacidad();
+}
+
+function checkCapacidad() {
+  const pax    = parseInt(document.getElementById('num_adultos').value) || 1;
+  const alerta = document.getElementById('capacidad-alerta');
+  const excede = selectedRoom && pax > selectedRoom.capacidad;
+  alerta.style.display = excede ? 'block' : 'none';
+}
+
+/* Filtro de búsqueda de habitaciones */
+document.getElementById('searchCheckinRoom').addEventListener('keyup', function() {
+  const val = this.value.trim().toLowerCase();
+  document.querySelectorAll('.room-pill').forEach(pill => {
+    const text = pill.innerText.toLowerCase();
+    pill.style.display = text.includes(val) ? 'flex' : 'none';
+  });
+});
+
+/* ════════════════════════════════════════════
+   MODALIDAD: día ↔ hora
+════════════════════════════════════════════ */
+document.getElementById('modalidad').addEventListener('change', function() {
+  const isHora = this.value === 'HORA';
+  document.getElementById('div-horas').style.display        = isHora ? 'block' : 'none';
+  document.getElementById('div-fecha-salida').style.display = isHora ? 'none'  : 'block';
+  document.getElementById('res-row-noches').style.display   = isHora ? 'none'  : 'flex';
+  document.getElementById('res-row-horas').style.display    = isHora ? 'flex'  : 'none';
+  document.getElementById('res-modalidad').textContent      = isHora ? 'Por Horas' : 'Por Día';
+  recalcular();
+});
+
+/* ════════════════════════════════════════════
+   RECÁLCULO DEL RESUMEN
+════════════════════════════════════════════ */
+function recalcular() {
+  if (!selectedRoom) { document.getElementById('resumen-estadia').style.display = 'none'; return; }
+
+  const modalidad = document.getElementById('modalidad').value;
+  const pax       = parseInt(document.getElementById('num_adultos').value) || 1;
+  const precio    = selectedRoom.precio;
+  let cantidad    = 1;
+  let total       = 0;
+
+  if (modalidad === 'HORA') {
+    cantidad = parseFloat(document.getElementById('duracion_horas').value) || 3;
+    total    = precio * cantidad;
+    document.getElementById('res-horas').textContent = cantidad + ' hr(s)';
+  } else {
+    const salida  = document.getElementById('fecha_salida').value;
+    const hoy     = new Date('{{ today }}');
+    const salidaD = salida ? new Date(salida) : new Date(hoy.getTime() + 86400000);
+    cantidad      = Math.max(1, Math.round((salidaD - hoy) / 86400000));
+    total         = precio * cantidad;
+    document.getElementById('res-noches').textContent = cantidad + ' noche(s)';
+  }
+
+  document.getElementById('res-habitacion').textContent  = `Hab. ${selectedRoom.numero} — ${selectedRoom.tipo}`;
+  document.getElementById('res-precio-base').textContent = precio.toFixed(2);
+  document.getElementById('res-huespedes').textContent   = pax + ' pax';
+  document.getElementById('res-total').textContent       = total.toFixed(2);
+  document.getElementById('resumen-estadia').style.display = 'block';
+  checkCapacidad();
+}
+
+/* ════════════════════════════════════════════
+   EVENTOS ADICIONALES
+════════════════════════════════════════════ */
+document.getElementById('fecha_salida').addEventListener('change', recalcular);
+document.getElementById('duracion_horas').addEventListener('input', recalcular);
+document.getElementById('num_adultos').addEventListener('input', () => { checkCapacidad(); recalcular(); });
+
+/* ════════════════════════════════════════════
+   VALIDACIÓN HABILITACIÓN DEL BOTÓN
+════════════════════════════════════════════ */
+function validateSubmit() {
+  const hasHuesped = !!numDocHidden.value.trim();
+  const hasRoom    = !!selectedRoom;
+  document.getElementById('btn-submit-checkin').disabled = !(hasHuesped && hasRoom);
+}
+
+/* ════════════════════════════════════════════
+   INIT: si ya viene huésped preseleccionado
+════════════════════════════════════════════ */
+{% if huesped_presel %}
+selectedHuesped = {
+  id:           {{ huesped_presel.id }},
+  num_doc:      '{{ huesped_presel.num_doc }}',
+  tipo_doc:     '{{ huesped_presel.tipo_doc }}',
+  nombres:      '{{ huesped_presel.nombres }}',
+  apellidos:    '{{ huesped_presel.apellidos }}',
+  nombre_completo: '{{ huesped_presel.nombres }} {{ huesped_presel.apellidos }}',
+  telefono:     '{{ huesped_presel.telefono|default:"" }}',
+  email:        '{{ huesped_presel.email|default:"" }}',
+  nacionalidad: '{{ huesped_presel.nacionalidad }}',
+};
+searchInput.value  = `${selectedHuesped.nombre_completo} (${selectedHuesped.num_doc})`;
+numDocHidden.value = selectedHuesped.num_doc;
+validateSubmit();
+{% endif %}
+</script>
+{% endblock %}

@@ -692,3 +692,104 @@ Usa este fragmento estructurado al final del documento cada vez que realices mod
 *   **Observaciones / Notas del Arquitecto:**
     *   La separación de entornos es ahora explícita: `DB_HOST` vacío = SQLite local; `DB_HOST=db` = PostgreSQL en Docker.
     *   El `.env` con `DEBUG=True` es correcto para desarrollo; para producción revisar `ALLOWED_HOSTS` y `DEBUG`.
+
+---
+
+### Actualización 16/07/2026 - HOT-HOS-003 (Asignar Habitación)
+*   **Fecha de la Intervención:** 2026-07-16
+*   **EPIC Involucrado:** EPIC 03 - Estancias y Folio
+*   **Resumen:** Implementación del flujo de asignación, traslado de habitaciones con historial tarifario y liberación manual.
+*   **Features nuevas:**
+    *   `HOT-HOS-003`: Asignar Habitación, buscador rápido, traslado e historial.
+*   **Historias nuevas:**
+    *   Hospedaje de VIP, Suite, Matrimonial, Airbnb.
+*   **Reglas de negocio nuevas:**
+    *   Solo habitaciones disponibles para check-in/traslados.
+    *   Actualizar disponibilidad física de la habitación de forma atómica.
+*   **Tablas nuevas / Cambios de BD:**
+    *   Historial de traslados registrado en la tabla `HistorialHabitacionEstancia`.
+*   **Detalle de Entidades Modificadas/Creadas:**
+    *   **Modelos:** `HistorialHabitacionEstancia` en `estancias.models`.
+    *   **Views:** `actualizar_estado_habitacion` en `views_frontend`.
+    *   **Componentes / Templates:** Modales y tablas de historial en `templates/estancias/folio.html`, monitor del `templates/dashboard.html`.
+
+---
+
+### Actualización 16/07/2026 - EPIC 09 (Reportes y Dashboard)
+*   **Fecha de la Intervención:** 2026-07-16
+*   **EPIC Involucrado:** EPIC 09 - Reportes y Dashboard
+*   **Resumen:** Construcción de tableros gerenciales y operativos detallados en el SRS, control de roles e integración de filtros y exportación dinámica.
+*   **Features nuevas:**
+    *   `HOT-REP-001` (Dashboard de Recepción): KPIs operativos de Early/Late, atenciones pendientes, salidas pendientes y saldos.
+    *   `HOT-REP-002` a `HOT-REP-010` (Reportes de Ocupación, Reservas, Estancias, Finanzas, Clientes, Housekeeping y Atención).
+    *   `HOT-REP-011` (Filtros y Comparación): Rango de fechas dinámico comparativo con el período anterior.
+    *   `HOT-REP-012` (Exportar Excel): Excel dinámico que respeta filtros de piso, tipo, estado y habitación, y restringe acceso a recepcionistas.
+*   **Reglas de negocio nuevas:**
+    *   Ocultar datos financieros sensibles a recepcionistas. Denegar acceso total a housekeeping.
+    *   Cálculo de ocupación neta descontando habitaciones en mantenimiento.
+    *   Identificación de recargos por Early Check-In/Late Check-Out.
+*   **Detalle de Entidades Modificadas/Creadas:**
+    *   **Views:** `dashboard` y `reportes_view` en `views_frontend.py`, `exportar_excel` en `reportes/views.py`.
+    *   **Templates:** `templates/dashboard.html`, `templates/reportes/dashboard.html` (completamente rehecho).
+    *   **Tests:** `reportes/tests.py` (test suite completo de reportes), `reservas/tests.py` (alineación de permisos de acceso).
+*   **Problemas Encontrados:**
+    *   Errores de campos inexistentes de `precio_dia` / `precio_hora` en `TipoHabitacion` en pruebas corregidos a `precio_base` e inserción del FK `hotel_id` obligatoria.
+*   **Observaciones / Notas del Arquitecto:**
+    *   La suite de pruebas aumentó a 70 casos de pruebas con éxito.
+
+---
+
+### Actualización 16/07/2026 - EPIC 10 (Inventario y Productos)
+*   **Fecha de la Intervención:** 2026-07-16
+*   **EPIC Involucrado:** EPIC 10 - Inventario y Productos
+*   **Resumen:** Creación integral de la app de control de stock y catálogo de productos, vinculándolo transaccional y atómicamente con los folios de consumos del hotel.
+*   **Features nuevas:**
+    *   `HOT-INV-001` a `HOT-INV-004` (Catálogo, Categorías, Unidades, Proveedores).
+    *   `HOT-INV-005` y `HOT-INV-006` (Entradas y Salidas manuales).
+    *   `HOT-INV-007` y `HOT-INV-008` (Descontar stock por consumos y anulaciones/exoneraciones con retorno al almacén).
+    *   `HOT-INV-009` y `HOT-INV-010` (Ajustes de stock automáticos y Conteos físicos periódicos).
+    *   `HOT-INV-011` y `HOT-INV-012` (Alertas de stock mínimo y Bitácora de movimientos históricos).
+    *   `HOT-INV-013` (Desactivación/Reactivación de productos sin perder historial).
+*   **Reglas de negocio nuevas:**
+    *   `RN-INV-001` a `RN-INV-007`: Validaciones de catálogo (código único, no negativos, etc.).
+    *   `RN-INV-040` a `RN-INV-066`: Lógica de transacciones (insuficiencia de stock, no descuento de servicios, atomicidad folio-inventario).
+    *   `RN-INV-070` a `RN-INV-141`: Políticas de devolución de stock físico, reembolsos no reversivos y conteo aprobado no editable.
+*   **Tablas nuevas / Cambios de BD:**
+    *   Nuevas tablas: `inventario_categoriaproducto`, `inventario_unidadmedida`, `inventario_proveedor`, `inventario_producto`, `inventario_movimientoinventario`, `inventario_conteofisico`, `inventario_detalleconteofisico`.
+    *   Modificaciones en `CargoEstancia` (`estancias_cargoestancia`): agregados campos `producto_id` y `cantidad`.
+*   **Detalle de Entidades Modificadas/Creadas:**
+    *   **Modelos:** Creados en `inventario/models.py`, modificados en `estancias/models.py`.
+    *   **Views:** CRUD y conteos en `inventario/views.py`. Modificados `agregar_cargo` y `folio_view` en `views_frontend.py`.
+    *   **Templates:** Agregados en `templates/inventario/`. Modificado `templates/estancias/folio.html` (modal interactivo con stock-checking) y `templates/base.html` (sidebar link).
+    *   **Tests:** Implementados tests de inventario en `inventario/tests.py`.
+*   **Observaciones / Notas del Arquitecto:**
+    *   La suite de pruebas pasó de 70 a 78 tests. Todos se ejecutan exitosamente.
+
+---
+
+### Actualización 16/07/2026 - EPIC 11 (Configuración del Hotel)
+*   **Fecha de la Intervención:** 2026-07-16
+*   **EPIC Involucrado:** EPIC 11 - Configuración del Hotel
+*   **Resumen:** Implementación de la parametrización dinámica de horarios y costos de Check-In/Check-Out, Early Check-In y Late Check-Out, junto con auditoría total e integración de seguridad por roles.
+*   **Features nuevas:**
+    *   `HOT-CON-001` (Datos Básicos del Hotel): Soporte para Razón Social, Correo Comercial y RUC.
+    *   `HOT-CON-002` (Horarios Oficiales): Definición dinámica de horas de Check-In y Check-Out.
+    *   `HOT-CON-003` (Early Check-In): Activación y costo del servicio de ingreso anticipado.
+    *   `HOT-CON-004` (Late Check-Out): Activación, costo y hora límite de salida tardía.
+    *   `HOT-CON-005` (Auditoría de Parámetros): Registro histórico en la bitácora general de cada parámetro modificado, detallando el valor anterior, valor nuevo y usuario responsable.
+    *   `HOT-CON-006` (Seguridad por Rol): Vista restringida para Housekeeping (sin costos ni historial), recepcionistas (solo lectura) y permisos exclusivos de escritura para el Administrador.
+*   **Reglas de negocio nuevas:**
+    *   `RN-CON-001` a `RN-CON-005`: Validaciones estrictas en el modelo (horas lógicas, hora máxima de Late Check-Out posterior al estándar, etc.).
+    *   `RN-CON-033` y `RN-CON-042`: Costos de recargo no pueden ser negativos.
+    *   `RN-CON-050`: Si Early Check-In o Late Check-Out se desactivan, el sistema bloquea operaciones/aprobaciones que no cumplan con el horario estándar.
+*   **Tablas nuevas / Cambios de BD:**
+    *   Agregados campos a la tabla `Hotel`: `razon_social`, `correo`, `hora_checkin_estandar`, `hora_checkout_estandar`.
+*   **Detalle de Entidades Modificadas/Creadas:**
+    *   **Modelos:** Modificado `hotel/models.py` (campos y método `clean()`) y `reservas/models.py` (`normalizar_horario()`).
+    *   **Views:** Modificada `views_frontend.py` (para consultas de disponibilidad y la nueva vista `hotel_configuracion`).
+    *   **Servicios:** Modificado `estancias/services.py` (`detectar_early_checkin()`, `detectar_late_checkout()`, `procesar_checkin()`, `procesar_checkout()`).
+    *   **Templates:** Creado `templates/hotel/configuracion.html` y modificado `templates/base.html` (sidebar).
+    *   **Tests:** Implementados tests exhaustivos en `hotel/tests.py`.
+*   **Observaciones / Notas del Arquitecto:**
+    *   La suite de pruebas pasó de 78 a 82 tests, cubriendo al 100% las restricciones funcionales. Todos los tests se ejecutan con éxito (`OK`).
+

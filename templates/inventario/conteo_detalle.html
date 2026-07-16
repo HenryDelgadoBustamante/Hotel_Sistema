@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+{% block page_title %}Detalle de Conteo Físico #{{ conteo.id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <a href="{% url 'conteo_fisico_lista' %}" class="btn btn-sm btn-outline-secondary" style="border-radius: 8px;">
+      <i class="bi bi-arrow-left me-1"></i>Volver a la Lista
+    </a>
+    
+    {% if es_pendiente_revision and es_admin %}
+    <form method="post" action="{% url 'conteo_fisico_aprobar' conteo.id %}">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-sm btn-success" style="border-radius: 8px; font-weight: 600;">
+        <i class="bi bi-check2-all me-1"></i>Aprobar y Aplicar Ajustes
+      </button>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-md-4">
+      <div class="card border-0 shadow-sm" style="border-radius: 12px; height: 100%;">
+        <div class="card-body">
+          <h6 class="fw-bold text-dark mb-3">Información del Conteo</h6>
+          <div class="d-flex flex-column gap-2" style="font-size: 13px;">
+            <div class="d-flex justify-content-between border-bottom pb-1">
+              <span class="text-muted">Estado:</span>
+              <span class="fw-semibold">
+                {% if conteo.estado == 'BORRADOR' %}
+                <span class="text-secondary">Borrador</span>
+                {% elif conteo.estado == 'PROCESO' %}
+                <span class="text-info">En Proceso</span>
+                {% elif conteo.estado == 'PENDIENTE_REVISION' %}
+                <span class="text-warning">Pendiente de Revisión</span>
+                {% elif conteo.estado == 'APROBADO' %}
+                <span class="text-success">Aprobado / Ajustado</span>
+                {% else %}
+                <span class="text-danger">Cancelado</span>
+                {% endif %}
+              </span>
+            </div>
+            <div class="d-flex justify-content-between border-bottom pb-1">
+              <span class="text-muted">Iniciado por:</span>
+              <span class="fw-semibold text-dark">{{ conteo.usuario_creador.username }}</span>
+            </div>
+            <div class="d-flex justify-content-between border-bottom pb-1">
+              <span class="text-muted">Fecha de Inicio:</span>
+              <span class="fw-semibold text-dark">{{ conteo.fecha_inicio|date:"d/m/Y H:i" }}</span>
+            </div>
+            {% if conteo.fecha_fin %}
+            <div class="d-flex justify-content-between border-bottom pb-1">
+              <span class="text-muted">Fecha de Cierre:</span>
+              <span class="fw-semibold text-dark">{{ conteo.fecha_fin|date:"d/m/Y H:i" }}</span>
+            </div>
+            {% endif %}
+            {% if conteo.usuario_aprobador %}
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Aprobador por:</span>
+              <span class="fw-semibold text-dark">{{ conteo.usuario_aprobador.username }}</span>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-12 col-md-8">
+      <div class="card border-0 shadow-sm" style="border-radius: 12px; height: 100%;">
+        <div class="card-body d-flex flex-column">
+          <h6 class="fw-bold text-dark mb-2">Comentarios / Observaciones</h6>
+          <p class="text-muted mb-3" style="font-size: 13px;">{{ conteo.observaciones|default:"Sin observaciones de inicio." }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabla de Items -->
+  <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+    <div class="card-header bg-white border-0 pt-4 pb-0">
+      <h6 class="fw-bold text-dark m-0">Productos Incluidos</h6>
+    </div>
+    <div class="card-body">
+      <form method="post" id="form-conteo-items">
+        {% csrf_token %}
+        <input type="hidden" name="accion" id="id_accion_input" value="GUARDAR">
+        
+        <div class="table-responsive mb-4">
+          <table class="table align-middle mb-0" style="font-size: 13px;">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-3 py-3 text-muted fw-semibold" style="width: 120px;">Código</th>
+                <th class="py-3 text-muted fw-semibold">Nombre</th>
+                <th class="py-3 text-muted fw-semibold text-center" style="width: 150px;">Stock Sistema</th>
+                <th class="py-3 text-muted fw-semibold text-center" style="width: 180px;">Stock Físico Encontrado</th>
+                <th class="py-3 text-muted fw-semibold text-center" style="width: 150px;">Diferencia</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for d in detalles %}
+              <tr>
+                <td class="ps-3 fw-bold text-dark">{{ d.producto.codigo_interno }}</td>
+                <td class="fw-semibold text-dark">{{ d.producto.nombre }}</td>
+                <td class="text-center text-muted fw-semibold" id="sys_{{ d.id }}">{{ d.stock_sistema|floatformat:2 }}</td>
+                <td class="text-center">
+                  {% if es_borrador_o_proceso %}
+                  <input type="number" name="fisico_{{ d.id }}" step="0.01" min="0.00" class="form-control form-control-sm text-center mx-auto input-fisico shadow-none" 
+                    style="width: 100px; border-radius: 6px;" value="{{ d.stock_fisico|floatformat:2 }}" data-id="{{ d.id }}">
+                  {% else %}
+                  <span class="fw-bold text-dark">{{ d.stock_fisico|floatformat:2 }}</span>
+                  {% endif %}
+                </td>
+                <td class="text-center fw-bold" id="diff_{{ d.id }}">
+                  {% if d.diferencia > 0 %}
+                    <span class="text-success">+{{ d.diferencia|floatformat:2 }}</span>
+                  {% elif d.diferencia < 0 %}
+                    <span class="text-danger">{{ d.diferencia|floatformat:2 }}</span>
+                  {% else %}
+                    <span class="text-muted">0.00</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% if es_borrador_o_proceso %}
+        <div class="mb-3">
+          <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Comentarios / Notas de Conteo</label>
+          <textarea name="observaciones" class="form-control form-control-sm" rows="2" placeholder="Comentarios del conteo finalizado...">{{ conteo.observaciones }}</textarea>
+        </div>
+        <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+          <button type="submit" class="btn btn-sm btn-outline-secondary" onclick="setAccion('GUARDAR')" style="border-radius: 8px;">
+            Guardar Borrador
+          </button>
+          <button type="submit" class="btn btn-sm btn-primary" onclick="setAccion('ENVIAR_REVISION')" style="background: #6366f1; border-color: #6366f1; border-radius: 8px; font-weight:600;">
+            <i class="bi bi-send me-1"></i>Enviar a Revisión Gerencial
+          </button>
+        </div>
+        {% endif %}
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  function setAccion(accion) {
+    document.getElementById('id_accion_input').value = accion;
+  }
+
+  // Live calculation of difference
+  document.querySelectorAll('.input-fisico').forEach(input => {
+    input.addEventListener('input', function() {
+      const detId = this.dataset.id;
+      const sysVal = parseFloat(document.getElementById('sys_' + detId).innerText);
+      const fisVal = parseFloat(this.value) || 0;
+      const diffVal = fisVal - sysVal;
+      
+      const diffCell = document.getElementById('diff_' + detId);
+      if (diffVal > 0) {
+        diffCell.innerHTML = `<span class="text-success">+${diffVal.toFixed(2)}</span>`;
+      } else if (diffVal < 0) {
+        diffCell.innerHTML = `<span class="text-danger">${diffVal.toFixed(2)}</span>`;
+      } else {
+        diffCell.innerHTML = `<span class="text-muted">0.00</span>`;
+      }
+    });
+  });
+</script>
+{% endblock %}

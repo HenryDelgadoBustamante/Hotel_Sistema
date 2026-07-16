@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+{% block page_title %}Inventario de Productos y Servicios{% endblock %}
+
+{% block content %}
+<style>
+  .kpi-card {
+    background: white;
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    padding: 20px;
+    transition: transform 0.2s ease;
+  }
+  .kpi-card:hover {
+    transform: translateY(-2px);
+  }
+  .kpi-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+  }
+  .status-available { background-color: #d1fae5; color: #065f46; }
+  .status-low { background-color: #fef3c7; color: #92400e; }
+  .status-nostock { background-color: #fee2e2; color: #991b1b; }
+</style>
+
+<div class="container-fluid p-0">
+  <!-- Acciones y Filtros -->
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div class="d-flex gap-2">
+      {% if es_admin_or_inv %}
+      <a href="{% url 'producto_crear' %}" class="btn btn-primary" style="background: #6366f1; border-color: #6366f1; border-radius: 8px; font-weight: 600;">
+        <i class="bi bi-plus-circle me-1"></i>Nuevo Producto/Servicio
+      </a>
+      <a href="{% url 'registrar_movimiento' %}" class="btn btn-outline-secondary" style="border-radius: 8px; font-weight: 600;">
+        <i class="bi bi-arrow-down-up me-1"></i>Registrar Entrada/Salida
+      </a>
+      <a href="{% url 'conteo_fisico_lista' %}" class="btn btn-outline-info text-info" style="border-radius: 8px; font-weight: 600; border-color: #0dcaf0;">
+        <i class="bi bi-clipboard-check me-1"></i>Conteos Físicos
+      </a>
+      {% endif %}
+      <a href="{% url 'historial_movimientos' %}" class="btn btn-outline-dark" style="border-radius: 8px; font-weight: 600;">
+        <i class="bi bi-clock-history me-1"></i>Historial de Movimientos
+      </a>
+      {% if request.user.is_superuser %}
+      <a href="{% url 'categorias_lista' %}" class="btn btn-outline-secondary" style="border-radius: 8px;">Categorías</a>
+      <a href="{% url 'proveedores_lista' %}" class="btn btn-outline-secondary" style="border-radius: 8px;">Proveedores</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="row g-3 mb-4 animate-fade-in">
+    <div class="col-12 col-md-4">
+      <div class="kpi-card d-flex align-items-center justify-content-between">
+        <div>
+          <div class="text-muted text-sm fw-semibold mb-1">Total Catálogo</div>
+          <div class="fs-3 fw-bold text-dark">{{ kpi_total }}</div>
+        </div>
+        <div class="kpi-icon bg-light text-primary">
+          <i class="bi bi-box-seam"></i>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-4">
+      <div class="kpi-card d-flex align-items-center justify-content-between">
+        <div>
+          <div class="text-muted text-sm fw-semibold mb-1">Stock Bajo</div>
+          <div class="fs-3 fw-bold text-warning">{{ kpi_bajo }}</div>
+        </div>
+        <div class="kpi-icon status-low">
+          <i class="bi bi-exclamation-triangle"></i>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-4">
+      <div class="kpi-card d-flex align-items-center justify-content-between">
+        <div>
+          <div class="text-muted text-sm fw-semibold mb-1">Sin Existencias</div>
+          <div class="fs-3 fw-bold text-danger">{{ kpi_sin_stock }}</div>
+        </div>
+        <div class="kpi-icon status-nostock">
+          <i class="bi bi-x-circle"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px;">
+    <div class="card-body p-3">
+      <form method="get" class="row g-2">
+        <div class="col-12 col-md-3">
+          <div class="input-group input-group-sm">
+            <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+            <input type="text" name="q" value="{{ q }}" class="form-control border-start-0 shadow-none" placeholder="Buscar por código o nombre...">
+          </div>
+        </div>
+        <div class="col-12 col-md-2">
+          <select name="categoria" class="form-select form-select-sm shadow-none">
+            <option value="">-- Categorías --</option>
+            {% for cat in categorias %}
+            <option value="{{ cat.id }}" {% if cat.id == categoria_id %}selected{% endif %}>{{ cat.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-2">
+          <select name="disponibilidad" class="form-select form-select-sm shadow-none">
+            <option value="">-- Disponibilidad --</option>
+            <option value="SIN_STOCK" {% if disponibilidad == 'SIN_STOCK' %}selected{% endif %}>Sin Stock</option>
+            <option value="STOCK_BAJO" {% if disponibilidad == 'STOCK_BAJO' %}selected{% endif %}>Stock Bajo</option>
+            <option value="DISPONIBLE" {% if disponibilidad == 'DISPONIBLE' %}selected{% endif %}>Disponible / Ilimitado</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-2">
+          <select name="es_vendible" class="form-select form-select-sm shadow-none">
+            <option value="">-- Destino Venta --</option>
+            <option value="1" {% if es_vendible == '1' %}selected{% endif %}>Vendible a Huésped</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-2">
+          <select name="es_uso_interno" class="form-select form-select-sm shadow-none">
+            <option value="">-- Uso Interno --</option>
+            <option value="1" {% if es_uso_interno == '1' %}selected{% endif %}>Uso Interno (Operaciones)</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-1">
+          <button type="submit" class="btn btn-sm btn-dark w-100" style="border-radius: 6px;">Filtrar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Catálogo Tabla -->
+  <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
+          <thead class="table-light">
+            <tr>
+              <th class="ps-3 py-3 text-muted fw-semibold" style="width: 120px;">Código</th>
+              <th class="py-3 text-muted fw-semibold">Nombre / Descripción</th>
+              <th class="py-3 text-muted fw-semibold">Categoría</th>
+              <th class="py-3 text-muted fw-semibold">Tipo</th>
+              <th class="py-3 text-muted fw-semibold text-end" style="width: 120px;">Precio Venta</th>
+              <th class="py-3 text-muted fw-semibold text-center" style="width: 150px;">Stock</th>
+              <th class="py-3 text-muted fw-semibold text-center" style="width: 120px;">Estado</th>
+              <th class="py-3 text-muted fw-semibold text-center" style="width: 100px;">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for prod in productos %}
+            <tr>
+              <td class="ps-3 fw-bold text-dark">{{ prod.codigo_interno }}</td>
+              <td>
+                <div class="fw-semibold text-dark">{{ prod.nombre }}</div>
+                <div class="text-muted text-xs">{{ prod.descripcion|default:"Sin descripción" }}</div>
+              </td>
+              <td><span class="badge bg-light text-dark border">{{ prod.categoria.nombre }}</span></td>
+              <td>
+                {% if prod.tipo_elemento == 'PRODUCTO_STOCK' %}
+                <span class="text-primary"><i class="bi bi-box me-1"></i>Físico con Stock</span>
+                {% elif prod.tipo_elemento == 'SERVICIO_SIN_STOCK' %}
+                <span class="text-success"><i class="bi bi-lightning-charge me-1"></i>Servicio</span>
+                {% else %}
+                <span class="text-secondary"><i class="bi bi-brush me-1"></i>Uso Interno</span>
+                {% endif %}
+              </td>
+              <td class="text-end fw-semibold text-dark">S/. {{ prod.precio_venta }}</td>
+              <td class="text-center">
+                {% if prod.controla_stock %}
+                  {% if prod.stock_actual <= 0 %}
+                    <span class="badge status-nostock py-1 px-2">Sin stock (0)</span>
+                  {% elif prod.stock_actual <= prod.stock_minimo %}
+                    <span class="badge status-low py-1 px-2">Bajo ({{ prod.stock_actual|floatformat:0 }} {{ prod.unidad_medida.abreviatura }})</span>
+                  {% else %}
+                    <span class="badge status-available py-1 px-2">{{ prod.stock_actual|floatformat:0 }} {{ prod.unidad_medida.abreviatura }}</span>
+                  {% endif %}
+                {% else %}
+                  <span class="text-muted">No aplica</span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                {% if prod.estado == 'ACTIVO' %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle">Activo</span>
+                {% else %}
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Inactivo</span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                {% if es_admin_or_inv %}
+                <a href="{% url 'producto_editar' prod.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" style="border-radius: 4px; font-size: 11px;">
+                  <i class="bi bi-pencil me-1"></i>Editar
+                </a>
+                {% else %}
+                <span class="text-muted">-</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="8" class="text-center py-4 text-muted">No se encontraron productos o servicios registrados.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

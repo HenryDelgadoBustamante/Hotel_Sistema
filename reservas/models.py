@@ -91,9 +91,27 @@ class Reserva(models.Model):
         if not self.fecha_entrada or not self.fecha_salida:
             return
 
+        hora_checkin = time(15, 0)
+        hora_checkout = time(12, 0)
+        if self.hotel and hasattr(self.hotel, 'hora_checkin_estandar') and self.hotel.hora_checkin_estandar:
+            val_in = self.hotel.hora_checkin_estandar
+            if isinstance(val_in, str):
+                parts = val_in.split(':')
+                hora_checkin = time(int(parts[0]), int(parts[1]))
+            else:
+                hora_checkin = val_in
+
+        if self.hotel and hasattr(self.hotel, 'hora_checkout_estandar') and self.hotel.hora_checkout_estandar:
+            val_out = self.hotel.hora_checkout_estandar
+            if isinstance(val_out, str):
+                parts = val_out.split(':')
+                hora_checkout = time(int(parts[0]), int(parts[1]))
+            else:
+                hora_checkout = val_out
+
         if self.modalidad == self.POR_HORA:
             if not self.fecha_hora_entrada:
-                entrada = datetime.combine(self.fecha_entrada, time(15, 0))
+                entrada = datetime.combine(self.fecha_entrada, hora_checkin)
                 self.fecha_hora_entrada = timezone.make_aware(entrada)
 
             horas = float(self.duracion_horas or 3)
@@ -106,8 +124,8 @@ class Reserva(models.Model):
             self.fecha_salida = self.fecha_hora_salida.date()
             return
 
-        entrada = datetime.combine(self.fecha_entrada, time(15, 0))
-        salida = datetime.combine(self.fecha_salida, time(12, 0))
+        entrada = datetime.combine(self.fecha_entrada, hora_checkin)
+        salida = datetime.combine(self.fecha_salida, hora_checkout)
         self.fecha_hora_entrada = timezone.make_aware(entrada)
         self.fecha_hora_salida = timezone.make_aware(salida)
         self.duracion_horas = 0

@@ -3,77 +3,228 @@
 {% block page_title %}Confirmar Check-In{% endblock %}
 {% block content %}
 <div class="form-shell">
-  <form method="post">
+  <form id="form-checkin" method="post" class="needs-validation" novalidate>
     {% csrf_token %}
     <div class="row g-3">
+      <!-- Panel Izquierdo: Información de la Reserva -->
       <div class="col-lg-7">
-        <div class="form-panel">
-          <div class="form-section-title">Reserva #{{ reserva.id }}</div>
+        <div class="form-panel mb-3">
+          <div class="form-section-title"><i class="bi bi-bookmark-star-fill text-indigo-500 me-2"></i>Reserva #{{ reserva.id }}</div>
+          
           <div class="row g-3">
             <div class="col-md-6">
-              <div class="summary-label">Huésped</div>
-              <div class="summary-value">{{ reserva.huesped.nombres }} {{ reserva.huesped.apellidos }}</div>
-              <div class="text-muted small">{{ reserva.huesped.tipo_doc }}: {{ reserva.huesped.num_doc }}</div>
+              <div class="summary-label">Huésped Principal</div>
+              <div class="summary-value" style="font-size: 16px; font-weight: 700; color: #0a1628;">
+                {{ reserva.huesped.nombres }} {{ reserva.huesped.apellidos }}
+              </div>
+              <div class="text-muted small">
+                <i class="bi bi-card-text me-1"></i>{{ reserva.huesped.tipo_doc }}: {{ reserva.huesped.num_doc }}
+              </div>
             </div>
+            
             <div class="col-md-6">
-              <div class="summary-label">Modalidad</div>
-              <div class="summary-value">{{ reserva.get_modalidad_display }}</div>
-              <div class="text-muted small">Total: S/. {{ reserva.precio_total }}</div>
+              <div class="summary-label">Detalles de Tarifa</div>
+              <div class="summary-value" style="font-size: 16px; font-weight: 700; color: #10b981;">
+                S/. {{ reserva.precio_total }}
+              </div>
+              <div class="text-muted small">
+                <i class="bi bi-sliders me-1"></i>Modalidad: {{ reserva.get_modalidad_display }}
+              </div>
             </div>
+
             <div class="col-md-6">
-              <div class="summary-label">Entrada programada</div>
+              <div class="summary-label"><i class="bi bi-calendar-check text-success me-1"></i>Entrada Programada</div>
               <div class="summary-value">{{ reserva.fecha_hora_entrada|date:"d/m/Y H:i" }}</div>
             </div>
+            
             <div class="col-md-6">
-              <div class="summary-label">Salida programada</div>
+              <div class="summary-label"><i class="bi bi-calendar-x text-danger me-1"></i>Salida Programada</div>
               <div class="summary-value">{{ reserva.fecha_hora_salida|date:"d/m/Y H:i" }}</div>
             </div>
           </div>
 
-          <div class="summary-strip mt-3">
-            <div class="d-flex justify-content-between gap-3 flex-wrap">
+          <div class="summary-strip mt-3" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
+            <div class="d-flex justify-content-between gap-3 flex-wrap text-center">
               <div>
-                <div class="summary-label">Tolerancia</div>
+                <div class="summary-label">Huéspedes Registrados</div>
+                <div class="summary-value" id="reserva-num-huespedes" data-huespedes="{{ reserva.num_adultos }}">
+                  {{ reserva.num_adultos }} Pax
+                </div>
+              </div>
+              <div>
+                <div class="summary-label">Tolerancia Ingreso</div>
                 <div class="summary-value">{{ reserva.tolerancia_minutos }} min</div>
               </div>
               <div>
-                <div class="summary-label">Cargo por retraso</div>
-                <div class="summary-value">desde {{ reserva.cargo_extra_desde_minutos }} min</div>
-              </div>
-              <div>
-                <div class="summary-label">Estado</div>
-                <span class="badge badge-{{ reserva.estado|lower }}">{{ reserva.estado }}</span>
+                <div class="summary-label">Estado Reserva</div>
+                <span class="badge bg-primary px-3 py-1 mt-1">{{ reserva.estado }}</span>
               </div>
             </div>
           </div>
         </div>
+
+        <!-- Alerta de Early Check-In si aplica -->
+        {% if es_early %}
+        <div class="form-panel border border-warning" style="background: linear-gradient(135deg, #fffbeb, #ffffff); border-radius: 12px;">
+          <div class="d-flex gap-3">
+            <div class="text-warning" style="font-size: 32px; line-height: 1;">
+              <i class="bi bi-exclamation-triangle-fill"></i>
+            </div>
+            <div class="w-100">
+              <h5 class="fw-bold text-warning mb-1">¡Alerta de Ingreso Temprano! (Early Check-In)</h5>
+              <p class="text-dark small mb-3">
+                El huésped está ingresando antes de la hora estándar de check-in (15:00). 
+                Se ha calculado un recargo automático de <strong>S/. {{ early_monto }}</strong>.
+              </p>
+
+              <!-- Opciones de Exoneración -->
+              <div class="p-3 rounded border" style="background-color: rgba(251, 191, 36, 0.05); border-color: #fef08a !important;">
+                <div class="form-check form-switch mb-3">
+                  <input class="form-check-input" type="checkbox" name="exonerar_early" id="exonerar_early" onchange="toggleExoneracion(this)">
+                  <label class="form-check-label fw-bold text-dark" for="exonerar_early">
+                    Exonerar recargo por Early Check-In (Requiere autorización)
+                  </label>
+                </div>
+                
+                <div id="div-motivo-exonerar" style="display: none;">
+                  <label class="form-label fw-semibold">Motivo de Exoneración <span class="text-danger">*</span></label>
+                  <textarea name="motivo_exoneracion_early" id="motivo_exoneracion_early" class="form-control" rows="2" 
+                            placeholder="Escriba la justificación o rol autorizado..."></textarea>
+                  <div class="form-text text-danger">Este campo es obligatorio si se exonera el cargo.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
       </div>
 
+      <!-- Panel Derecho: Asignación de Habitación y Confirmación -->
       <div class="col-lg-5">
-        <div class="form-panel">
-          <div class="form-section-title">Confirmación de habitación</div>
-          <label class="form-label">Habitación para ocupar</label>
-          <select name="habitacion" class="form-select form-select-lg" required>
-            {% for hab in habitaciones %}
-            <option value="{{ hab.id }}" {% if reserva.habitacion_id == hab.id %}selected{% endif %}>
-              Habitación {{ hab.numero }} - {{ hab.tipo.nombre }} (Piso {{ hab.piso }})
-            </option>
-            {% empty %}
-            <option value="">No hay habitaciones disponibles de este tipo</option>
-            {% endfor %}
-          </select>
-          <div class="field-help">Al completar el check-in, la habitación pasará a ocupada y se abrirá una estancia con folio.</div>
+        <div class="form-panel h-100 d-flex flex-column justify-content-between">
+          <div>
+            <div class="form-section-title"><i class="bi bi-door-closed me-2 text-indigo-500"></i>Asignación de Habitación</div>
+            
+            <label class="form-label fw-semibold">Confirmar Habitación para Ocupar <span class="text-danger">*</span></label>
+            <div class="input-group mb-2">
+              <span class="input-group-text bg-white text-muted py-1 px-2" style="font-size: 13px;"><i class="bi bi-search"></i></span>
+              <input type="text" id="searchCheckinRoom" class="form-control form-control-sm" placeholder="Filtrar por número o tipo..." onkeyup="filterCheckinRooms()">
+            </div>
+            <select id="habitacion" name="habitacion" class="form-select form-select-lg mb-3" required size="5" style="height: 180px;">
+              {% for hab in habitaciones %}
+              <option value="{{ hab.id }}" data-capacidad="{{ hab.tipo.capacidad }}" {% if reserva.habitacion_id == hab.id %}selected{% endif %}>
+                Habitación {{ hab.numero }} - {{ hab.tipo.nombre }} (Capacidad: {{ hab.tipo.capacidad }} Pax)
+              </option>
+              {% empty %}
+              <option value="" disabled>No hay habitaciones disponibles de este tipo</option>
+              {% endfor %}
+            </select>
+            <div class="form-text text-muted mb-3">
+              Al completar el check-in, la habitación pasará a estado **OCUPADA** y se creará una estancia activa con su respectivo folio.
+            </div>
+
+            <script>
+              function filterCheckinRooms() {
+                const val = document.getElementById('searchCheckinRoom').value.trim().toLowerCase();
+                const select = document.getElementById('habitacion');
+                for (let i = 0; i < select.options.length; i++) {
+                  const opt = select.options[i];
+                  if (!opt.value) continue;
+                  const text = opt.text.toLowerCase();
+                  if (text.includes(val)) {
+                    opt.style.display = 'block';
+                  } else {
+                    opt.style.display = 'none';
+                  }
+                }
+              }
+            </script>
+
+            <!-- Panel informativo de Capacidad vs Huéspedes -->
+            <div id="capacidad-status-panel" class="p-3 rounded" style="background-color: #f0fdf4; border: 1px solid #bbf7d0; display: none;">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <strong class="text-success"><i class="bi bi-info-circle me-1"></i>Capacidad de Habitación:</strong>
+                  <span id="txt-capacidad-hab">—</span> Pax Max
+                </div>
+                <div>
+                  <strong>Huéspedes Reserva:</strong>
+                  <span>{{ reserva.num_adultos }} Pax</span>
+                </div>
+              </div>
+              
+              <!-- Alerta de Exceso de Capacidad -->
+              <div id="checkin-capacidad-alerta" class="alert alert-danger py-1 px-2 mt-2 mb-0" style="display: none; font-size: 12px;">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i> ¡Atención! La cantidad de huéspedes supera la capacidad máxima de esta habitación.
+              </div>
+            </div>
+          </div>
 
           <div class="d-grid gap-2 mt-4">
-            <button type="submit" class="btn btn-success btn-lg">
-              <i class="bi bi-check-circle me-2"></i>Completar check-in
+            <button type="submit" class="btn btn-success btn-lg" id="btn-completar-checkin">
+              <i class="bi bi-check-circle-fill me-2"></i>Completar Check-In
             </button>
-            <a href="/reservas/{{ reserva.id }}/" class="btn btn-outline-secondary">Ver detalle</a>
-            <a href="/reservas/" class="btn btn-outline-secondary">Volver a reservas</a>
+            <a href="/reservas/{{ reserva.id }}/" class="btn btn-outline-secondary">Ver detalle de reserva</a>
+            <a href="/reservas/" class="btn btn-outline-secondary">Volver a Reservas</a>
           </div>
         </div>
       </div>
     </div>
   </form>
 </div>
+
+<script>
+  function toggleExoneracion(checkbox) {
+    const divMotivo = document.getElementById('div-motivo-exonerar');
+    const inputMotivo = document.getElementById('motivo_exoneracion_early');
+    if (checkbox.checked) {
+      divMotivo.style.display = 'block';
+      inputMotivo.required = true;
+    } else {
+      divMotivo.style.display = 'none';
+      inputMotivo.required = false;
+      inputMotivo.value = '';
+    }
+  }
+
+  // Validación de capacidad de la habitación
+  const selectHab = document.getElementById('habitacion');
+  const numHuespedes = parseInt(document.getElementById('reserva-num-huespedes').getAttribute('data-huespedes')) || 1;
+  const capPanel = document.getElementById('capacidad-status-panel');
+  const txtCapacidad = document.getElementById('txt-capacidad-hab');
+  const alertaCap = document.getElementById('checkin-capacidad-alerta');
+  const btnSubmit = document.getElementById('btn-completar-checkin');
+
+  function checkCapacidad() {
+    const selectedOpt = selectHab.options[selectHab.selectedIndex];
+    if (selectedOpt && selectedOpt.value) {
+      const cap = parseInt(selectedOpt.getAttribute('data-capacidad')) || 0;
+      txtCapacidad.textContent = cap;
+      capPanel.style.display = 'block';
+
+      if (numHuespedes > cap) {
+        alertaCap.style.display = 'block';
+        btnSubmit.disabled = true;
+      } else {
+        alertaCap.style.display = 'none';
+        btnSubmit.disabled = false;
+      }
+    } else {
+      capPanel.style.display = 'none';
+    }
+  }
+
+  selectHab.addEventListener('change', checkCapacidad);
+  // Ejecución inicial al cargar la página
+  window.addEventListener('DOMContentLoaded', checkCapacidad);
+
+  // Form HTML5 Validation
+  document.getElementById('form-checkin').addEventListener('submit', function(event) {
+    if (!this.checkValidity()) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    this.classList.add('was-validated');
+  });
+</script>
 {% endblock %}

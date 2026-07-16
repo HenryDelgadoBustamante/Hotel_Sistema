@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% block page_title %}Registrar Movimiento de Inventario{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-md-8">
+    <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+      <div class="card-header bg-white border-0 pt-4 pb-0">
+        <h5 class="fw-bold text-dark m-0">Registrar Entrada / Salida Manual</h5>
+      </div>
+      <div class="card-body">
+        <form method="post" class="needs-validation" novalidate>
+          {% csrf_token %}
+          
+          <div class="row g-3 mb-3">
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Producto Físico *</label>
+              <select name="producto" class="form-select form-select-sm" required id="id_producto_select">
+                <option value="">-- Seleccionar Producto --</option>
+                {% for prod in productos %}
+                <option value="{{ prod.id }}" data-costo="{{ prod.costo_referencial }}" data-stock="{{ prod.stock_actual }}">
+                  {{ prod.nombre }} (Stock: {{ prod.stock_actual|floatformat:0 }} {{ prod.unidad_medida.abreviatura }})
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Tipo de Movimiento *</label>
+              <select name="tipo_movimiento" class="form-select form-select-sm" required id="id_tipo_mov">
+                <option value="ENTRADA">Entrada (Compra, Reposición, Devolución)</option>
+                <option value="SALIDA">Salida (Merma, Daño, Pérdida, Consumo Interno)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Cantidad *</label>
+              <input type="number" name="cantidad" step="0.01" min="0.01" class="form-control form-control-sm" required placeholder="0.00">
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Costo Referencial Unitario (S/.)</label>
+              <input type="number" name="costo_referencial" step="0.01" min="0.00" class="form-control form-control-sm" id="id_costo_ref" value="0.00">
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Documento / Referencia</label>
+              <input type="text" name="documento_referencia" class="form-control form-control-sm" placeholder="Ej. Factura 123, Guía 45">
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Motivo del Movimiento *</label>
+              <input type="text" name="motivo" class="form-control form-control-sm" required placeholder="Ej. Compra inicial, Merma por vencimiento">
+            </div>
+            <div class="col-12 col-md-6" id="id_proveedor_container">
+              <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Proveedor (Opcional)</label>
+              <select name="proveedor" class="form-select form-select-sm">
+                <option value="">-- Ninguno --</option>
+                {% for prov in proveedores %}
+                <option value="{{ prov.id }}">{{ prov.razon_social }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Observaciones Adicionales</label>
+            <textarea name="observacion" class="form-control form-control-sm" rows="3" placeholder="Comentarios de auditoría..."></textarea>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+            <a href="{% url 'inventario_dashboard' %}" class="btn btn-sm btn-outline-secondary" style="border-radius: 8px; font-weight:600;">Cancelar</a>
+            <button type="submit" class="btn btn-sm btn-primary" style="background: #6366f1; border-color: #6366f1; border-radius: 8px; font-weight:600;">
+              <i class="bi bi-arrow-down-up me-1"></i>Confirmar Movimiento
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const prodSelect = document.getElementById('id_producto_select');
+  const costoInput = document.getElementById('id_costo_ref');
+  const tipoSelect = document.getElementById('id_tipo_mov');
+  const proveedorContainer = document.getElementById('id_proveedor_container');
+
+  prodSelect.addEventListener('change', () => {
+    const selectedOption = prodSelect.options[prodSelect.selectedIndex];
+    if (selectedOption && selectedOption.dataset.costo) {
+      costoInput.value = selectedOption.dataset.costo;
+    }
+  });
+
+  tipoSelect.addEventListener('change', () => {
+    if (tipoSelect.value === 'SALIDA') {
+      proveedorContainer.style.display = 'none';
+    } else {
+      proveedorContainer.style.display = 'block';
+    }
+  });
+</script>
+{% endblock %}

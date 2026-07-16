@@ -24,6 +24,14 @@ class Estancia(models.Model):
     fecha_checkout = models.DateTimeField(null=True, blank=True)
     precio_final = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default=ACTIVA)
+    registrado_por = models.ForeignKey(
+        'auth.User', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='estancias_registradas',
+        help_text="Usuario recepcionista que registró el check-in (HOT-HOS-002)."
+    )
 
     class Meta:
         verbose_name = 'Estancia'
@@ -67,6 +75,10 @@ class CargoEstancia(models.Model):
     monto = models.DecimalField(max_digits=10, decimal_places=2)
     fecha = models.DateTimeField(auto_now_add=True)
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default=OTRO)
+    
+    # Integracion de Inventario (EPIC 10)
+    producto = models.ForeignKey('inventario.Producto', null=True, blank=True, on_delete=models.SET_NULL, related_name='cargos')
+    cantidad = models.PositiveIntegerField(default=1)
 
     # Campos de Exoneracion
     exonerado = models.BooleanField(default=False)

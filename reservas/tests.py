@@ -473,9 +473,9 @@ class RolesAndPermissionsTest(TestCase):
         response = client.get(reverse('reservas_lista'))
         self.assertEqual(response.status_code, 200)
         
-        # Debe recibir 403 al acceder a la vista de reportes
+        # Debe recibir 200 al acceder a la vista de reportes (con restricciones/sin finanzas)
         response = client.get(reverse('reportes'))
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 200)
         
         # Debe recibir 403 al acceder a la exportación a Excel
         response = client.get(reverse('exportar_excel'))

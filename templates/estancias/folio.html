@@ -545,6 +545,38 @@
       </table>
     </div>
 
+    {% if estancia.historial_habitaciones.all %}
+    <div class="f-card">
+      <div class="p-4 border-bottom" style="border-color: #f1f5f9;">
+        <h5 class="m-0 fw-bold fs-6 text-dark"><i class="bi bi-arrow-left-right me-2 text-muted"></i>Historial de Cambios de Habitación</h5>
+      </div>
+      <table class="table-cargos">
+        <thead>
+          <tr>
+            <th>Hab. Anterior</th>
+            <th>Hab. Nueva</th>
+            <th>Motivo</th>
+            <th>Responsable</th>
+            <th class="text-end">Dif. Tarifaria</th>
+            <th>Fecha</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for hist in estancia.historial_habitaciones.all %}
+          <tr>
+            <td class="fw-semibold text-danger">Hab. {{ hist.habitacion_anterior.numero }}</td>
+            <td class="fw-semibold text-success">Hab. {{ hist.habitacion_nueva.numero }}</td>
+            <td class="text-muted" style="max-width: 200px; word-wrap: break-word;">{{ hist.motivo }}</td>
+            <td><code class="text-secondary bg-light px-2 py-1 rounded">{{ hist.usuario.username|default:"—" }}</code></td>
+            <td class="text-end fw-bold {% if hist.diferencia_tarifaria > 0 %}text-warning{% else %}text-muted{% endif %}">S/. {{ hist.diferencia_tarifaria }}</td>
+            <td class="text-muted" style="font-size: 13px;">{{ hist.fecha|date:"d/m/Y H:i" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
   </div>
 
   <div class="col-sidebar">
@@ -668,35 +700,148 @@
         <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <form method="post" action="/estancias/{{ estancia.id }}/cargo/">
+        <form method="post" action="/estancias/{{ estancia.id }}/cargo/" id="formAgregarCargo">
           {% csrf_token %}
+          
           <div class="mb-3">
+            <label class="form-label" style="font-size: 12px; font-weight: 600; color: #475569;">Elemento del Catálogo</label>
+            <select name="producto_id" id="id_producto_cargo" class="form-select form-select-sm">
+              <option value="">-- Cargo Libre (Manual) --</option>
+              {% for p in productos_inventario %}
+              <option value="{{ p.id }}" 
+                data-precio="{{ p.precio_venta }}" 
+                data-stock="{{ p.stock_actual }}" 
+                data-controla="{% if p.controla_stock %}true{% else %}false{% endif %}"
+                data-tipo="{% if p.categoria.nombre == 'Restaurante' %}RESTAURANTE{% elif p.categoria.nombre == 'Lavandería' %}LAVANDERIA{% else %}OTRO{% endif %}">
+                {{ p.nombre }} (S/. {{ p.precio_venta }})
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-3" id="div_cantidad_cargo" style="display:none;">
+            <label class="form-label" style="font-size: 12px; font-weight: 600; color: #475569;">Cantidad</label>
+            <input type="number" name="cantidad" id="id_cantidad_cargo" min="1" value="1" class="form-control form-control-sm">
+            <div class="form-text text-danger" id="stock_alert_text" style="display:none; font-size:11px;"></div>
+          </div>
+
+          <div class="mb-3" id="div_concepto_manual">
             <label class="form-label" style="font-size: 12px; font-weight: 600; color: #475569;">Concepto</label>
-            <input type="text" name="concepto" class="form-control form-control-sm" required
+            <input type="text" name="concepto" id="id_concepto_manual" class="form-control form-control-sm" required
               placeholder="Ej. Minibar, Toallas">
           </div>
-          <div class="mb-3">
+
+          <div class="mb-3" id="div_monto_manual">
             <label class="form-label" style="font-size: 12px; font-weight: 600; color: #475569;">Monto (S/.)</label>
-            <input type="number" name="monto" step="0.01" min="0.01" class="form-control form-control-sm" required
+            <input type="number" name="monto" id="id_monto_manual" step="0.01" min="0.01" class="form-control form-control-sm" required
               placeholder="0.00">
           </div>
+
           <div class="mb-4">
             <label class="form-label" style="font-size: 12px; font-weight: 600; color: #475569;">Categoría</label>
-            <select name="tipo" class="form-select form-select-sm">
+            <select name="tipo" id="id_tipo_cargo" class="form-select form-select-sm">
               <option value="HABITACION">Habitación</option>
               <option value="RESTAURANTE">Restaurante</option>
               <option value="LAVANDERIA">Lavandería</option>
-              <option value="OTRO">Otro</option>
+              <option value="OTRO" selected>Otro</option>
             </select>
           </div>
-          <button type="submit" class="btn btn-primary w-100"
-            style="background: #6366f1; border-color: #6366f1; border-radius: 8px; font-weight: 600;">Agregar
-            Cargo</button>
+
+          <button type="submit" class="btn btn-primary w-100" id="btnSubmitCargo"
+            style="background: #6366f1; border-color: #6366f1; border-radius: 8px; font-weight: 600;">
+            Agregar Cargo
+          </button>
         </form>
       </div>
     </div>
   </div>
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const prodSelect = document.getElementById('id_producto_cargo');
+    const divCant = document.getElementById('div_cantidad_cargo');
+    const cantInput = document.getElementById('id_cantidad_cargo');
+    const divConcepto = document.getElementById('div_concepto_manual');
+    const conceptoInput = document.getElementById('id_concepto_manual');
+    const divMonto = document.getElementById('div_monto_manual');
+    const montoInput = document.getElementById('id_monto_manual');
+    const tipoSelect = document.getElementById('id_tipo_cargo');
+    const alertText = document.getElementById('stock_alert_text');
+    const btnSubmit = document.getElementById('btnSubmitCargo');
+
+    function updateCargoModalFields() {
+      const selected = prodSelect.options[prodSelect.selectedIndex];
+      if (selected && selected.value) {
+        // Product selected
+        divConcepto.style.display = 'none';
+        conceptoInput.removeAttribute('required');
+        
+        divMonto.style.display = 'none';
+        montoInput.removeAttribute('required');
+        
+        divCant.style.display = 'block';
+        cantInput.setAttribute('required', 'required');
+
+        tipoSelect.value = selected.dataset.tipo || 'OTRO';
+
+        // Stock checking
+        const controla = selected.dataset.controla === 'true';
+        const stock = parseFloat(selected.dataset.stock) || 0;
+
+        if (controla) {
+          cantInput.setAttribute('max', stock);
+          alertText.innerText = `Stock disponible: ${stock.toFixed(0)}`;
+          alertText.style.display = 'block';
+          
+          if (parseFloat(cantInput.value) > stock) {
+            btnSubmit.disabled = true;
+          } else {
+            btnSubmit.disabled = false;
+          }
+        } else {
+          cantInput.removeAttribute('max');
+          alertText.style.display = 'none';
+          btnSubmit.disabled = false;
+        }
+      } else {
+        // Free text selected
+        divConcepto.style.display = 'block';
+        conceptoInput.setAttribute('required', 'required');
+        
+        divMonto.style.display = 'block';
+        montoInput.setAttribute('required', 'required');
+        
+        divCant.style.display = 'none';
+        cantInput.removeAttribute('required');
+        cantInput.removeAttribute('max');
+        alertText.style.display = 'none';
+        btnSubmit.disabled = false;
+      }
+    }
+
+    prodSelect.addEventListener('change', updateCargoModalFields);
+    
+    cantInput.addEventListener('input', () => {
+      const selected = prodSelect.options[prodSelect.selectedIndex];
+      if (selected && selected.value && selected.dataset.controla === 'true') {
+        const stock = parseFloat(selected.dataset.stock) || 0;
+        const entered = parseFloat(cantInput.value) || 0;
+        if (entered > stock) {
+          alertText.innerText = `Excede stock disponible (${stock.toFixed(0)})`;
+          alertText.classList.add('text-danger');
+          btnSubmit.disabled = true;
+        } else {
+          alertText.innerText = `Stock disponible: ${stock.toFixed(0)}`;
+          alertText.classList.remove('text-danger');
+          btnSubmit.disabled = false;
+        }
+      }
+    });
+
+    updateCargoModalFields();
+  });
+</script>
 
 <div class="toast-error" id="toastError">
   <i class="bi bi-exclamation-circle-fill fs-5"></i>
@@ -824,10 +969,31 @@
           {% csrf_token %}
           <div class="mb-3">
             <label class="form-label fw-semibold">Nueva Habitación</label>
+            <div class="input-group mb-2">
+              <span class="input-group-text bg-white text-muted py-1 px-2" style="font-size: 13px;"><i class="bi bi-search"></i></span>
+              <input type="text" id="searchSwapRoom" class="form-control form-control-sm" placeholder="Filtrar por número o tipo..." onkeyup="filterSwapRooms()">
+            </div>
             <select name="nueva_habitacion_id" class="form-select" id="selectNuevaHab" required>
               <option value="">Seleccionar...</option>
             </select>
           </div>
+
+          <script>
+            function filterSwapRooms() {
+              const val = document.getElementById('searchSwapRoom').value.trim().toLowerCase();
+              const select = document.getElementById('selectNuevaHab');
+              for (let i = 0; i < select.options.length; i++) {
+                const opt = select.options[i];
+                if (!opt.value) continue;
+                const text = opt.text.toLowerCase();
+                if (text.includes(val)) {
+                  opt.style.display = 'block';
+                } else {
+                  opt.style.display = 'none';
+                }
+              }
+            }
+          </script>
           <div class="mb-3">
             <label class="form-label fw-semibold">Motivo</label>
             <textarea name="motivo" class="form-control" rows="2" required placeholder="Motivo del cambio..."></textarea>
@@ -876,7 +1042,11 @@
 
   // Cargar habitaciones disponibles al abrir modal de cambio
   document.getElementById('modalCambiarHab').addEventListener('show.bs.modal', function() {
-    fetch('/api/habitaciones-disponibles/?modalidad=DIA')
+    // Reset search filter input
+    const filterInput = document.getElementById('searchSwapRoom');
+    if (filterInput) filterInput.value = '';
+    
+    fetch('/api/habitaciones-disponibles/?modalidad={{ estancia.reserva.modalidad }}')
       .then(r => r.json())
       .then(data => {
         const select = document.getElementById('selectNuevaHab');

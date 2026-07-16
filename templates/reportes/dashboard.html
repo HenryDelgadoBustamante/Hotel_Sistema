@@ -3,6 +3,7 @@
 {% block page_title %}{% endblock %}
 
 {% block content %}
+{% if active_tab == 'general' %}
 <script id="chart-data-tipos" type="application/json">
 {"labels": {{ tipos_labels_json|safe }}, "data": {{ tipos_data_json|safe }}}
 </script>
@@ -12,50 +13,53 @@
 <script id="chart-data-origen" type="application/json">
 {"labels": {{ origen_labels_json|safe }}, "data": {{ origen_data_json|safe }}}
 </script>
+{% endif %}
 
 <style>
-/* Reset base styles for the block */
-.reports-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
-.reports-title { margin: 0; font-size: 20px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px; line-height: 1.2; }
-.reports-subtitle { margin: 4px 0 0 0; font-size: 13px; color: #64748b; margin-left: 32px; }
-.reports-actions { display: flex; gap: 8px; }
-
-.reports-tabs { display: flex; gap: 24px; border-bottom: 1px solid #e2e8f0; margin-bottom: 24px; }
-.r-tab { padding: 0 4px 12px 4px; font-size: 13px; font-weight: 600; color: #64748b; text-decoration: none; border-bottom: 2px solid transparent; transition: all 0.2s; }
-.r-tab:hover { color: #1e293b; }
-.r-tab.active { color: #6366f1; border-bottom-color: #6366f1; }
-
-.r-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); padding: 20px; border: 1px solid rgba(0,0,0,0.05); height: 100%; display: flex; flex-direction: column; }
-.r-card-header { font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
-.r-card-header i { color: #64748b; font-size: 16px; }
-
-/* KPIs */
-.kpi-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
-.kpi-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
-.kpi-icon.blue { background: #eff6ff; color: #3b82f6; }
-.kpi-icon.purple { background: #f5f3ff; color: #8b5cf6; }
-.kpi-icon.green { background: #f0fdf4; color: #22c55e; }
-.kpi-icon.orange { background: #fff7ed; color: #f97316; }
-.kpi-label { font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
-.kpi-val { font-size: 28px; font-weight: 700; color: #1e293b; line-height: 1; margin-bottom: 12px; }
-.kpi-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
-.kpi-badge.up { background: #dcfce7; color: #166534; }
-.kpi-badge.down { background: #fee2e2; color: #991b1b; }
-.kpi-badge.neutral { background: #f1f5f9; color: #475569; }
-
-/* Empty States */
-.empty-ill { text-align: center; padding: 32px 20px; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.empty-ill i { font-size: 48px; color: #cbd5e1; margin-bottom: 16px; }
-.empty-ill p { margin: 0; font-size: 13px; color: #94a3b8; font-weight: 500; }
-
-/* Tablas */
-.table-modern { width: 100%; border-collapse: separate; border-spacing: 0; }
-.table-modern th { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; padding: 8px 12px; border-bottom: 1px solid #e2e8f0; text-align: left; }
-.table-modern td { padding: 12px; font-size: 13px; color: #334155; border-bottom: 1px solid #f8fafc; vertical-align: middle; }
-.table-modern tr:last-child td { border-bottom: none; }
-.badge-st { font-size: 10px; padding: 3px 6px; border-radius: 4px; font-weight: 600; }
-.badge-st.activa { background: #dcfce7; color: #166534; }
-.badge-st.final { background: #f1f5f9; color: #475569; }
+  .reports-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+  .reports-title { margin: 0; font-size: 20px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px; line-height: 1.2; }
+  .reports-subtitle { margin: 4px 0 0 0; font-size: 13px; color: #64748b; margin-left: 32px; }
+  .reports-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  
+  .reports-tabs { display: flex; gap: 24px; border-bottom: 1px solid #e2e8f0; margin-bottom: 24px; overflow-x: auto; white-space: nowrap; }
+  .r-tab { padding: 0 4px 12px 4px; font-size: 13px; font-weight: 600; color: #64748b; text-decoration: none; border-bottom: 2px solid transparent; transition: all 0.2s; }
+  .r-tab:hover { color: #1e293b; }
+  .r-tab.active { color: #6366f1; border-bottom-color: #6366f1; }
+  
+  .r-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); padding: 20px; border: 1px solid rgba(0,0,0,0.05); height: 100%; display: flex; flex-direction: column; }
+  .r-card-header { font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+  .r-card-header i { color: #64748b; font-size: 16px; }
+  
+  /* KPIs */
+  .kpi-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .kpi-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .kpi-icon.blue { background: #eff6ff; color: #3b82f6; }
+  .kpi-icon.purple { background: #f5f3ff; color: #8b5cf6; }
+  .kpi-icon.green { background: #f0fdf4; color: #22c55e; }
+  .kpi-icon.orange { background: #fff7ed; color: #f97316; }
+  .kpi-icon.cyan { background: #ecfeff; color: #0891b2; }
+  .kpi-icon.pink { background: #fdf2f8; color: #db2777; }
+  .kpi-label { font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+  .kpi-val { font-size: 26px; font-weight: 700; color: #1e293b; line-height: 1; margin-bottom: 12px; }
+  .kpi-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+  .kpi-badge.up { background: #dcfce7; color: #166534; }
+  .kpi-badge.down { background: #fee2e2; color: #991b1b; }
+  .kpi-badge.neutral { background: #f1f5f9; color: #475569; }
+  
+  /* Empty States */
+  .empty-ill { text-align: center; padding: 32px 20px; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .empty-ill i { font-size: 48px; color: #cbd5e1; margin-bottom: 16px; }
+  .empty-ill p { margin: 0; font-size: 13px; color: #94a3b8; font-weight: 500; }
+  
+  /* Tablas */
+  .table-modern { width: 100%; border-collapse: separate; border-spacing: 0; }
+  .table-modern th { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; padding: 10px 12px; border-bottom: 1px solid #e2e8f0; text-align: left; background: #f8fafc; }
+  .table-modern td { padding: 12px; font-size: 13px; color: #334155; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  .table-modern tr:last-child td { border-bottom: none; }
+  .badge-st { font-size: 10px; padding: 3px 6px; border-radius: 4px; font-weight: 600; }
+  .badge-st.activa { background: #dcfce7; color: #166534; }
+  .badge-st.final { background: #f1f5f9; color: #475569; }
+  .badge-st.cancel { background: #fee2e2; color: #991b1b; }
 </style>
 
 <div class="reports-header mt-2">
@@ -64,25 +68,58 @@
     <p class="reports-subtitle">Período: {{ start_date|date:"d M Y" }} al {{ end_date|date:"d M Y" }}</p>
   </div>
   <div class="reports-actions">
-    <a href="?periodo=hoy" class="btn btn-sm btn-outline-secondary px-3 {% if periodo == 'hoy' %}bg-secondary text-white{% else %}bg-white{% endif %} fw-medium">Hoy</a>
-    <a href="?periodo=semana" class="btn btn-sm btn-outline-secondary px-3 {% if periodo == 'semana' %}bg-secondary text-white{% else %}bg-white{% endif %} fw-medium">Semana</a>
-    <a href="?periodo=mes" class="btn btn-sm btn-outline-secondary px-3 {% if periodo == 'mes' %}bg-secondary text-white{% else %}bg-white{% endif %} fw-medium">Mes</a>
-    <a href="?periodo=anio" class="btn btn-sm btn-outline-secondary px-3 {% if periodo == 'anio' %}bg-secondary text-white{% else %}bg-white{% endif %} fw-medium">Año</a>
-    <a href="{% url 'exportar_excel' %}?fecha_inicio={{ start_date|date:'Y-m-d' }}&fecha_fin={{ end_date|date:'Y-m-d' }}" class="btn btn-sm btn-success px-3 fw-medium ms-2">
-      <i class="bi bi-file-earmark-excel me-1"></i>Exportar Excel
+    <!-- Filtros de Fecha -->
+    <form method="get" class="d-flex align-items-center gap-2 flex-wrap">
+      <input type="hidden" name="tab" value="{{ active_tab }}">
+      <div class="d-flex align-items-center gap-1">
+        <span class="text-muted text-xs fw-bold">DESDE</span>
+        <input type="date" name="fecha_inicio" value="{{ start_date|date:'Y-m-d' }}" class="form-control form-control-sm" style="border-radius: 6px; width: 130px;">
+      </div>
+      <div class="d-flex align-items-center gap-1">
+        <span class="text-muted text-xs fw-bold">HASTA</span>
+        <input type="date" name="fecha_fin" value="{{ end_date|date:'Y-m-d' }}" class="form-control form-control-sm" style="border-radius: 6px; width: 130px;">
+      </div>
+      <button type="submit" class="btn btn-sm btn-primary px-2" style="border-radius: 6px;" title="Aplicar fechas"><i class="bi bi-funnel"></i></button>
+    </form>
+
+    <div class="btn-group btn-group-sm ms-2">
+      <a href="?tab={{ active_tab }}&periodo=hoy" class="btn btn-outline-secondary px-3.5 {% if periodo == 'hoy' %}active{% endif %}">Hoy</a>
+      <a href="?tab={{ active_tab }}&periodo=semana" class="btn btn-outline-secondary px-3.5 {% if periodo == 'semana' %}active{% endif %}">Semana</a>
+      <a href="?tab={{ active_tab }}&periodo=mes" class="btn btn-outline-secondary px-3.5 {% if periodo == 'mes' %}active{% endif %}">Mes</a>
+      <a href="?tab={{ active_tab }}&periodo=anio" class="btn btn-outline-secondary px-3.5 {% if periodo == 'anio' %}active{% endif %}">Año</a>
+    </div>
+
+    {% if is_admin %}
+    <a href="{% url 'exportar_excel' %}?fecha_inicio={{ start_date|date:'Y-m-d' }}&fecha_fin={{ end_date|date:'Y-m-d' }}&piso={{ f_piso }}&tipo_habitacion={{ f_tipo }}&estado={{ f_estado }}&habitacion={{ f_habitacion }}" class="btn btn-sm btn-success px-3 fw-semibold">
+      <i class="bi bi-file-earmark-excel me-1"></i>Excel
     </a>
+    {% endif %}
   </div>
 </div>
 
+<!-- Tabs de Navegación -->
 <div class="reports-tabs">
-  <a href="#" class="r-tab active">General</a>
-  <a href="#" class="r-tab">Ocupación</a>
-  <a href="#" class="r-tab">Ingresos</a>
-  <a href="#" class="r-tab">Huéspedes</a>
+  {% if is_admin %}
+  <a href="?tab=general&periodo={{ periodo }}&fecha_inicio={{ start_date|date:'Y-m-d' }}&fecha_fin={{ end_date|date:'Y-m-d' }}" class="r-tab {% if active_tab == 'general' %}active{% endif %}">Resumen General</a>
+  {% endif %}
+  <a href="?tab=ocupacion&periodo={{ periodo }}&fecha_inicio={{ start_date|date:'Y-m-d' }}&fecha_fin={{ end_date|date:'Y-m-d' }}" class="r-tab {% if active_tab == 'ocupacion' %}active{% endif %}">Ocupación y Disponibilidad</a>
+  <a href="?tab=reservas&periodo={{ periodo }}&fecha_inicio={{ start_date|date:'Y-m-d' }}&fecha_fin={{ end_date|date:'Y-m-d' }}" class="r-tab {% if active_tab == 'reservas' %}active{% endif %}">Reservas y Cancelaciones</a>
+  <a href="?tab=estancias&periodo={{ periodo }}&fecha_inicio={{ start_date|date:'Y-m-d' }}&fecha_fin={{ end_date|date:'Y-m-d' }}" class="r-tab {% if active_tab == 'estancias' %}active{% endif %}">Estancias</a>
+  {% if is_admin %}
+  <a href="?tab=finanzas&periodo={{ periodo }}&fecha_inicio={{ start_date|date:'Y-m-d' }}&fecha_fin={{ end_date|date:'Y-m-d' }}" class="r-tab {% if active_tab == 'finanzas' %}active{% endif %}">Finanzas y Caja</a>
+  {% endif %}
+  <a href="?tab=clientes&periodo={{ periodo }}&fecha_inicio={{ start_date|date:'Y-m-d' }}&fecha_fin={{ end_date|date:'Y-m-d' }}" class="r-tab {% if active_tab == 'clientes' %}active{% endif %}">Clientes y Huéspedes</a>
+  <a href="?tab=housekeeping&periodo={{ periodo }}&fecha_inicio={{ start_date|date:'Y-m-d' }}&fecha_fin={{ end_date|date:'Y-m-d' }}" class="r-tab {% if active_tab == 'housekeeping' %}active{% endif %}">Housekeeping</a>
+  <a href="?tab=atencion&periodo={{ periodo }}&fecha_inicio={{ start_date|date:'Y-m-d' }}&fecha_fin={{ end_date|date:'Y-m-d' }}" class="r-tab {% if active_tab == 'atencion' %}active{% endif %}">Atención al Cliente</a>
 </div>
 
+<!-- ============================================================ -->
+<!-- CONTENIDO DE TABS                                            -->
+<!-- ============================================================ -->
+
+<!-- 1. RESUMEN GENERAL -->
+{% if active_tab == 'general' %}
 <div class="row g-4 mb-4">
-  <!-- Ocupación -->
   <div class="col-md-3 col-sm-6">
     <div class="r-card">
       <div class="kpi-header">
@@ -98,15 +135,13 @@
       </div>
     </div>
   </div>
-  
-  <!-- ADR -->
   <div class="col-md-3 col-sm-6">
     <div class="r-card">
       <div class="kpi-header">
-        <span class="kpi-label">Precio Promedio Vendido</span>
+        <span class="kpi-label">Precio Promedio Vendido (ADR)</span>
         <div class="kpi-icon purple"><i class="bi bi-tags"></i></div>
       </div>
-      <div class="kpi-val"><span style="font-size: 16px;">S/.</span>{{ adr_actual|floatformat:1 }}</div>
+      <div class="kpi-val"><span style="font-size: 16px;">S/.</span>{{ adr_actual|floatformat:2 }}</div>
       <div>
         <span class="kpi-badge {% if variaciones.adr > 0 %}up{% elif variaciones.adr < 0 %}down{% else %}neutral{% endif %}">
           {% if variaciones.adr > 0 %}<i class="bi bi-arrow-up-right"></i>{% elif variaciones.adr < 0 %}<i class="bi bi-arrow-down-right"></i>{% endif %}
@@ -115,15 +150,13 @@
       </div>
     </div>
   </div>
-
-  <!-- RevPAR -->
   <div class="col-md-3 col-sm-6">
     <div class="r-card">
       <div class="kpi-header">
-        <span class="kpi-label">Rendimiento (x Habitación)</span>
+        <span class="kpi-label">Rendimiento Hab. (RevPAR)</span>
         <div class="kpi-icon green"><i class="bi bi-bar-chart-line"></i></div>
       </div>
-      <div class="kpi-val"><span style="font-size: 16px;">S/.</span>{{ revpar_actual|floatformat:1 }}</div>
+      <div class="kpi-val"><span style="font-size: 16px;">S/.</span>{{ revpar_actual|floatformat:2 }}</div>
       <div>
         <span class="kpi-badge {% if variaciones.revpar > 0 %}up{% elif variaciones.revpar < 0 %}down{% else %}neutral{% endif %}">
           {% if variaciones.revpar > 0 %}<i class="bi bi-arrow-up-right"></i>{% elif variaciones.revpar < 0 %}<i class="bi bi-arrow-down-right"></i>{% endif %}
@@ -132,15 +165,13 @@
       </div>
     </div>
   </div>
-
-  <!-- Revenue Total -->
   <div class="col-md-3 col-sm-6">
     <div class="r-card">
       <div class="kpi-header">
-        <span class="kpi-label">Ingresos Totales</span>
+        <span class="kpi-label">Ingresos Totales (Caja)</span>
         <div class="kpi-icon orange"><i class="bi bi-cash-stack"></i></div>
       </div>
-      <div class="kpi-val"><span style="font-size: 16px;">S/.</span>{{ revenue_total|floatformat:0 }}</div>
+      <div class="kpi-val"><span style="font-size: 16px;">S/.</span>{{ revenue_total|floatformat:2 }}</div>
       <div>
         <span class="kpi-badge {% if variaciones.revenue > 0 %}up{% elif variaciones.revenue < 0 %}down{% else %}neutral{% endif %}">
           {% if variaciones.revenue > 0 %}<i class="bi bi-arrow-up-right"></i>{% elif variaciones.revenue < 0 %}<i class="bi bi-arrow-down-right"></i>{% endif %}
@@ -152,20 +183,44 @@
 </div>
 
 <div class="row g-4 mb-4">
-  <!-- Gráfico de Ingresos Anuales -->
+  <div class="col-md-3 col-sm-6">
+    <div class="card p-3 border-0 shadow-sm text-center">
+      <span class="text-muted text-xs fw-bold text-uppercase">Reservas Canceladas</span>
+      <h3 class="fw-bold text-danger m-0 mt-1">{{ reservas_canceladas }}</h3>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="card p-3 border-0 shadow-sm text-center">
+      <span class="text-muted text-xs fw-bold text-uppercase">Estancias Activas</span>
+      <h3 class="fw-bold text-primary m-0 mt-1">{{ estancias_activas_count }}</h3>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="card p-3 border-0 shadow-sm text-center">
+      <span class="text-muted text-xs fw-bold text-uppercase">Reembolsos Aprobados</span>
+      <h3 class="fw-bold text-warning m-0 mt-1">S/. {{ reembolsos_aprobados }}</h3>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="card p-3 border-0 shadow-sm text-center">
+      <span class="text-muted text-xs fw-bold text-uppercase">Duración Prom. Estancia</span>
+      <h3 class="fw-bold text-success m-0 mt-1">{{ duracion_avg }} hrs</h3>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
   <div class="col-lg-8">
     <div class="r-card">
-      <div class="r-card-header"><i class="bi bi-graph-up"></i>Ingresos últimos 12 meses</div>
+      <div class="r-card-header"><i class="bi bi-graph-up"></i>Histórico de Ingresos Mensuales</div>
       <div style="position: relative; height: 260px; width: 100%;">
         <canvas id="ingresosMesesChart"></canvas>
       </div>
     </div>
   </div>
-
-  <!-- Origen de Reservas -->
   <div class="col-lg-4">
     <div class="r-card">
-      <div class="r-card-header"><i class="bi bi-pie-chart"></i>Ingresos por Origen</div>
+      <div class="r-card-header"><i class="bi bi-pie-chart"></i>Ingresos por Origen de Reserva</div>
       <div style="position: relative; height: 260px; width: 100%; display: flex; justify-content: center;">
         <canvas id="origenChart"></canvas>
       </div>
@@ -174,7 +229,6 @@
 </div>
 
 <div class="row g-4 mb-4">
-  <!-- Tabla de Estancias -->
   <div class="col-lg-8">
     <div class="r-card">
       <div class="r-card-header"><i class="bi bi-clock-history"></i>Estancias Recientes</div>
@@ -214,27 +268,692 @@
         </table>
       </div>
       {% else %}
-      <div class="empty-ill" style="padding-top: 10px;">
+      <div class="empty-ill">
         <i class="bi bi-door-closed"></i>
         <p>Sin estancias recientes en el sistema.</p>
       </div>
       {% endif %}
     </div>
   </div>
-  
-  <!-- Ocupación por tipo -->
   <div class="col-lg-4">
     <div class="r-card">
-      <div class="r-card-header"><i class="bi bi-bar-chart-fill"></i>Estancias Activas por Tipo</div>
+      <div class="r-card-header"><i class="bi bi-bar-chart-fill"></i>Estancias Activas por Tipo de Habitación</div>
       <div style="position: relative; height: 220px; width: 100%;">
         <canvas id="ocupacionChart"></canvas>
       </div>
     </div>
   </div>
 </div>
+{% endif %}
+
+<!-- 2. OCUPACION Y DISPONIBILIDAD -->
+{% if active_tab == 'ocupacion' %}
+<div class="row g-4 mb-4">
+  <div class="col-md-4">
+    <div class="r-card text-center p-4">
+      <span class="kpi-label">Noches Disponibles (Físicas)</span>
+      <h2 class="fw-bold mt-2 text-primary">{{ noches_totales_disponibles }}</h2>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="r-card text-center p-4">
+      <span class="kpi-label">Noches Ocupadas (Hospedajes)</span>
+      <h2 class="fw-bold mt-2 text-success">{{ noches_totales_ocupadas }}</h2>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="r-card text-center p-4">
+      <span class="kpi-label">Tasa de Ocupación Consolidada</span>
+      <h2 class="fw-bold mt-2 text-warning">{{ tasa_ocupacion_consolidada }}%</h2>
+    </div>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm p-4 mb-4">
+  <form method="get" class="row g-3">
+    <input type="hidden" name="tab" value="ocupacion">
+    <input type="hidden" name="fecha_inicio" value="{{ start_date|date:'Y-m-d' }}">
+    <input type="hidden" name="fecha_fin" value="{{ end_date|date:'Y-m-d' }}">
+    
+    <div class="col-md-3">
+      <label class="form-label text-xs fw-bold text-secondary text-uppercase">Piso</label>
+      <select name="piso" class="form-select form-select-sm">
+        <option value="">Todos</option>
+        {% for p in pisos %}
+        <option value="{{ p }}" {% if f_piso == p|stringformat:"i" %}selected{% endif %}>Piso {{ p }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label text-xs fw-bold text-secondary text-uppercase">Tipo Habitación</label>
+      <select name="tipo_habitacion" class="form-select form-select-sm">
+        <option value="">Todos</option>
+        {% for t in tipos_habitacion %}
+        <option value="{{ t.id }}" {% if f_tipo == t.id|stringformat:"i" %}selected{% endif %}>{{ t.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label text-xs fw-bold text-secondary text-uppercase">Estado</label>
+      <select name="estado" class="form-select form-select-sm">
+        <option value="">Todos</option>
+        <option value="DISPONIBLE" {% if f_estado == 'DISPONIBLE' %}selected{% endif %}>Disponible</option>
+        <option value="OCUPADA" {% if f_estado == 'OCUPADA' %}selected{% endif %}>Ocupada</option>
+        <option value="LIMPIEZA" {% if f_estado == 'LIMPIEZA' %}selected{% endif %}>En Limpieza</option>
+        <option value="MANTENIMIENTO" {% if f_estado == 'MANTENIMIENTO' %}selected{% endif %}>En Mantenimiento</option>
+      </select>
+    </div>
+    <div class="col-md-3 d-flex align-items-end gap-2">
+      <button type="submit" class="btn btn-sm btn-primary flex-fill fw-medium">Filtrar</button>
+      <a href="?tab=ocupacion&fecha_inicio={{ start_date|date:'Y-m-d' }}&fecha_fin={{ end_date|date:'Y-m-d' }}" class="btn btn-sm btn-outline-secondary">Limpiar</a>
+    </div>
+  </form>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table-modern">
+        <thead>
+          <tr>
+            <th>Habitación</th>
+            <th>Piso</th>
+            <th>Tipo</th>
+            <th>Estado Físico</th>
+            <th>Noches Ocupadas</th>
+            <th class="text-end">% Ocupación</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for h in habitaciones_reporte %}
+          <tr>
+            <td><strong>Hab. {{ h.numero }}</strong></td>
+            <td>Piso {{ h.piso }}</td>
+            <td>{{ h.tipo }}</td>
+            <td>
+              <span class="badge {% if h.estado == 'DISPONIBLE' %}bg-success{% elif h.estado == 'OCUPADA' %}bg-danger{% else %}bg-warning text-dark{% endif %}" style="font-size: 11px;">
+                {{ h.estado }}
+              </span>
+            </td>
+            <td>{{ h.noches_ocupadas }} noches</td>
+            <td class="text-end fw-bold text-dark">{{ h.pct_ocupacion }}%</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="text-center text-muted py-4">No se encontraron habitaciones para los criterios de filtro aplicados.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- 3. RESERVAS Y CANCELACIONES -->
+{% if active_tab == 'reservas' %}
+<div class="row g-4 mb-4">
+  <div class="col-md-3">
+    <div class="r-card text-center p-3">
+      <span class="text-muted text-xs fw-bold">RESERVAS TOTALES</span>
+      <h3 class="fw-bold mt-1 text-dark">{{ reservas_lista_reporte|length }}</h3>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="r-card text-center p-3">
+      <span class="text-muted text-xs fw-bold">CANCELADAS</span>
+      <h3 class="fw-bold mt-1 text-danger">{{ r_canceladas }}</h3>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="r-card text-center p-3">
+      <span class="text-muted text-xs fw-bold">TOTAL REEMBOLSADO</span>
+      <h3 class="fw-bold mt-1 text-warning">S/. {{ monto_reembolsado_total }}</h3>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="r-card text-center p-3">
+      <span class="text-muted text-xs fw-bold">RETENIDO POR POLÍTICAS</span>
+      <h3 class="fw-bold mt-1 text-success">S/. {{ monto_retenido_total }}</h3>
+    </div>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm p-4 mb-4">
+  <form method="get" class="row g-3">
+    <input type="hidden" name="tab" value="reservas">
+    <input type="hidden" name="fecha_inicio" value="{{ start_date|date:'Y-m-d' }}">
+    <input type="hidden" name="fecha_fin" value="{{ end_date|date:'Y-m-d' }}">
+    <div class="col-md-4">
+      <label class="form-label text-xs fw-bold text-secondary text-uppercase">Categoría Habitación</label>
+      <select name="tipo_habitacion" class="form-select form-select-sm">
+        <option value="">Todas</option>
+        {% for t in tipos_habitacion %}
+        <option value="{{ t.id }}" {% if f_tipo == t.id|stringformat:"i" %}selected{% endif %}>{{ t.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label text-xs fw-bold text-secondary text-uppercase">Estado de Reserva</label>
+      <select name="estado" class="form-select form-select-sm">
+        <option value="">Todos</option>
+        <option value="PENDIENTE" {% if f_estado == 'PENDIENTE' %}selected{% endif %}>Pendiente</option>
+        <option value="CONFIRMADA" {% if f_estado == 'CONFIRMADA' %}selected{% endif %}>Confirmada</option>
+        <option value="CHECKIN" {% if f_estado == 'CHECKIN' %}selected{% endif %}>Check-In</option>
+        <option value="CHECKOUT" {% if f_estado == 'CHECKOUT' %}selected{% endif %}>Check-Out</option>
+        <option value="CANCELADA" {% if f_estado == 'CANCELADA' %}selected{% endif %}>Cancelada</option>
+      </select>
+    </div>
+    <div class="col-md-4 d-flex align-items-end gap-2">
+      <button type="submit" class="btn btn-sm btn-primary flex-fill fw-medium">Filtrar</button>
+      <a href="?tab=reservas&fecha_inicio={{ start_date|date:'Y-m-d' }}&fecha_fin={{ end_date|date:'Y-m-d' }}" class="btn btn-sm btn-outline-secondary">Limpiar</a>
+    </div>
+  </form>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table-modern">
+        <thead>
+          <tr>
+            <th>Reserva</th>
+            <th>Huésped</th>
+            <th>Habitación / Tipo</th>
+            <th>Llegada / Salida</th>
+            <th>Estado</th>
+            <th>Precio Total</th>
+            <th>Anticipos</th>
+            <th>Reembolsado</th>
+            <th>Retenido</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in reservas_lista_reporte %}
+          <tr>
+            <td><strong>#{{ r.id }}</strong></td>
+            <td>{{ r.guest }}</td>
+            <td>Hab. {{ r.room }}<br><small class="text-muted">{{ r.tipo }}</small></td>
+            <td>{{ r.entrada|date:"d/m/Y" }}<br><small class="text-muted">{{ r.salida|date:"d/m/Y" }}</small></td>
+            <td>
+              <span class="badge-st {% if r.estado == 'CHECKIN' or r.estado == 'CHECKOUT' %}activa{% elif r.estado == 'CANCELADA' %}cancel{% else %}final{% endif %}">
+                {{ r.estado }}
+              </span>
+            </td>
+            <td class="fw-semibold">S/. {{ r.precio_total }}</td>
+            <td class="text-success fw-semibold">S/. {{ r.anticipo }}</td>
+            <td class="text-danger fw-semibold">S/. {{ r.reembolso }}</td>
+            <td class="text-warning fw-semibold">S/. {{ r.retenido }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="9" class="text-center text-muted py-4">No se encontraron registros de reservas en el período.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- 4. ESTANCIAS -->
+{% if active_tab == 'estancias' %}
+<div class="row g-4 mb-4">
+  <div class="col-md-2 col-sm-4 text-center">
+    <div class="r-card p-3">
+      <span class="text-muted text-xs fw-bold">ACTIVAS</span>
+      <h3 class="fw-bold mt-1 text-primary">{{ est_activas }}</h3>
+    </div>
+  </div>
+  <div class="col-md-2 col-sm-4 text-center">
+    <div class="r-card p-3">
+      <span class="text-muted text-xs fw-bold">FINALIZADAS</span>
+      <h3 class="fw-bold mt-1 text-success">{{ est_finalizadas }}</h3>
+    </div>
+  </div>
+  <div class="col-md-2 col-sm-4 text-center">
+    <div class="r-card p-3">
+      <span class="text-muted text-xs fw-bold">SALIDAS ANTICIPADAS</span>
+      <h3 class="fw-bold mt-1 text-danger">{{ salidas_anticipadas }}</h3>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6 text-center">
+    <div class="r-card p-3">
+      <span class="text-muted text-xs fw-bold">EARLY CHECK-IN (RECARGOS)</span>
+      <h3 class="fw-bold mt-1 text-warning">{{ early_count }}</h3>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6 text-center">
+    <div class="r-card p-3">
+      <span class="text-muted text-xs fw-bold">LATE CHECK-OUT (RECARGOS)</span>
+      <h3 class="fw-bold mt-1 text-warning">{{ late_count }}</h3>
+    </div>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table-modern">
+        <thead>
+          <tr>
+            <th>Estancia</th>
+            <th>Huésped</th>
+            <th>Habitación / Tipo</th>
+            <th>Check-In / Out Real</th>
+            <th>Duración Prog vs Real</th>
+            <th>Cargos Aloj.</th>
+            <th>Consumos Extra</th>
+            <th>Early/Late</th>
+            <th>Total Pendiente</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in estancias_lista_reporte %}
+          <tr>
+            <td><strong>#{{ e.id }}</strong></td>
+            <td>{{ e.guest }}</td>
+            <td>Hab. {{ e.room }}<br><small class="text-muted">{{ e.tipo }}</small></td>
+            <td>{{ e.checkin|date:"d/m/Y H:i" }}<br><small class="text-muted">{% if e.checkout %}{{ e.checkout|date:"d/m/Y H:i" }}{% else %}En hotel{% endif %}</small></td>
+            <td>{{ e.duracion_prog }} hs prog.<br><small class="fw-semibold text-dark">{{ e.duracion_real }} hs real</small></td>
+            <td class="fw-semibold">S/. {{ e.total_alojamiento }}</td>
+            <td class="text-info fw-semibold">S/. {{ e.total_consumos }}</td>
+            <td>
+              {% if e.cargo_early > 0 %}<span class="badge bg-light text-cyan border text-xs">Early: S/. {{ e.cargo_early }}</span><br>{% endif %}
+              {% if e.cargo_late > 0 %}<span class="badge bg-light text-pink border text-xs">Late: S/. {{ e.cargo_late }}</span>{% endif %}
+              {% if e.cargo_early == 0 and e.cargo_late == 0 %}—{% endif %}
+            </td>
+            <td class="fw-bold {% if e.saldo_pendiente > 0 %}text-danger{% else %}text-muted{% endif %}">S/. {{ e.saldo_pendiente }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="9" class="text-center text-muted py-4">No se encontraron estancias hospedadas en este período.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- 5. FINANZAS Y CAJA -->
+{% if active_tab == 'finanzas' and is_admin %}
+<div class="row g-4 mb-4">
+  <div class="col-md-3">
+    <div class="r-card text-center p-3">
+      <span class="text-muted text-xs fw-bold">SALDO INICIAL</span>
+      <h3 class="fw-bold mt-1 text-dark">S/. {{ saldo_inicial_neto }}</h3>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="r-card text-center p-3">
+      <span class="text-muted text-xs fw-bold">INGRESOS DE CAJA</span>
+      <h3 class="fw-bold mt-1 text-success">S/. {{ ingresos_periodo }}</h3>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="r-card text-center p-3">
+      <span class="text-muted text-xs fw-bold">DEVOLUCIONES / REEMBOLSOS</span>
+      <h3 class="fw-bold mt-1 text-danger">S/. {{ reembolsos_periodo }}</h3>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="r-card text-center p-3">
+      <span class="text-muted text-xs fw-bold">SALDO FINAL NETO ESPERADO</span>
+      <h3 class="fw-bold mt-1 text-primary">S/. {{ balance_neto }}</h3>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-md-6">
+    <div class="r-card">
+      <div class="r-card-header"><i class="bi bi-wallet2"></i>Ingresos por Métodos de Pago</div>
+      <table class="table-modern mt-2">
+        <thead>
+          <tr>
+            <th>Método</th>
+            <th class="text-end">Monto Neto Recibido</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in metodos_pago_stats %}
+          <tr>
+            <td class="fw-bold">{{ m.metodo_pago }}</td>
+            <td class="text-end text-success fw-bold">S/. {{ m.total }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="2" class="text-center text-muted">Sin transacciones registradas.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  
+  <div class="col-md-6">
+    <div class="r-card">
+      <div class="r-card-header"><i class="bi bi-tag-fill"></i>Ingresos por Categoría de Consumo</div>
+      <table class="table-modern mt-2">
+        <thead>
+          <tr>
+            <th>Categoría / Concepto</th>
+            <th class="text-end">Importe Cargado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for o in origen_cargos_stats %}
+          <tr>
+            <td class="fw-bold">{{ o.tipo }}</td>
+            <td class="text-end text-primary fw-bold">S/. {{ o.total }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="2" class="text-center text-muted">Sin cargos registrados.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table-modern">
+        <thead>
+          <tr>
+            <th>Tipo Movimiento</th>
+            <th>Origen / Referencia</th>
+            <th>Huésped / Cliente</th>
+            <th>Método Pago</th>
+            <th>Fecha y Hora</th>
+            <th class="text-end">Monto</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in movimientos %}
+          <tr>
+            <td>
+              <span class="badge {% if m.tipo == 'INGRESO' %}bg-success-subtle text-success{% else %}bg-danger-subtle text-danger{% endif %} text-xs font-bold px-2.5 py-1 rounded">
+                {{ m.tipo }}
+              </span>
+            </td>
+            <td><strong>{{ m.origen }}</strong><br><small class="text-muted">{{ m.referencia }}</small></td>
+            <td>{{ m.huesped }}</td>
+            <td>{{ m.metodo }}</td>
+            <td>{{ m.fecha|date:"d/m/Y H:i" }}</td>
+            <td class="text-end fw-bold {% if m.monto > 0 %}text-success{% else %}text-danger{% endif %}">
+              S/. {{ m.monto }}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="text-center text-muted py-4">No se encontraron movimientos financieros en el período.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- 6. CLIENTES Y HUÉSPEDES -->
+{% if active_tab == 'clientes' %}
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table-modern">
+        <thead>
+          <tr>
+            <th>Huésped / Cliente</th>
+            <th>Documento</th>
+            <th>Teléfono</th>
+            <th class="text-center">Total Reservas</th>
+            <th class="text-center">Estancias Concluidas</th>
+            <th class="text-center">Canceladas</th>
+            <th class="text-center">Noches Hospedadas</th>
+            <th class="text-center">Prom. Estancia</th>
+            <th class="text-end">Gasto Neto Acumulado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for h in huespedes_lista_reporte %}
+          <tr>
+            <td><strong>{{ h.nombre }}</strong></td>
+            <td><code class="text-secondary bg-light px-2 py-0.5 rounded">{{ h.doc }}</code></td>
+            <td>{{ h.telefono }}</td>
+            <td class="text-center text-dark">{{ h.bookings_count }}</td>
+            <td class="text-center text-success fw-medium">{{ h.estancias_count }}</td>
+            <td class="text-center text-danger">{{ h.cancelaciones_count }}</td>
+            <td class="text-center">{{ h.noches_hospedadas }}</td>
+            <td class="text-center">{{ h.promedio_estancia }} noches</td>
+            <td class="text-end fw-bold text-success">S/. {{ h.gasto_neto }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="9" class="text-center text-muted py-4">No se registraron huéspedes activos ni consumos en el período.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- 7. HOUSEKEEPING -->
+{% if active_tab == 'housekeeping' %}
+<div class="row g-4 mb-4">
+  <div class="col-md-3 col-sm-6 text-center">
+    <div class="r-card p-3">
+      <span class="text-muted text-xs fw-bold">HAB. DISPONIBLES</span>
+      <h3 class="fw-bold mt-1 text-success">{{ hab_disponibles }}</h3>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6 text-center">
+    <div class="r-card p-3">
+      <span class="text-muted text-xs fw-bold">HAB. OCUPADAS</span>
+      <h3 class="fw-bold mt-1 text-danger">{{ hab_ocupadas }}</h3>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6 text-center">
+    <div class="r-card p-3">
+      <span class="text-muted text-xs fw-bold">EN LIMPIEZA</span>
+      <h3 class="fw-bold mt-1 text-warning">{{ hab_limpieza }}</h3>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6 text-center">
+    <div class="r-card p-3">
+      <span class="text-muted text-xs fw-bold">TIEMPO PROMEDIO LIMPIEZA</span>
+      <h3 class="fw-bold mt-1 text-primary">{{ tiempo_limpieza_prom }} min</h3>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-md-4">
+    <div class="r-card">
+      <div class="r-card-header"><i class="bi bi-person-badge"></i>Productividad de Limpieza por Colaborador</div>
+      <table class="table-modern mt-2">
+        <thead>
+          <tr>
+            <th>Usuario</th>
+            <th class="text-end">Limpiezas Terminadas</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u, cnt in limpiezas_por_usuario.items %}
+          <tr>
+            <td class="fw-semibold">{{ u }}</td>
+            <td class="text-end fw-bold text-success">{{ cnt }} habs</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="2" class="text-center text-muted">Sin registros de limpieza en este período.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="col-md-8">
+    <div class="r-card">
+      <div class="r-card-header"><i class="bi bi-clock-history"></i>Auditoría e Historial de Estado de Habitaciones</div>
+      <div class="table-responsive">
+        <table class="table-modern">
+          <thead>
+            <tr>
+              <th>Habitación</th>
+              <th>Fecha y Hora</th>
+              <th>Colaborador</th>
+              <th>Estado Anterior</th>
+              <th>Estado Nuevo</th>
+              <th>Duración</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for l in limpiezas_lista %}
+            <tr>
+              <td><strong>Hab. {{ l.habitacion_id }}</strong></td>
+              <td>{{ l.fecha|date:"d/m/Y H:i" }}</td>
+              <td><span class="text-muted"><i class="bi bi-person-fill me-1"></i>{{ l.usuario }}</span></td>
+              <td><span class="text-danger fw-semibold">{{ l.estado_anterior }}</span></td>
+              <td><span class="text-success fw-semibold">{{ l.estado_nuevo }}</span></td>
+              <td class="fw-bold text-dark">{{ l.duracion }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="6" class="text-center text-muted">No se registran cambios de limpieza completados en el período.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- 8. ATENCION AL CLIENTE -->
+{% if active_tab == 'atencion' %}
+<div class="row g-4 mb-4">
+  <div class="col-md-3 col-sm-6 text-center">
+    <div class="r-card p-3">
+      <span class="text-muted text-xs fw-bold">TICKETS ABIERTOS</span>
+      <h3 class="fw-bold mt-1 text-danger">{{ tkt_abiertos }}</h3>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6 text-center">
+    <div class="r-card p-3">
+      <span class="text-muted text-xs fw-bold">EN PROCESO / PENDIENTES</span>
+      <h3 class="fw-bold mt-1 text-warning">{{ tkt_proceso|add:tkt_pendientes }}</h3>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6 text-center">
+    <div class="r-card p-3">
+      <span class="text-muted text-xs fw-bold">RESUELTOS / CERRADOS</span>
+      <h3 class="fw-bold mt-1 text-success">{{ tkt_resueltos }}</h3>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6 text-center">
+    <div class="r-card p-3">
+      <span class="text-muted text-xs fw-bold">TIEMPO PROMEDIO RESOLUCIÓN</span>
+      <h3 class="fw-bold mt-1 text-primary">{{ tiempo_resolucion_prom }} min</h3>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-md-5">
+    <div class="r-card mb-4">
+      <div class="r-card-header"><i class="bi bi-exclamation-triangle-fill"></i>Solicitudes por Prioridad</div>
+      <table class="table-modern mt-1">
+        <thead>
+          <tr>
+            <th>Prioridad</th>
+            <th class="text-end">Solicitudes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p, cnt in tkt_prioridades.items %}
+          <tr>
+            <td class="fw-semibold">{{ p }}</td>
+            <td class="text-end fw-bold text-dark">{{ cnt }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    
+    <div class="r-card">
+      <div class="r-card-header"><i class="bi bi-tag-fill"></i>Solicitudes por Categoría</div>
+      <table class="table-modern mt-1">
+        <thead>
+          <tr>
+            <th>Categoría</th>
+            <th class="text-end">Solicitudes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in tkt_categorias %}
+          <tr>
+            <td class="fw-semibold">{{ c.categoria }}</td>
+            <td class="text-end fw-bold text-primary">{{ c.cnt }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  
+  <div class="col-md-7">
+    <div class="r-card">
+      <div class="r-card-header"><i class="bi bi-exclamation-circle-fill"></i>Solicitudes de Atención Pendientes / En Proceso</div>
+      <div class="table-responsive">
+        <table class="table-modern">
+          <thead>
+            <tr>
+              <th>Ticket</th>
+              <th>Hab.</th>
+              <th>Categoría / Prioridad</th>
+              <th>Descripción</th>
+              <th>Responsable</th>
+              <th>Tiempo Transcurrido</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in tickets_pendientes_list %}
+            <tr>
+              <td><strong>{{ t.numero }}</strong></td>
+              <td>Hab. {{ t.habitacion }}</td>
+              <td>{{ t.categoria }}<br><span class="badge {% if t.prioridad == 'URGENTE' or t.prioridad == 'ALTA' %}bg-danger{% else %}bg-secondary{% endif %}" style="font-size: 10px;">{{ t.prioridad }}</span></td>
+              <td style="max-width: 180px; word-break: break-all;">{{ t.descripcion }}</td>
+              <td>{{ t.responsable }}</td>
+              <td class="text-danger fw-bold"><i class="bi bi-hourglass-split me-1"></i>{{ t.tiempo_transcurrido }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="6" class="text-center text-muted">No se registran solicitudes de atención pendientes.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 {% endblock %}
 
 {% block scripts %}
+{% if active_tab == 'general' %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
@@ -329,4 +1048,5 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 });
 </script>
+{% endif %}
 {% endblock %}

@@ -10,13 +10,15 @@ class Command(BaseCommand):
         canon_roles = {
             'admin': 'ALL',
             'recepcionista': 'OPERATIVE',
-            'housekeeping': 'HOUSEKEEPING'
+            'housekeeping': 'HOUSEKEEPING',
+            'inventario': 'INVENTARIO'
         }
         
         role_synonyms = {
             'admin': ['admin', 'administrador', 'administradores'],
             'recepcionista': ['recepcionista', 'recepcionistas'],
-            'housekeeping': ['housekeeping']
+            'housekeeping': ['housekeeping'],
+            'inventario': ['inventario', 'almacenero', 'encargado de inventario']
         }
 
         with transaction.atomic():
@@ -84,6 +86,13 @@ class Command(BaseCommand):
                     )
                     canon_group.permissions.set(permisos_housekeeping)
                     self.stdout.write(f'  [OK] Asignados permisos de limpieza de habitaciones a "{canon_name}"')
+
+                elif role_type == 'INVENTARIO':
+                    permisos_inventario = Permission.objects.filter(
+                        content_type__app_label='inventario'
+                    )
+                    canon_group.permissions.set(permisos_inventario)
+                    self.stdout.write(f'  [OK] Asignados permisos de gestión de inventario a "{canon_name}" ({permisos_inventario.count()} permisos)')
 
             # 4. Asegurar que los usuarios de prueba tengan asignados los grupos en minúsculas correctos
             from django.contrib.auth.models import User

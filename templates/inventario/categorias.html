@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% block page_title %}Categorías de Inventario{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- Listado -->
+  <div class="col-12 col-md-8">
+    <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+      <div class="card-header bg-white border-0 pt-4">
+        <h5 class="fw-bold text-dark m-0">Categorías de Productos y Servicios</h5>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-3 py-3 text-muted fw-semibold">Nombre</th>
+                <th class="py-3 text-muted fw-semibold">Estado</th>
+                <th class="py-3 text-muted fw-semibold text-center" style="width: 100px;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for cat in categorias %}
+              <tr>
+                <td class="ps-3 fw-semibold text-dark">{{ cat.nombre }}</td>
+                <td>
+                  {% if cat.estado == 'ACTIVO' %}
+                  <span class="badge bg-success-subtle text-success">Activo</span>
+                  {% else %}
+                  <span class="badge bg-danger-subtle text-danger">Inactivo</span>
+                  {% endif %}
+                </td>
+                <td class="text-center">
+                  <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 btn-editar" 
+                    data-id="{{ cat.id }}" data-nombre="{{ cat.nombre }}" data-estado="{{ cat.estado }}" style="border-radius:4px; font-size:11px;">
+                    Editar
+                  </button>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="3" class="text-center py-4 text-muted">No hay categorías configuradas.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Formulario Registro / Edición -->
+  <div class="col-12 col-md-4">
+    <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+      <div class="card-header bg-white border-0 pt-4">
+        <h5 class="fw-bold text-dark m-0" id="form-titulo">Nueva Categoría</h5>
+      </div>
+      <div class="card-body">
+        <form method="post" id="form-categoria">
+          {% csrf_token %}
+          <input type="hidden" name="categoria_id" id="input-cat-id">
+          
+          <div class="mb-3">
+            <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Nombre de Categoría *</label>
+            <input type="text" name="nombre" id="input-cat-nombre" class="form-control form-control-sm" required placeholder="Ej. Minibar, Cafetería">
+          </div>
+
+          <div class="mb-4" id="div-estado" style="display:none;">
+            <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Estado</label>
+            <select name="estado" id="select-cat-estado" class="form-select form-select-sm">
+              <option value="ACTIVO">Activo</option>
+              <option value="INACTIVO">Inactivo</option>
+            </select>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary w-50" id="btn-cancelar" style="display:none; border-radius: 8px;">Cancelar</button>
+            <button type="submit" class="btn btn-sm btn-primary w-100" style="background: #6366f1; border-color: #6366f1; border-radius: 8px; font-weight:600;">Guardar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const btnsEditar = document.querySelectorAll('.btn-editar');
+  const catIdInput = document.getElementById('input-cat-id');
+  const catNombreInput = document.getElementById('input-cat-nombre');
+  const catEstadoSelect = document.getElementById('select-cat-estado');
+  const formTitulo = document.getElementById('form-titulo');
+  const divEstado = document.getElementById('div-estado');
+  const btnCancelar = document.getElementById('btn-cancelar');
+
+  btnsEditar.forEach(btn => {
+    btn.addEventListener('click', () => {
+      catIdInput.value = btn.dataset.id;
+      catNombreInput.value = btn.dataset.nombre;
+      catEstadoSelect.value = btn.dataset.estado;
+      formTitulo.innerText = "Editar Categoría";
+      divEstado.style.display = 'block';
+      btnCancelar.style.display = 'block';
+    });
+  });
+
+  btnCancelar.addEventListener('click', () => {
+    catIdInput.value = '';
+    catNombreInput.value = '';
+    formTitulo.innerText = "Nueva Categoría";
+    divEstado.style.display = 'none';
+    btnCancelar.style.display = 'none';
+  });
+</script>
+{% endblock %}

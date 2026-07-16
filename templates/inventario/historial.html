@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% block page_title %}Historial de Movimientos de Inventario{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <a href="{% url 'inventario_dashboard' %}" class="btn btn-sm btn-outline-secondary" style="border-radius: 8px;">
+      <i class="bi bi-arrow-left me-1"></i>Volver al Inventario
+    </a>
+  </div>
+
+  <!-- Filtros -->
+  <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px;">
+    <div class="card-body p-3">
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-12 col-md-3">
+          <label class="form-label text-muted fw-semibold mb-1" style="font-size: 11px;">Producto</label>
+          <select name="producto" class="form-select form-select-sm shadow-none">
+            <option value="">-- Todos --</option>
+            {% for prod in productos %}
+            <option value="{{ prod.id }}" {% if prod.id == producto_id %}selected{% endif %}>{{ prod.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-2">
+          <label class="form-label text-muted fw-semibold mb-1" style="font-size: 11px;">Tipo de Movimiento</label>
+          <select name="tipo_movimiento" class="form-select form-select-sm shadow-none">
+            <option value="">-- Todos --</option>
+            <option value="ENTRADA" {% if tipo_mov == 'ENTRADA' %}selected{% endif %}>Entrada</option>
+            <option value="SALIDA" {% if tipo_mov == 'SALIDA' %}selected{% endif %}>Salida</option>
+            <option value="CONSUMO" {% if tipo_mov == 'CONSUMO' %}selected{% endif %}>Consumo de Huésped</option>
+            <option value="DEVOLUCION" {% if tipo_mov == 'DEVOLUCION' %}selected{% endif %}>Devolución</option>
+            <option value="AJUSTE_POS" {% if tipo_mov == 'AJUSTE_POS' %}selected{% endif %}>Ajuste Positivo</option>
+            <option value="AJUSTE_NEG" {% if tipo_mov == 'AJUSTE_NEG' %}selected{% endif %}>Ajuste Negativo</option>
+            <option value="ANULACION" {% if tipo_mov == 'ANULACION' %}selected{% endif %}>Anulación</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-2">
+          <label class="form-label text-muted fw-semibold mb-1" style="font-size: 11px;">Fecha Inicio</label>
+          <input type="date" name="fecha_inicio" value="{{ fecha_inicio }}" class="form-control form-control-sm shadow-none">
+        </div>
+        <div class="col-12 col-md-2">
+          <label class="form-label text-muted fw-semibold mb-1" style="font-size: 11px;">Fecha Fin</label>
+          <input type="date" name="fecha_fin" value="{{ fecha_fin }}" class="form-control form-control-sm shadow-none">
+        </div>
+        <div class="col-12 col-md-2">
+          <button type="submit" class="btn btn-sm btn-dark w-100" style="border-radius: 6px;">Filtrar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Bitácora -->
+  <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
+          <thead class="table-light">
+            <tr>
+              <th class="ps-3 py-3 text-muted fw-semibold">Fecha y Hora</th>
+              <th class="py-3 text-muted fw-semibold">Producto</th>
+              <th class="py-3 text-muted fw-semibold">Tipo Movimiento</th>
+              <th class="py-3 text-muted fw-semibold text-end">Cantidad</th>
+              <th class="py-3 text-muted fw-semibold text-center">Stock Antes</th>
+              <th class="py-3 text-muted fw-semibold text-center">Stock Después</th>
+              <th class="py-3 text-muted fw-semibold">Motivo / Referencia</th>
+              <th class="py-3 text-muted fw-semibold">Usuario</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for mov in movimientos %}
+            <tr>
+              <td class="ps-3 text-dark">{{ mov.fecha|date:"d/m/Y H:i" }}</td>
+              <td class="fw-semibold text-dark">{{ mov.producto.nombre }}</td>
+              <td>
+                {% if mov.tipo_movimiento == 'ENTRADA' %}
+                <span class="badge bg-success-subtle text-success"><i class="bi bi-box-arrow-in-down me-1"></i>Entrada</span>
+                {% elif mov.tipo_movimiento == 'SALIDA' %}
+                <span class="badge bg-danger-subtle text-danger"><i class="bi bi-box-arrow-up me-1"></i>Salida</span>
+                {% elif mov.tipo_movimiento == 'CONSUMO' %}
+                <span class="badge bg-primary-subtle text-primary"><i class="bi bi-person-check me-1"></i>Consumo</span>
+                {% elif mov.tipo_movimiento == 'DEVOLUCION' or mov.tipo_movimiento == 'ANULACION' %}
+                <span class="badge bg-info-subtle text-info"><i class="bi bi-arrow-counterclockwise me-1"></i>Devolución</span>
+                {% else %}
+                <span class="badge bg-warning-subtle text-warning"><i class="bi bi-sliders me-1"></i>Ajuste</span>
+                {% endif %}
+              </td>
+              <td class="text-end fw-bold text-dark">{{ mov.cantidad|floatformat:2 }}</td>
+              <td class="text-center text-muted">{{ mov.existencia_anterior|floatformat:2 }}</td>
+              <td class="text-center fw-semibold text-dark">{{ mov.existencia_posterior|floatformat:2 }}</td>
+              <td>
+                <div class="fw-medium">{{ mov.motivo }}</div>
+                {% if mov.documento_referencia %}
+                <div class="text-muted text-xs"><i class="bi bi-file-earmark-text me-1"></i>{{ mov.documento_referencia }}</div>
+                {% endif %}
+                {% if mov.estancia %}
+                <div class="text-xs text-primary"><i class="bi bi-door-open me-1"></i>Folio Estancia #{{ mov.estancia.id }}</div>
+                {% endif %}
+              </td>
+              <td><span class="text-muted"><i class="bi bi-person me-1"></i>{{ mov.usuario.username }}</span></td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="8" class="text-center py-4 text-muted">No se registraron movimientos en el rango de búsqueda.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,15 +1,23 @@
 # Definición de entidades: Hotel, TipoHabitacion, Habitacion
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.exceptions import ValidationError
+from datetime import time
 
 
 class Hotel(models.Model):
     nombre = models.CharField(max_length=200)
+    razon_social = models.CharField(max_length=200, blank=True, null=True)
     ruc = models.CharField(max_length=11, unique=True)
     direccion = models.TextField()
     estrellas = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
     telefono = models.CharField(max_length=20)
+    correo = models.EmailField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    # Horarios estándar
+    hora_checkin_estandar = models.TimeField(default='15:00')
+    hora_checkout_estandar = models.TimeField(default='12:00')
 
     # Configuraciones de Early Check-In
     permitir_early_checkin = models.BooleanField(default=True)
@@ -34,6 +42,30 @@ class Hotel(models.Model):
         choices=[(15, '15 minutos antes'), (30, '30 minutos antes'), (60, '60 minutos antes')],
         help_text="Minutos antes del checkout para mostrar alerta al recepcionista."
     )
+
+    def clean(self):
+        super().clean()
+        
+        def to_time(val):
+            if isinstance(val, str):
+                try:
+                    parts = val.split(':')
+                    return time(int(parts[0]), int(parts[1]))
+                except:
+                    return None
+            return val
+
+        h_in = to_time(self.hora_checkin_estandar)
+        h_out = to_time(self.hora_checkout_estandar)
+        h_late_max = to_time(self.late_checkout_hora_maxima)
+
+        if h_in is None:
+            raise ValidationError({'hora_checkin_estandar': 'La hora de Check-In es obligatoria.'})
+        if h_out is None:
+            raise ValidationError({'hora_checkout_estandar': 'La hora de Check-Out es obligatoria.'})
+        if self.permitir_late_checkout and h_late_max:
+            if h_late_max <= h_out:
+                raise ValidationError({'late_checkout_hora_maxima': 'La hora máxima de Late Check-Out debe ser posterior a la hora oficial de Check-Out.'})
 
     class Meta:
         verbose_name = 'Hotel'

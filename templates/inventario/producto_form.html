@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-md-8">
+    <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+      <div class="card-header bg-white border-0 pt-4 pb-0">
+        <h5 class="fw-bold text-dark m-0">{{ titulo }}</h5>
+      </div>
+      <div class="card-body">
+        <form method="post" class="needs-validation" novalidate>
+          {% csrf_token %}
+          
+          <div class="row g-3 mb-3">
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Código Interno *</label>
+              <input type="text" name="codigo_interno" class="form-control form-control-sm" required
+                value="{{ producto.codigo_interno }}" placeholder="Ej. AGUA-01">
+            </div>
+            <div class="col-12 col-md-8">
+              <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Nombre del Elemento *</label>
+              <input type="text" name="nombre" class="form-control form-control-sm" required
+                value="{{ producto.nombre }}" placeholder="Ej. Agua Mineral 500ml Sin Gas">
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Descripción</label>
+            <textarea name="descripcion" class="form-control form-control-sm" rows="2"
+              placeholder="Detalles del producto o especificaciones...">{{ producto.descripcion }}</textarea>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Categoría *</label>
+              <select name="categoria" class="form-select form-select-sm" required>
+                <option value="">-- Seleccionar --</option>
+                {% for cat in categorias %}
+                <option value="{{ cat.id }}" {% if cat.id == producto.categoria.id %}selected{% endif %}>{{ cat.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Tipo de Elemento *</label>
+              <select name="tipo_elemento" class="form-select form-select-sm" required id="id_tipo_elemento">
+                <option value="PRODUCTO_STOCK" {% if producto.tipo_elemento == 'PRODUCTO_STOCK' %}selected{% endif %}>Producto con Stock</option>
+                <option value="SERVICIO_SIN_STOCK" {% if producto.tipo_elemento == 'SERVICIO_SIN_STOCK' %}selected{% endif %}>Servicio sin Stock</option>
+                <option value="PRODUCTO_INTERNO" {% if producto.tipo_elemento == 'PRODUCTO_INTERNO' %}selected{% endif %}>Producto de Uso Interno</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Unidad de Medida *</label>
+              <select name="unidad_medida" class="form-select form-select-sm" required>
+                <option value="">-- Seleccionar --</option>
+                {% for um in unidades %}
+                <option value="{{ um.id }}" {% if um.id == producto.unidad_medida.id %}selected{% endif %}>{{ um.nombre }} ({{ um.abreviatura }})</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Precio de Venta (S/.) *</label>
+              <input type="number" name="precio_venta" step="0.01" min="0.00" class="form-control form-control-sm" required
+                value="{{ producto.precio_venta|default:'0.00' }}">
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Costo Referencial (S/.)</label>
+              <input type="number" name="costo_referencial" step="0.01" min="0.00" class="form-control form-control-sm" required
+                value="{{ producto.costo_referencial|default:'0.00' }}">
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Stock Mínimo Alerta</label>
+              <input type="number" name="stock_minimo" step="0.01" min="0.00" class="form-control form-control-sm" required
+                value="{{ producto.stock_minimo|default:'0.00' }}" id="id_stock_minimo">
+            </div>
+          </div>
+
+          <!-- Boolean Flags -->
+          <div class="row g-3 mb-4 mt-2">
+            <div class="col-12 col-md-4">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="controla_stock" id="id_controla_stock" 
+                  {% if producto.id == None or producto.controla_stock %}checked{% endif %}>
+                <label class="form-check-label fw-semibold text-dark" style="font-size: 13px;" for="id_controla_stock">Controla Stock Físico</label>
+              </div>
+            </div>
+            <div class="col-12 col-md-4">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="es_vendible" id="id_es_vendible" 
+                  {% if producto.id == None or producto.es_vendible %}checked{% endif %}>
+                <label class="form-check-label fw-semibold text-dark" style="font-size: 13px;" for="id_es_vendible">Vendible a Huéspedes</label>
+              </div>
+            </div>
+            <div class="col-12 col-md-4">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="es_uso_interno" id="id_es_uso_interno" 
+                  {% if producto.es_uso_interno %}checked{% endif %}>
+                <label class="form-check-label fw-semibold text-dark" style="font-size: 13px;" for="id_es_uso_interno">Es de Uso Interno</label>
+              </div>
+            </div>
+          </div>
+
+          {% if producto %}
+          <div class="mb-4">
+            <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Estado</label>
+            <select name="estado" class="form-select form-select-sm">
+              <option value="ACTIVO" {% if producto.estado == 'ACTIVO' %}selected{% endif %}>Activo</option>
+              <option value="INACTIVO" {% if producto.estado == 'INACTIVO' %}selected{% endif %}>Inactivo</option>
+            </select>
+          </div>
+          {% endif %}
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Observaciones Internas</label>
+            <textarea name="observaciones" class="form-control form-control-sm" rows="2"
+              placeholder="Comentarios adicionales...">{{ producto.observaciones }}</textarea>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+            <a href="{% url 'inventario_dashboard' %}" class="btn btn-sm btn-outline-secondary" style="border-radius: 8px; font-weight:600;">Cancelar</a>
+            <button type="submit" class="btn btn-sm btn-primary" style="background: #6366f1; border-color: #6366f1; border-radius: 8px; font-weight:600;">
+              <i class="bi bi-save me-1"></i>Guardar Cambios
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Dynamic validation helper to toggle fields based on controls check
+  const typeSelect = document.getElementById('id_tipo_elemento');
+  const controlaStockSwitch = document.getElementById('id_controla_stock');
+  const stockMinimoInput = document.getElementById('id_stock_minimo');
+
+  function updateFormFields() {
+    if (typeSelect.value === 'SERVICIO_SIN_STOCK') {
+      controlaStockSwitch.checked = false;
+      controlaStockSwitch.disabled = true;
+      stockMinimoInput.value = '0.00';
+      stockMinimoInput.disabled = true;
+    } else {
+      controlaStockSwitch.disabled = false;
+      stockMinimoInput.disabled = false;
+    }
+  }
+
+  typeSelect.addEventListener('change', updateFormFields);
+  document.addEventListener('DOMContentLoaded', updateFormFields);
+</script>
+{% endblock %}
