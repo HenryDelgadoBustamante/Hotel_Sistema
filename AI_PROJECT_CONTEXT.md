@@ -663,3 +663,32 @@ Usa este fragmento estructurado al final del documento cada vez que realices mod
 *   **Pendientes Operativos:** [Tareas que quedan para sesiones futuras]
 *   **Observaciones / Notas del Arquitecto:** [Consideraciones adicionales para las siguientes IAs]
 ```
+
+---
+
+### Actualización 15/07/2026
+*   **Fecha de la Intervención:** 2026-07-15
+*   **EPIC Involucrado:** Infraestructura / DevOps (Docker). No afecta lógica de negocio de EPICs existentes.
+*   **Resumen:** Diagnóstico y corrección integral de 7 bugs que impedían el arranque correcto del sistema usando Docker Compose con PostgreSQL.
+*   **Features nuevas:** N/A
+*   **Historias nuevas:** N/A
+*   **Reglas de negocio nuevas:** N/A
+*   **Tablas nuevas / Cambios de BD:** Ninguna (sin migraciones nuevas).
+*   **Detalle de Entidades Modificadas/Creadas:**
+    *   **Archivos de Infraestructura:** `Dockerfile`, `docker-compose.yml`, `.env`, `.dockerignore`, `requirements.txt`, `config/settings.py`.
+    *   **Modelos / Controladores / Templates / APIs:** Sin cambios.
+*   **Dependencias Impactadas:** Solo archivos de configuración de infraestructura.
+*   **Problemas Encontrados y Resueltos:**
+    1.  **[BUG CRÍTICO] `settings.py` — Lógica de DB basada en `DEBUG`:** La condición `if DEBUG:` seleccionaba SQLite incluso en Docker con PostgreSQL. Corregido: ahora usa presencia de `DB_HOST` para elegir motor. Si `DB_HOST` no vacío → PostgreSQL; si no → SQLite local.
+    2.  **[BUG] `requirements.txt` — Versiones inválidas:** `Django==6.0.5` no existe (max 5.x), `crispy-bootstrap5==2026.3` y `pytest-cov==7.1.0` son versiones futuras. Corregido con rangos `>=` de versiones reales.
+    3.  **[BUG] `requirements.txt` — `psycopg2` fuente vs binario:** Cambiado a `psycopg2-binary` para evitar compilación C en el contenedor.
+    4.  **[BUG] `Dockerfile` — `python:3.13-slim`:** Python 3.13 tiene baja compatibilidad. Cambiado a `python:3.12-slim`.
+    5.  **[BUG] `.dockerignore` — `db.sqlite3` no excluido:** El archivo SQLite local se copiaba al contenedor con `COPY . .`. Añadidos `db.sqlite3`, `*.sqlite3`, `venv/`, `env/` y `.env`.
+    6.  **[BUG] `docker-compose.yml` — Defaults inconsistentes en servicio `db`:** Fallback `${DB_USER:-postgres}` no coincidía con `.env` (`hotel_admin`). Corregidos defaults.
+    7.  **[MEJORA] `docker-compose.yml` — `collectstatic` y volumen estático:** Añadido `collectstatic` al startup y volumen `static_volume` independiente para archivos estáticos.
+*   **Pendientes Operativos:**
+    *   Desarrollo local SIN Docker: Dejar `DB_HOST` vacío en `.env` para usar SQLite automáticamente.
+    *   Producción: Usar `gunicorn` + `nginx`, cambiar `SECRET_KEY` por valor seguro y `DEBUG=False`.
+*   **Observaciones / Notas del Arquitecto:**
+    *   La separación de entornos es ahora explícita: `DB_HOST` vacío = SQLite local; `DB_HOST=db` = PostgreSQL en Docker.
+    *   El `.env` con `DEBUG=True` es correcto para desarrollo; para producción revisar `ALLOWED_HOSTS` y `DEBUG`.

@@ -1,8 +1,14 @@
 .git
 __pycache__/
 *.py[cod]
+*.pyc
 .pytest_cache/
 .coverage
 htmlcov/
 staticfiles/
 media/
+db.sqlite3
+*.sqlite3
+venv/
+env/
+.env
