@@ -67,12 +67,21 @@ class CargoEstancia(models.Model):
     fecha = models.DateTimeField(auto_now_add=True)
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default=OTRO)
 
+    # Campos de Exoneracion
+    exonerado = models.BooleanField(default=False)
+    motivo_exoneracion = models.TextField(null=True, blank=True)
+    exonerado_por = models.ForeignKey('auth.User', null=True, blank=True, on_delete=models.SET_NULL, related_name='cargos_exonerados')
+
     class Meta:
         verbose_name = 'Cargo de Estancia'
         verbose_name_plural = 'Cargos de Estancia'
+        constraints = [
+            models.CheckConstraint(check=models.Q(monto__gt=0), name='monto_cargo_positivo')
+        ]
 
     def __str__(self):
-        return f"{self.concepto} - S/.{self.monto}"
+        status = " (Exonerado)" if self.exonerado else ""
+        return f"{self.concepto} - S/.{self.monto}{status}"
 
 
 class Folio(models.Model):
@@ -98,7 +107,7 @@ class Folio(models.Model):
         return f"Folio #{self.id} - Estancia #{self.estancia.id} - S/.{self.total}"
 
     def calcular_totales(self):
-        cargos = self.estancia.cargos.all()
+        cargos = self.estancia.cargos.filter(exonerado=False)
         self.total = sum(c.monto for c in cargos)
         self.subtotal = round(self.total / Decimal('1.18'), 2)
         self.igv = self.total - self.subtotal
@@ -171,4 +180,22 @@ class Reembolso(models.Model):
 
     def __str__(self):
         return f"Reembolso #{self.id} - Pago #{self.pago.id} - S/.{self.monto} ({self.estado})"
+
+
+class HistorialHabitacionEstancia(models.Model):
+    estancia = models.ForeignKey(Estancia, on_delete=models.CASCADE, related_name='historial_habitaciones')
+    habitacion_anterior = models.ForeignKey(Habitacion, on_delete=models.CASCADE, related_name='habitaciones_salida_historial')
+    habitacion_nueva = models.ForeignKey(Habitacion, on_delete=models.CASCADE, related_name='habitaciones_entrada_historial')
+    motivo = models.TextField()
+    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='cambios_habitacion_realizados')
+    diferencia_tarifaria = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Historial de Cambio de Habitación'
+        verbose_name_plural = 'Historiales de Cambios de Habitación'
+        ordering = ['-fecha']
+
+    def __str__(self):
+        return f"Estancia #{self.estancia.id} - Hab. {self.habitacion_anterior.numero} -> {self.habitacion_nueva.numero} ({self.fecha})"
 

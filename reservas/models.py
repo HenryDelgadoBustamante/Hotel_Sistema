@@ -119,6 +119,10 @@ class Reserva(models.Model):
             if self.habitacion.estado == Habitacion.MANTENIMIENTO:
                 raise ValidationError('No se puede reservar una habitación en mantenimiento.')
 
+            if self.num_adultos > self.habitacion.tipo.capacidad:
+                raise ValidationError('La cantidad de adultos supera la capacidad de la habitación.')
+
+
             estados_activos = [self.PENDIENTE, self.CONFIRMADA, self.CHECKIN]
             solapadas = Reserva.objects.filter(
                 habitacion=self.habitacion,

@@ -69,19 +69,11 @@ def parse_date_local(value):
 
 
 def calcular_cargo_salida_tardia(estancia):
-    reserva = estancia.reserva
-    if not reserva.fecha_hora_salida:
-        return 0, 0
-
-    ahora = timezone.now()
-    limite_cobro = reserva.fecha_hora_salida + timedelta(minutes=reserva.cargo_extra_desde_minutos)
-    if ahora < limite_cobro:
-        return 0, 0
-
-    minutos_tarde = int((ahora - reserva.fecha_hora_salida).total_seconds() // 60)
-    bloques = max(1, int(((minutos_tarde / 60) + 2.99) // 3))
-    tarifa_bloque = reserva.habitacion.tipo.precio_base * Decimal('0.35')
-    return round(tarifa_bloque * bloques, 2), minutos_tarde
+    from estancias.services import detectar_late_checkout
+    hotel = estancia.habitacion.hotel
+    now_local = timezone.localtime(timezone.now())
+    es_late, late_monto, minutos_tarde = detectar_late_checkout(estancia, hotel, now_local)
+    return late_monto, minutos_tarde
 
 
 def login_view(request):
@@ -365,49 +357,26 @@ def reserva_checkin(request, reserva_id):
         messages.error(request, 'Esta reserva no puede hacer check-in.')
         return redirect('reservas_lista')
 
+    import estancias.services as estancia_services
+
     if request.method == 'POST':
-        ahora = timezone.now()
-        es_reserva_futura = reserva.fecha_entrada and reserva.fecha_entrada > timezone.localdate()
-        if es_reserva_futura and reserva.fecha_hora_entrada and ahora < reserva.fecha_hora_entrada - timedelta(minutes=30):
-            messages.error(request, 'Esta reserva todavÃ­a no estÃ¡ dentro de la ventana de check-in.')
-            return redirect('reserva_checkin', reserva_id=reserva.id)
-
         hab_id = request.POST.get('habitacion')
-        if hab_id:
-            reserva.habitacion = Habitacion.objects.get(id=hab_id)
+        exonerar_early = request.POST.get('exonerar_early') in ['true', 'on', 'True']
+        motivo_early = request.POST.get('motivo_exoneracion_early')
 
-        habitacion = reserva.habitacion
-        habitacion.estado = 'OCUPADA'
-        habitacion.save()
-
-        reserva.estado = 'CHECKIN'
-        reserva.save()
-        estancia = Estancia.objects.create(
-            reserva=reserva, habitacion=habitacion, precio_final=reserva.precio_total
-        )
-        folio = Folio.objects.create(estancia=estancia)
-
-        # Agregar automáticamente el cargo base de habitación al folio
-        if reserva.precio_total and reserva.precio_total > 0:
-            if reserva.modalidad == 'HORA':
-                horas = int(reserva.duracion_horas or 3)
-                concepto = f'Alquiler por horas – Hab. {habitacion.numero} ({horas}h)'
-            else:
-                from datetime import date as date_cls
-                noches = (reserva.fecha_salida - reserva.fecha_entrada).days or 1
-                concepto = f'Alquiler por {noches} noche{"s" if noches != 1 else ""} – Hab. {habitacion.numero}'
-            CargoEstancia.objects.create(
-                estancia=estancia,
-                concepto=concepto,
-                monto=reserva.precio_total,
-                tipo='HABITACION',
+        try:
+            estancia = estancia_services.procesar_checkin(
+                reserva_id=reserva.id,
+                habitacion_id=hab_id,
+                usuario=request.user,
+                exonerar_early=exonerar_early,
+                motivo_exoneracion_early=motivo_early
             )
-            folio.calcular_totales()
-        # Asignar pagos anticipados al nuevo folio
-        Pago.objects.filter(reserva=reserva, folio__isnull=True).update(folio=folio)
-        folio.calcular_totales()
-        messages.success(request, f'Check-in realizado. Estancia #{estancia.id} creada.')
-        return redirect('folio', estancia_id=estancia.id)
+            messages.success(request, f'Check-in realizado. Estancia #{estancia.id} creada.')
+            return redirect('folio', estancia_id=estancia.id)
+        except ValidationError as e:
+            messages.error(request, e.message if hasattr(e, 'message') else str(e))
+            return redirect('reserva_checkin', reserva_id=reserva.id)
 
     habitaciones_disponibles = Habitacion.objects.filter(
         tipo=reserva.habitacion.tipo if reserva.habitacion else None, 
@@ -416,9 +385,20 @@ def reserva_checkin(request, reserva_id):
     if reserva.habitacion and reserva.habitacion not in habitaciones_disponibles:
         habitaciones_disponibles = list(habitaciones_disponibles) + [reserva.habitacion]
 
+    # Detectar Early Check-In para avisar al recepcionista
+    es_early = False
+    early_monto = Decimal('0.00')
+    try:
+        now_local = timezone.localtime(timezone.now())
+        es_early, early_monto = estancia_services.detectar_early_checkin(reserva, reserva.hotel, now_local)
+    except Exception:
+        pass
+
     return render(request, 'reservas/checkin.html', {
         'reserva': reserva,
-        'habitaciones': habitaciones_disponibles
+        'habitaciones': habitaciones_disponibles,
+        'es_early': es_early,
+        'early_monto': early_monto,
     })
 
 
@@ -461,16 +441,18 @@ def agregar_cargo(request, estancia_id):
     if not _es_recepcionista(request.user):
         return _acceso_denegado(request)
     if request.method == 'POST':
-        estancia = get_object_or_404(Estancia, id=estancia_id)
-        CargoEstancia.objects.create(
-            estancia=estancia,
-            concepto=request.POST['concepto'],
-            monto=request.POST['monto'],
-            tipo=request.POST.get('tipo', 'OTRO'),
-        )
-        folio, _ = Folio.objects.get_or_create(estancia=estancia)
-        folio.calcular_totales()
-        messages.success(request, 'Cargo agregado correctamente.')
+        try:
+            import estancias.services as estancia_services
+            estancia_services.registrar_consumo(
+                estancia_id=estancia_id,
+                concepto=request.POST['concepto'],
+                monto=Decimal(request.POST['monto']),
+                tipo=request.POST.get('tipo', 'OTRO'),
+                usuario=request.user
+            )
+            messages.success(request, 'Cargo agregado correctamente.')
+        except Exception as e:
+            messages.error(request, str(e))
     return redirect('folio', estancia_id=estancia_id)
 
 
@@ -487,22 +469,18 @@ def registrar_pago(request, estancia_id):
 
         if monto:
             try:
-                from decimal import Decimal
+                import estancias.services as estancia_services
                 monto_decimal = Decimal(monto)
-                if monto_decimal <= 0:
-                    messages.error(request, 'El monto debe ser mayor a cero.')
-                elif monto_decimal > folio.saldo_pendiente:
-                    messages.error(request, f'No se puede pagar más del saldo pendiente (S/ {folio.saldo_pendiente:.2f}).')
-                else:
-                    Pago.objects.create(
-                        folio=folio,
-                        monto=monto,
-                        metodo_pago=metodo_pago,
-                        transaccion_id=transaccion_id
-                    )
-                    messages.success(request, 'Pago registrado correctamente.')
-            except Exception:
-                messages.error(request, 'Monto inválido para el pago.')
+                estancia_services.registrar_pago_folio(
+                    folio_id=folio.id,
+                    monto=monto_decimal,
+                    metodo=metodo_pago,
+                    transaccion_id=transaccion_id,
+                    usuario=request.user
+                )
+                messages.success(request, 'Pago registrado correctamente.')
+            except Exception as e:
+                messages.error(request, str(e))
         else:
             messages.error(request, 'Monto inválido para el pago.')
     return redirect('folio', estancia_id=estancia_id)
@@ -513,21 +491,16 @@ def checkout_view(request, estancia_id):
     if not _es_recepcionista(request.user):
         return _acceso_denegado(request)
     estancia = get_object_or_404(Estancia, id=estancia_id)
+    exonerar_late = request.POST.get('exonerar_late_checkout') in ['true', 'on', 'True'] or request.GET.get('exonerar_late_checkout') in ['true', 'on', 'True']
+    motivo_late = request.POST.get('motivo_exoneracion_late') or request.GET.get('motivo_exoneracion_late')
     try:
-        cargo_tardanza, minutos_tarde = calcular_cargo_salida_tardia(estancia)
-        cargo_ya_registrado = estancia.cargos.filter(concepto__startswith='Salida tardia').exists()
-        if cargo_tardanza and not cargo_ya_registrado:
-            CargoEstancia.objects.create(
-                estancia=estancia,
-                concepto=f'Salida tardia ({minutos_tarde} min)',
-                monto=cargo_tardanza,
-                tipo='HABITACION',
-            )
-            folio, _ = Folio.objects.get_or_create(estancia=estancia)
-            folio.calcular_totales()
-            messages.warning(request, 'Se agrego un cargo por salida tardia. Revisa y cierra el folio antes del check-out.')
-            return redirect('folio', estancia_id=estancia_id)
-        estancia.hacer_checkout()
+        import estancias.services as estancia_services
+        estancia_services.procesar_checkout(
+            estancia_id=estancia_id,
+            usuario=request.user,
+            exonerar_late_checkout=exonerar_late,
+            motivo_exoneracion_late=motivo_late
+        )
         messages.success(request, 'Check-out realizado correctamente.')
         return redirect('folio_imprimir', estancia_id=estancia.id)
     except Exception as e:
@@ -562,8 +535,21 @@ def housekeeping_estado(request, hab_id):
         hab = get_object_or_404(Habitacion, id=hab_id)
         nuevo_estado = request.POST.get('estado')
         if nuevo_estado in ['DISPONIBLE', 'LIMPIEZA', 'MANTENIMIENTO']:
+            anterior = hab.estado
             hab.estado = nuevo_estado
             hab.save()
+            
+            # Registrar auditoría única
+            from reportes.models import registrar_auditoria
+            registrar_auditoria(
+                usuario=request.user,
+                accion="Housekeeping Estado Modificado",
+                registro_id=hab.id,
+                tabla_afectada="hotel_habitacion",
+                estado_anterior=anterior,
+                estado_nuevo=nuevo_estado,
+                observacion=f"Cambio estado de Hab. {hab.numero} de {anterior} a {nuevo_estado}"
+            )
             messages.success(request, f'Habitación {hab.numero} actualizada a {nuevo_estado}.')
     return redirect('housekeeping')
 

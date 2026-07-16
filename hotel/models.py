@@ -11,6 +11,23 @@ class Hotel(models.Model):
     telefono = models.CharField(max_length=20)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # Configuraciones de Early Check-In
+    permitir_early_checkin = models.BooleanField(default=True)
+    cobrar_early_checkin = models.BooleanField(default=False)
+    early_checkin_tipo_cargo = models.CharField(max_length=20, choices=[('FIJO', 'Monto Fijo'), ('PORCENTAJE', 'Porcentaje')], default='FIJO')
+    early_checkin_monto_porcentaje = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    early_checkin_tolerancia_minutos = models.PositiveIntegerField(default=30)
+    early_checkin_rol_exonerar = models.CharField(max_length=50, default='administrador')
+
+    # Configuraciones de Late Check-Out
+    permitir_late_checkout = models.BooleanField(default=True)
+    late_checkout_hora_maxima = models.TimeField(default='18:00')
+    late_checkout_tolerancia_minutos = models.PositiveIntegerField(default=10)
+    late_checkout_tipo_cargo = models.CharField(max_length=20, choices=[('FIJO', 'Monto Fijo'), ('PORCENTAJE', 'Porcentaje')], default='PORCENTAJE')
+    late_checkout_monto_porcentaje = models.DecimalField(max_digits=10, decimal_places=2, default=0.35)
+    late_checkout_horas_bloque = models.PositiveIntegerField(default=3)
+    late_checkout_rol_exonerar = models.CharField(max_length=50, default='administrador')
+
     class Meta:
         verbose_name = 'Hotel'
         verbose_name_plural = 'Hoteles'

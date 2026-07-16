@@ -53,54 +53,31 @@ class ReservaViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='checkin')
     def checkin(self, request, pk=None):
         reserva = self.get_object()
+        habitacion_id = request.data.get('habitacion_id') or (reserva.habitacion.id if reserva.habitacion else None)
+        exonerar_early = request.data.get('exonerar_early') in [True, 'true', 'True', 'on']
+        motivo_early = request.data.get('motivo_exoneracion_early')
 
-        if reserva.estado not in [Reserva.PENDIENTE, Reserva.CONFIRMADA]:
+        import estancias.services as estancia_services
+        from django.core.exceptions import ValidationError
+
+        try:
+            estancia = estancia_services.procesar_checkin(
+                reserva_id=reserva.id,
+                habitacion_id=habitacion_id,
+                usuario=request.user,
+                exonerar_early=exonerar_early,
+                motivo_exoneracion_early=motivo_early
+            )
+            return Response({
+                'mensaje': 'Check-in realizado correctamente',
+                'estancia_id': estancia.id,
+                'habitacion': estancia.habitacion.numero
+            })
+        except ValidationError as e:
             return Response(
-                {'error': 'La reserva no está en estado válido para check-in'},
+                {'error': e.message if hasattr(e, 'message') else str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-        habitacion = reserva.habitacion
-        if not habitacion:
-            habitacion_id = request.data.get('habitacion_id')
-            if not habitacion_id:
-                return Response(
-                    {'error': 'Se requiere habitacion_id para el check-in'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            try:
-                habitacion = Habitacion.objects.get(id=habitacion_id)
-            except Habitacion.DoesNotExist:
-                return Response({'error': 'Habitación no encontrada'}, status=status.HTTP_404_NOT_FOUND)
-
-        if habitacion.estado in [Habitacion.MANTENIMIENTO, Habitacion.LIMPIEZA]:
-            return Response(
-                {'error': f'No se puede hacer check-in. Habitación en estado: {habitacion.estado}'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        habitacion.estado = Habitacion.OCUPADA
-        habitacion.save()
-        reserva.habitacion = habitacion
-        reserva.estado = Reserva.CHECKIN
-        reserva.save()
-
-        estancia = Estancia.objects.create(
-            reserva=reserva,
-            habitacion=habitacion,
-            precio_final=reserva.precio_total
-        )
-        folio = Folio.objects.create(estancia=estancia)
-
-        from estancias.models import Pago
-        Pago.objects.filter(reserva=reserva, folio__isnull=True).update(folio=folio)
-        folio.calcular_totales()
-
-        return Response({
-            'mensaje': 'Check-in realizado correctamente',
-            'estancia_id': estancia.id,
-            'habitacion': habitacion.numero
-        })
 
     @action(detail=True, methods=['post'], url_path='cancelar')
     def cancelar(self, request, pk=None):
