@@ -404,3 +404,34 @@ class EstanciaViewsTest(TestCase):
         
         auditorias_despues = Auditoria.objects.filter(accion="Check-In Realizado").count()
         self.assertEqual(auditorias_despues - auditorias_antes, 1)
+
+    def test_pago_excede_saldo_pendiente_capping(self):
+        import estancias.services as estancia_services
+        from estancias.models import Folio, Pago
+        from reportes.models import Auditoria
+        from decimal import Decimal
+        usuario = User.objects.create_user(username='pay_test_user', password='password')
+        self.habitacion.estado = Habitacion.DISPONIBLE
+        self.habitacion.save()
+        estancia = estancia_services.procesar_checkin(self.reserva.id, self.habitacion.id, usuario)
+
+        folio = Folio.objects.get(estancia=estancia)
+        self.assertEqual(folio.saldo_pendiente, Decimal("300.00"))
+
+        pago = estancia_services.registrar_pago_folio(
+            folio_id=folio.id,
+            monto=Decimal("350.00"),
+            metodo=Pago.EFECTIVO,
+            transaccion_id=None,
+            usuario=usuario
+        )
+
+        pago.refresh_from_db()
+        folio.refresh_from_db()
+        self.assertEqual(pago.monto, Decimal("300.00"))
+        self.assertEqual(folio.saldo_pendiente, Decimal("0.00"))
+
+        # Verificar la bitácora de auditoría
+        auditoria = Auditoria.objects.filter(accion="Pago Registrado", registro_id=pago.id).first()
+        self.assertIsNotNone(auditoria)
+        self.assertIn("Vuelto de S/.50.00 entregado", auditoria.observacion)

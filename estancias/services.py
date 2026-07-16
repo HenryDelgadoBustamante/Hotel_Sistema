@@ -440,11 +440,13 @@ def registrar_pago_folio(folio_id, monto, metodo, transaccion_id, usuario):
 
     with transaction.atomic():
         folio = Folio.objects.select_for_update().get(id=folio_id)
-        if folio.estado != Folio.ABIERTO:
-            raise ValidationError("El folio se encuentra cerrado.")
+        if folio.saldo_pendiente <= 0:
+            raise ValidationError("El folio ya se encuentra completamente liquidado (saldo pendiente 0.00).")
 
+        vuelto = Decimal('0.00')
         if monto > folio.saldo_pendiente:
-            raise ValidationError(f"El pago (S/.{monto}) supera el saldo deudor actual del folio (S/.{folio.saldo_pendiente}).")
+            vuelto = monto - folio.saldo_pendiente
+            monto = folio.saldo_pendiente
 
         pago = Pago.objects.create(
             folio=folio,
@@ -455,12 +457,13 @@ def registrar_pago_folio(folio_id, monto, metodo, transaccion_id, usuario):
         folio.calcular_totales()
 
         # Bitácora
+        obs_extra = f" (Vuelto de S/.{vuelto} entregado)" if vuelto > 0 else ""
         registrar_auditoria(
             usuario=usuario,
             accion="Pago Registrado",
             registro_id=pago.id,
             tabla_afectada="estancias_pago",
-            observacion=f"Abono S/.{monto} (Método: {pago.get_metodo_pago_display()}) al Folio #{folio.id}"
+            observacion=f"Abono S/.{monto} (Método: {pago.get_metodo_pago_display()}) al Folio #{folio.id}{obs_extra}"
         )
         return pago
 

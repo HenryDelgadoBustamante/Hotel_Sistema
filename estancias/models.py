@@ -1,5 +1,6 @@
 # Definición de entidades: Estancia, CargoEstancia, Folio, Pago
 
+import django
 from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
@@ -76,7 +77,10 @@ class CargoEstancia(models.Model):
         verbose_name = 'Cargo de Estancia'
         verbose_name_plural = 'Cargos de Estancia'
         constraints = [
-            models.CheckConstraint(check=models.Q(monto__gt=0), name='monto_cargo_positivo')
+            models.CheckConstraint(
+                **{("condition" if django.VERSION >= (5, 1) else "check"): models.Q(monto__gt=0)},
+                name='monto_cargo_positivo'
+            )
         ]
 
     def __str__(self):

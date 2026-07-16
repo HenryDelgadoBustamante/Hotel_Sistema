@@ -63,28 +63,18 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'config.wsgi.application'
+import os
 
-# Selección de base de datos: si DB_HOST está definido, usamos PostgreSQL (Docker/Prod).
-# Si no, SQLite para desarrollo local sin contenedor.
-_db_host = config('DB_HOST', default='')
-if _db_host:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': config('DB_NAME', default='hotel_db'),
-            'USER': config('DB_USER', default='postgres'),
-            'PASSWORD': config('DB_PASSWORD', default='postgres'),
-            'HOST': _db_host,
-            'PORT': config('DB_PORT', default='5432'),
-        }
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("POSTGRES_DB") or config("DB_NAME", default="hotel_db"),
+        "USER": os.getenv("POSTGRES_USER") or config("DB_USER", default="postgres"),
+        "PASSWORD": os.getenv("POSTGRES_PASSWORD") or config("DB_PASSWORD", default="postgres"),
+        "HOST": os.getenv("POSTGRES_HOST") or config("DB_HOST", default="db"),
+        "PORT": os.getenv("POSTGRES_PORT") or config("DB_PORT", default="5432"),
     }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
+}
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
