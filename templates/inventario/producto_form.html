@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block page_title %}{{ titulo }}{% endblock %}
+{% load l10n %}
 
 {% block content %}
 <div class="row justify-content-center">
@@ -34,12 +35,17 @@
           <div class="row g-3 mb-3">
             <div class="col-12 col-md-4">
               <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Categoría *</label>
-              <select name="categoria" class="form-select form-select-sm" required>
-                <option value="">-- Seleccionar --</option>
-                {% for cat in categorias %}
-                <option value="{{ cat.id }}" {% if cat.id == producto.categoria.id %}selected{% endif %}>{{ cat.nombre }}</option>
-                {% endfor %}
-              </select>
+              <div class="input-group input-group-sm">
+                <select name="categoria" id="id_select_categoria" class="form-select" required>
+                  <option value="">-- Seleccionar --</option>
+                  {% for cat in categorias %}
+                  <option value="{{ cat.id }}" {% if cat.id == producto.categoria.id %}selected{% endif %}>{{ cat.nombre }}</option>
+                  {% endfor %}
+                </select>
+                <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#modalNuevaCategoria" title="Crear Nueva Categoría">
+                  <i class="bi bi-plus-lg"></i>
+                </button>
+              </div>
             </div>
             <div class="col-12 col-md-4">
               <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Tipo de Elemento *</label>
@@ -61,20 +67,25 @@
           </div>
 
           <div class="row g-3 mb-3">
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-3">
               <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Precio de Venta (S/.) *</label>
               <input type="number" name="precio_venta" step="0.01" min="0.00" class="form-control form-control-sm" required
-                value="{{ producto.precio_venta|default:'0.00' }}">
+                value="{% if producto %}{{ producto.precio_venta|unlocalize }}{% else %}0.00{% endif %}">
             </div>
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-3">
               <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Costo Referencial (S/.)</label>
               <input type="number" name="costo_referencial" step="0.01" min="0.00" class="form-control form-control-sm" required
-                value="{{ producto.costo_referencial|default:'0.00' }}">
+                value="{% if producto %}{{ producto.costo_referencial|unlocalize }}{% else %}0.00{% endif %}">
             </div>
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-3">
+              <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Stock Actual</label>
+              <input type="number" name="stock_actual" id="id_stock_actual" step="0.01" min="0.00" class="form-control form-control-sm" required
+                value="{% if producto %}{{ producto.stock_actual|unlocalize }}{% else %}0.00{% endif %}">
+            </div>
+            <div class="col-12 col-md-3">
               <label class="form-label fw-semibold text-muted mb-1" style="font-size:12px;">Stock Mínimo Alerta</label>
               <input type="number" name="stock_minimo" step="0.01" min="0.00" class="form-control form-control-sm" required
-                value="{{ producto.stock_minimo|default:'0.00' }}" id="id_stock_minimo">
+                value="{% if producto %}{{ producto.stock_minimo|unlocalize }}{% else %}0.00{% endif %}" id="id_stock_minimo">
             </div>
           </div>
 
@@ -131,11 +142,39 @@
   </div>
 </div>
 
+<!-- Modal para Crear Nueva Categoría -->
+<div class="modal fade" id="modalNuevaCategoria" tabindex="-1" aria-labelledby="modalNuevaCategoriaLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content shadow">
+      <div class="modal-header border-0 pb-0">
+        <h6 class="modal-title fw-bold" id="modalNuevaCategoriaLabel">Nueva Categoría</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="close_modal_categoria_btn"></button>
+      </div>
+      <form id="form_nueva_categoria">
+        <div class="modal-body py-3">
+          <div class="mb-2">
+            <label for="nombre_categoria_input" class="form-label fw-semibold text-muted mb-1" style="font-size:11px;">Nombre de Categoría *</label>
+            <input type="text" id="nombre_categoria_input" class="form-control form-control-sm" placeholder="Ej. Bebidas" required>
+            <div class="invalid-feedback" id="categoria_error_msg" style="font-size:10px;"></div>
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-0 d-flex justify-content-end gap-2">
+          <button type="button" class="btn btn-sm btn-outline-secondary py-1" data-bs-dismiss="modal" style="font-size:12px;">Cancelar</button>
+          <button type="submit" class="btn btn-sm btn-primary py-1" style="background: #6366f1; border-color: #6366f1; font-size:12px;" id="save_categoria_btn">
+            Crear
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <script>
   // Dynamic validation helper to toggle fields based on controls check
   const typeSelect = document.getElementById('id_tipo_elemento');
   const controlaStockSwitch = document.getElementById('id_controla_stock');
   const stockMinimoInput = document.getElementById('id_stock_minimo');
+  const stockActualInput = document.getElementById('id_stock_actual');
 
   function updateFormFields() {
     if (typeSelect.value === 'SERVICIO_SIN_STOCK') {
@@ -143,13 +182,62 @@
       controlaStockSwitch.disabled = true;
       stockMinimoInput.value = '0.00';
       stockMinimoInput.disabled = true;
+      stockActualInput.value = '0.00';
+      stockActualInput.disabled = true;
     } else {
       controlaStockSwitch.disabled = false;
       stockMinimoInput.disabled = false;
+      stockActualInput.disabled = false;
     }
   }
 
   typeSelect.addEventListener('change', updateFormFields);
   document.addEventListener('DOMContentLoaded', updateFormFields);
+
+  // AJAX Category creation
+  const formNuevaCategoria = document.getElementById('form_nueva_categoria');
+  const selectCategoria = document.getElementById('id_select_categoria');
+  const nombreCategoriaInput = document.getElementById('nombre_categoria_input');
+  const errorMsgDiv = document.getElementById('categoria_error_msg');
+  const closeModalBtn = document.getElementById('close_modal_categoria_btn');
+
+  formNuevaCategoria.addEventListener('submit', function(e) {
+    e.preventDefault();
+    errorMsgDiv.style.display = 'none';
+    
+    const nombreVal = nombreCategoriaInput.value.trim();
+    if (!nombreVal) return;
+
+    const formData = new FormData();
+    formData.append('nombre', nombreVal);
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    fetch("{% url 'api_categoria_crear' %}", {
+      method: 'POST',
+      body: formData
+    })
+    .then(response => response.json().then(data => ({ status: response.status, body: data })))
+    .then(res => {
+      if (res.status === 200 && res.body.success) {
+        // Add option to select
+        const newOption = document.createElement('option');
+        newOption.value = res.body.id;
+        newOption.textContent = res.body.nombre;
+        newOption.selected = true;
+        selectCategoria.appendChild(newOption);
+        
+        // Reset form and close modal
+        nombreCategoriaInput.value = '';
+        closeModalBtn.click();
+      } else {
+        errorMsgDiv.textContent = res.body.error || 'Error al procesar la solicitud.';
+        errorMsgDiv.style.display = 'block';
+      }
+    })
+    .catch(err => {
+      errorMsgDiv.textContent = 'Error de conexión con el servidor.';
+      errorMsgDiv.style.display = 'block';
+    });
+  });
 </script>
 {% endblock %}

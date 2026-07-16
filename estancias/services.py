@@ -93,8 +93,17 @@ def procesar_checkin(reserva_id, habitacion_id, usuario, exonerar_early=False, m
         if not habitacion:
             raise ValidationError("No se pre-asignó ni especificó ninguna habitación válida.")
 
-        # Validamos ocupación activa real: bloqueamos sólo si hay una estancia
-        # ACTIVA de OTRA reserva en esta habitación.
+        # Validamos que la habitación no esté físicamente OCUPADA (por otra reserva o estado manual)
+        if habitacion.estado == Habitacion.OCUPADA:
+            tiene_estancia_propia = Estancia.objects.filter(
+                habitacion=habitacion, estado=Estancia.ACTIVA, reserva=reserva
+            ).exists()
+            if not tiene_estancia_propia:
+                raise ValidationError(
+                    f"La habitación #{habitacion.numero} está actualmente ocupada y no puede asignarse."
+                )
+
+        # Verificar también si hay estancia activa de OTRA reserva
         estancia_activa_ajena = Estancia.objects.filter(
             habitacion=habitacion, estado=Estancia.ACTIVA
         ).exclude(reserva=reserva).exists()
@@ -408,6 +417,127 @@ def exonerar_cargo_servicio(cargo_id, motivo, devolver_a_stock, usuario):
         return cargo
 
 
+def eliminar_cargo(cargo_id, usuario):
+    """
+    Elimina un cargo adicional de una estancia activa y devuelve el stock al inventario si aplica.
+    No permite eliminar cargos de tipo HABITACION (alojamiento base).
+    """
+    from inventario.models import MovimientoInventario
+
+    with transaction.atomic():
+        cargo = CargoEstancia.objects.select_for_update().get(id=cargo_id)
+        estancia = cargo.estancia
+
+        if estancia.estado != Estancia.ACTIVA:
+            raise ValidationError("No se pueden modificar cargos de una estancia que no esté activa.")
+        if cargo.tipo == CargoEstancia.HABITACION:
+            raise ValidationError("No se puede eliminar el cargo de alojamiento base.")
+
+        # Revertir stock si el cargo tiene producto con control de stock
+        if cargo.producto and cargo.producto.controla_stock:
+            producto = cargo.producto
+            existencia_anterior = producto.stock_actual
+            producto.stock_actual += Decimal(str(cargo.cantidad))
+            producto.save()
+
+            MovimientoInventario.objects.create(
+                producto=producto,
+                tipo_movimiento='ANULACION',
+                cantidad=Decimal(str(cargo.cantidad)),
+                existencia_anterior=existencia_anterior,
+                existencia_posterior=producto.stock_actual,
+                motivo=f"Eliminación de cargo #{cargo.id} en Estancia #{estancia.id}",
+                costo_referencial=producto.costo_referencial,
+                usuario=usuario,
+                estancia=estancia,
+                documento_referencia=f"Cargo #{cargo.id}"
+            )
+
+        registrar_auditoria(
+            usuario=usuario,
+            accion="Cargo Eliminado",
+            registro_id=cargo.id,
+            tabla_afectada="estancias_cargoestancia",
+            estado_nuevo=f"Cargo #{cargo.id} '{cargo.concepto}' S/.{cargo.monto} eliminado de Estancia #{estancia.id}"
+        )
+
+        cargo.delete()
+
+        folio = estancia.folio
+        folio.calcular_totales()
+
+
+def editar_cargo(cargo_id, nueva_cantidad, usuario):
+    """
+    Edita la cantidad de un cargo de producto en una estancia activa.
+    Ajusta el stock del inventario sumando o descontando la diferencia.
+    Solo aplica a cargos que tienen un producto de inventario asociado.
+    """
+    from inventario.models import MovimientoInventario
+
+    with transaction.atomic():
+        cargo = CargoEstancia.objects.select_for_update().get(id=cargo_id)
+        estancia = cargo.estancia
+
+        if estancia.estado != Estancia.ACTIVA:
+            raise ValidationError("No se pueden modificar cargos de una estancia que no esté activa.")
+        if cargo.tipo == CargoEstancia.HABITACION:
+            raise ValidationError("No se puede editar el cargo de alojamiento base.")
+        if nueva_cantidad <= 0:
+            raise ValidationError("La cantidad debe ser mayor a cero. Para eliminar usa el botón de eliminación.")
+
+        if cargo.producto:
+            producto = cargo.producto
+            cantidad_anterior = cargo.cantidad
+            diferencia = nueva_cantidad - cantidad_anterior  # positivo = más, negativo = devuelve
+
+            if diferencia > 0 and producto.controla_stock:
+                if producto.stock_actual < diferencia:
+                    raise ValidationError(
+                        f"Stock insuficiente para {producto.nombre}. Disponible: {producto.stock_actual:.0f}"
+                    )
+
+            if producto.controla_stock and diferencia != 0:
+                existencia_anterior = producto.stock_actual
+                producto.stock_actual -= Decimal(str(diferencia))  # descuenta si positivo, suma si negativo
+                producto.save()
+
+                tipo_mov = 'CONSUMO' if diferencia > 0 else 'ANULACION'
+                MovimientoInventario.objects.create(
+                    producto=producto,
+                    tipo_movimiento=tipo_mov,
+                    cantidad=abs(Decimal(str(diferencia))),
+                    existencia_anterior=existencia_anterior,
+                    existencia_posterior=producto.stock_actual,
+                    motivo=f"Ajuste de cantidad en cargo #{cargo.id}: {cantidad_anterior}→{nueva_cantidad}",
+                    costo_referencial=producto.costo_referencial,
+                    usuario=usuario,
+                    estancia=estancia,
+                    documento_referencia=f"Cargo #{cargo.id}"
+                )
+
+            cargo.cantidad = nueva_cantidad
+            cargo.concepto = f"{producto.nombre} x {nueva_cantidad}"
+            cargo.monto = producto.precio_venta * Decimal(str(nueva_cantidad))
+        else:
+            # Cargo libre: solo actualizar cantidad y monto proporcional no aplica, solo guardamos la cantidad
+            cargo.cantidad = nueva_cantidad
+
+        cargo.save()
+
+        folio = estancia.folio
+        folio.calcular_totales()
+
+        registrar_auditoria(
+            usuario=usuario,
+            accion="Cargo Editado",
+            registro_id=cargo.id,
+            tabla_afectada="estancias_cargoestancia",
+            estado_nuevo=f"Cargo #{cargo.id} '{cargo.concepto}' S/.{cargo.monto}"
+        )
+        return cargo
+
+
 def extender_estancia_activa(estancia_id, nueva_fecha_salida, usuario):
     """
     Extiende la estancia del huésped (RN-HOS-008). 
@@ -558,6 +688,14 @@ def registrar_pago_folio(folio_id, monto, metodo, transaccion_id, usuario):
     if monto <= 0:
         raise ValidationError("El importe del pago debe ser mayor a cero.")
 
+    from caja.services import obtener_caja_abierta, registrar_movimiento_pago
+    caja = obtener_caja_abierta(usuario)
+    if not caja:
+        raise ValidationError(
+            "No tienes una caja abierta. Es obligatorio aperturar tu caja "
+            "antes de registrar cualquier operación de pago (RN-CAJ-012)."
+        )
+
     with transaction.atomic():
         folio = Folio.objects.select_for_update().get(id=folio_id)
         if folio.saldo_pendiente <= 0:
@@ -575,6 +713,9 @@ def registrar_pago_folio(folio_id, monto, metodo, transaccion_id, usuario):
             transaccion_id=transaccion_id
         )
         folio.calcular_totales()
+
+        # Registrar el movimiento en la caja del turno
+        registrar_movimiento_pago(pago, usuario)
 
         # Bitácora
         obs_extra = f" (Vuelto de S/.{vuelto} entregado)" if vuelto > 0 else ""

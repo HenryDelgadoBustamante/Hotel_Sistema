@@ -4,45 +4,6 @@
 {% block content %}
 
 <style>
-  /* ── Urgentes ── */
-  .hk-urgente-card {
-    border-radius: 14px;
-    border: 2px solid #f43f5e;
-    background: linear-gradient(135deg, #fff1f2, #ffffff);
-    padding: 16px;
-    position: relative;
-    overflow: hidden;
-    animation: pulseUrgente 2s ease-in-out infinite;
-  }
-  @keyframes pulseUrgente {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.3); }
-    50% { box-shadow: 0 0 0 8px rgba(244, 63, 94, 0); }
-  }
-  .hk-urgente-badge {
-    font-size: 11px;
-    background: #fee2e2;
-    color: #991b1b;
-    font-weight: 700;
-    padding: 3px 10px;
-    border-radius: 20px;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    animation: pulseBadge 1.5s ease-in-out infinite;
-  }
-  @keyframes pulseBadge {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
-  }
-  .hk-section-title {
-    font-size: 16px;
-    font-weight: 700;
-    color: #0a1628;
-    margin-bottom: 16px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
   .hk-card {
     border-radius: 14px;
     border: 1px solid #e2e8f0;
@@ -50,10 +11,21 @@
     padding: 16px;
     transition: all 0.2s;
     box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    position: relative;
   }
   .hk-card:hover {
     box-shadow: 0 6px 20px rgba(0,0,0,0.06);
     transform: translateY(-2px);
+  }
+  .hk-card.urgente {
+    border: 2px solid #ef4444 !important;
+    background: linear-gradient(135deg, #fef2f2, #ffffff) !important;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1) !important;
+    animation: borderPulse 2s infinite;
+  }
+  @keyframes borderPulse {
+    0%, 100% { border-color: #ef4444; }
+    50% { border-color: #fee2e2; }
   }
   .hk-hab-num {
     font-size: 26px;
@@ -118,42 +90,11 @@
     transition: all 0.15s;
   }
   .btn-hk-mantenimiento:hover { background: #94a3b8; color: #fff; }
-  .hk-timer {
-    font-size: 20px;
-    font-weight: 800;
-    color: #f43f5e;
-    font-variant-numeric: tabular-nums;
-  }
 </style>
 
-<!-- ── Sección: Recién Liberadas (< 10 min desde checkout) ── -->
-<div class="card border-0 shadow-sm mb-4" style="border-radius: 16px; overflow: hidden;">
-  <div class="card-header d-flex align-items-center justify-content-between py-3 px-4"
-    style="background: linear-gradient(135deg, #fee2e2, #fef2f2); border: none;">
-    <div class="hk-section-title mb-0" style="color: #991b1b;">
-      <i class="bi bi-lightning-charge-fill"></i>
-      Recién Liberadas — Inspección Urgente
-      <span id="badge-urgentes-count" class="badge bg-danger ms-1" style="font-size: 12px;">0</span>
-    </div>
-    <div>
-      <span class="text-muted" style="font-size: 12px;" id="hk-ts-urgente">
-        <i class="bi bi-arrow-repeat me-1"></i>Actualizando...
-      </span>
-    </div>
-  </div>
-  <div class="card-body p-4">
-    <div id="urgentes-grid" class="row g-3">
-      <div class="col-12 text-center py-4 text-muted">
-        <i class="bi bi-hourglass-split fs-2 d-block mb-2"></i>
-        Cargando habitaciones urgentes...
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ── Sección: Todas las habitaciones en Limpieza ── -->
+<!-- ── Cabecera y Filtros ── -->
 <div class="d-flex justify-content-between mb-3 align-items-center">
-  <div class="hk-section-title mb-0">
+  <div class="hk-section-title mb-0" style="font-size: 16px; font-weight: 700; color: #0a1628; display: flex; align-items: center; gap: 10px;">
     <i class="bi bi-stars text-warning"></i>
     Habitaciones Pendientes de Limpieza
   </div>
@@ -167,39 +108,52 @@
   </form>
 </div>
 
+<!-- ── Grid Único de Habitaciones ── -->
 <div class="row g-3 mb-4">
   {% for hab in habitaciones %}
   <div class="col-sm-6 col-md-4 col-lg-3">
-    <div class="hk-card">
+    <div class="hk-card {% if hab.is_urgente %}urgente{% endif %}">
+      
+      <!-- Indicador de Urgente o Limpieza -->
       <div class="d-flex align-items-start justify-content-between mb-2">
         <div>
           <div class="hk-hab-num">{{ hab.numero }}</div>
           <div class="text-muted" style="font-size: 12px; font-weight: 600;">Piso {{ hab.piso }} · {{ hab.tipo.nombre }}</div>
         </div>
+        {% if hab.is_urgente %}
+        <span class="badge bg-danger" style="border-radius: 8px; padding: 5px 10px; font-size: 11px;">
+          <i class="bi bi-lightning-charge-fill me-1"></i>URGENTE
+        </span>
+        {% else %}
         <span class="badge bg-warning text-dark" style="border-radius: 8px; padding: 5px 10px; font-size: 11px;">
           <i class="bi bi-broom me-1"></i>En Limpieza
         </span>
+        {% endif %}
       </div>
 
-      <!-- Checklist visual de inspección -->
-      <div class="hk-checklist">
-        <div class="hk-checklist-item"><i class="bi bi-square text-muted"></i> Estado general de la habitación</div>
+      <!-- Detalles del Checkout si es Urgente -->
+      {% if hab.is_urgente %}
+      <div style="font-size: 11px; font-weight: 600; color: #ef4444; margin: 6px 0;" class="mb-2">
+        <div><i class="bi bi-clock-history me-1"></i>Checkout: {{ hab.checkout_hora }} (Hace {{ hab.minutos_desde_checkout }}m)</div>
+        <div class="text-truncate" style="max-width: 100%;"><i class="bi bi-person me-1"></i>{{ hab.huesped_checkout }}</div>
+      </div>
+      {% endif %}
+
+      <!-- Checklist visual de inspección (solo informativo) -->
+      <div class="hk-checklist mb-3">
+        <div class="hk-checklist-item"><i class="bi bi-square text-muted"></i> Estado general</div>
         <div class="hk-checklist-item"><i class="bi bi-square text-muted"></i> Verificar posibles daños</div>
-        <div class="hk-checklist-item"><i class="bi bi-square text-muted"></i> Objetos olvidados por el huésped</div>
-        <div class="hk-checklist-item"><i class="bi bi-square text-muted"></i> Limpieza y reposición completa</div>
-        <div class="hk-checklist-item"><i class="bi bi-square text-muted"></i> ¿Requiere mantenimiento?</div>
+        <div class="hk-checklist-item"><i class="bi bi-square text-muted"></i> Objetos olvidados</div>
+        <div class="hk-checklist-item"><i class="bi bi-square text-muted"></i> Limpieza y reposición</div>
       </div>
 
-      <!-- Botones de resultado de inspección -->
+      <!-- Botones de Acción -->
       <div class="hk-buttons">
-        <form method="post" action="/housekeeping/{{ hab.id }}/estado/" style="display:contents;">
-          {% csrf_token %}
-          <input type="hidden" name="estado" value="DISPONIBLE">
-          <button type="submit" class="btn-hk-disponible"
-            onclick="return confirm('¿Marcar HAB {{ hab.numero }} como DISPONIBLE?')">
-            <i class="bi bi-check-circle me-1"></i>Lista
-          </button>
-        </form>
+        <!-- Botón Lista abre el Modal -->
+        <button type="button" class="btn-hk-disponible" data-bs-toggle="modal" data-bs-target="#modalInspeccion{{ hab.id }}">
+          <i class="bi bi-check-circle me-1"></i>Lista
+        </button>
+
         <form method="post" action="/housekeeping/{{ hab.id }}/estado/" style="display:contents;">
           {% csrf_token %}
           <input type="hidden" name="estado" value="LIMPIEZA">
@@ -207,6 +161,7 @@
             <i class="bi bi-broom me-1"></i>Limpiar
           </button>
         </form>
+        
         <form method="post" action="/housekeeping/{{ hab.id }}/estado/" style="display:contents;">
           {% csrf_token %}
           <input type="hidden" name="estado" value="MANTENIMIENTO">
@@ -216,101 +171,85 @@
           </button>
         </form>
       </div>
+
     </div>
   </div>
+
+  <!-- Modal para Inspección de Habitación (Botón Lista) -->
+  <div class="modal fade" id="modalInspeccion{{ hab.id }}" tabindex="-1" aria-labelledby="modalInspeccion{{ hab.id }}Label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content shadow-lg" style="border-radius: 16px;">
+        <div class="modal-header border-0 pb-0">
+          <h6 class="modal-title fw-bold" id="modalInspeccion{{ hab.id }}Label">
+            <i class="bi bi-clipboard-check text-primary me-2"></i>Inspección HAB {{ hab.numero }}
+          </h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form method="post" action="/housekeeping/{{ hab.id }}/estado/">
+          {% csrf_token %}
+          <input type="hidden" name="estado" value="DISPONIBLE">
+          
+          <div class="modal-body py-3">
+            <p class="text-muted mb-3" style="font-size:12px;">Marca las tareas de inspección y limpieza realizadas:</p>
+            
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="checkbox" name="check_estado" id="check_estado{{ hab.id }}" checked>
+              <label class="form-check-label text-dark fw-semibold" style="font-size: 13px; cursor:pointer;" for="check_estado{{ hab.id }}">
+                Estado general verificado
+              </label>
+            </div>
+            
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="checkbox" name="check_danos" id="check_danos{{ hab.id }}" checked>
+              <label class="form-check-label text-dark fw-semibold" style="font-size: 13px; cursor:pointer;" for="check_danos{{ hab.id }}">
+                Sin daños detectados
+              </label>
+            </div>
+            
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="checkbox" name="check_objetos" id="check_objetos{{ hab.id }}" checked>
+              <label class="form-check-label text-dark fw-semibold" style="font-size: 13px; cursor:pointer;" for="check_objetos{{ hab.id }}">
+                Sin objetos olvidados
+              </label>
+            </div>
+            
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" name="check_limpieza" id="check_limpieza{{ hab.id }}" checked>
+              <label class="form-check-label text-dark fw-semibold" style="font-size: 13px; cursor:pointer;" for="check_limpieza{{ hab.id }}">
+                Limpieza y reposición completa
+              </label>
+            </div>
+            
+            <div class="mb-1">
+              <label for="obs{{ hab.id }}" class="form-label fw-semibold text-muted mb-1" style="font-size:11px;">Observaciones / Notas adicionales</label>
+              <textarea id="obs{{ hab.id }}" name="observaciones_inspeccion" class="form-control form-control-sm" rows="2" placeholder="Ej. Todo conforme..."></textarea>
+            </div>
+          </div>
+          
+          <div class="modal-footer border-0 pt-0 d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary py-1" data-bs-dismiss="modal" style="font-size:12px;">Cancelar</button>
+            <button type="submit" class="btn btn-sm btn-success py-1" style="background: #10b981; border-color: #10b981; font-size:12px; font-weight: 600;">
+              Finalizar y Activar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   {% empty %}
   <div class="col-12">
-    <div class="alert alert-success text-center" style="border-radius: 12px;">
-      <i class="bi bi-stars me-2 fs-4"></i>
-      No hay habitaciones pendientes de limpieza en este filtro. ¡Todo listo!
+    <div class="alert alert-success text-center py-4" style="border-radius: 16px;">
+      <i class="bi bi-check2-all me-2 fs-3 d-block mb-2 text-success"></i>
+      <span class="fw-semibold">No hay habitaciones pendientes de limpieza en este filtro. ¡Todo listo!</span>
     </div>
   </div>
   {% endfor %}
 </div>
 
 <script>
-  function actualizarUrgentes() {
-    fetch('/api/housekeeping-recientes/')
-      .then(r => r.json())
-      .then(data => {
-        const grid = document.getElementById('urgentes-grid');
-        const countBadge = document.getElementById('badge-urgentes-count');
-        const ts = document.getElementById('hk-ts-urgente');
-        const now = new Date();
-
-        if (countBadge) countBadge.textContent = data.total;
-        if (ts) ts.innerHTML = `<i class="bi bi-arrow-repeat me-1"></i>${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-
-        if (!data.habitaciones_urgentes || data.habitaciones_urgentes.length === 0) {
-          grid.innerHTML = `
-            <div class="col-12 text-center py-4" style="color: #94a3b8;">
-              <i class="bi bi-check-circle-fill fs-2 d-block mb-2 text-success"></i>
-              <span style="font-size: 14px; font-weight: 500;">Sin habitaciones recién liberadas en los últimos 10 minutos.</span>
-            </div>`;
-          return;
-        }
-
-        let html = '';
-        data.habitaciones_urgentes.forEach(h => {
-          html += `
-            <div class="col-sm-6 col-md-4 col-lg-3">
-              <div class="hk-urgente-card">
-                <div class="d-flex align-items-start justify-content-between mb-2">
-                  <div>
-                    <div class="hk-hab-num">HAB ${h.habitacion}</div>
-                    <div class="text-muted" style="font-size: 12px;">Piso ${h.piso} · ${h.tipo}</div>
-                    <div style="font-size: 12px; font-weight: 600; color: #1e293b; margin-top: 2px;">${h.huesped}</div>
-                  </div>
-                  <span class="hk-urgente-badge">
-                    <i class="bi bi-lightning-charge-fill"></i>URGENTE
-                  </span>
-                </div>
-                <div class="d-flex align-items-center gap-2 mb-3">
-                  <i class="bi bi-clock-history text-danger"></i>
-                  <span style="font-size: 12px; color: #64748b;">Checkout: ${h.checkout_hora}</span>
-                  <span class="hk-timer">${h.minutos_desde_checkout}m</span>
-                </div>
-                <div style="font-size: 11px; color: #64748b; margin-bottom: 10px;">
-                  <i class="bi bi-list-check me-1"></i>
-                  Verificar: estado · daños · objetos olvidados · limpieza
-                </div>
-                <div class="hk-buttons">
-                  <form method="post" action="/housekeeping/${h.estancia_id}/estado-checkout/" style="display:none;"></form>
-                  <form method="post" action="/housekeeping/${h.habitacion}/estado-rapido/" style="display:contents;">
-                    <button type="button" class="btn-hk-disponible"
-                      onclick="cambiarEstadoHK(${h.habitacion}, 'DISPONIBLE', 'HAB ${h.habitacion}')">
-                      <i class="bi bi-check-circle me-1"></i>Lista
-                    </button>
-                  </form>
-                  <button type="button" class="btn-hk-limpieza"
-                    onclick="cambiarEstadoHK(${h.habitacion}, 'LIMPIEZA', 'HAB ${h.habitacion}')">
-                    <i class="bi bi-broom me-1"></i>Limpiar
-                  </button>
-                  <button type="button" class="btn-hk-mantenimiento"
-                    onclick="cambiarEstadoHK(${h.habitacion}, 'MANTENIMIENTO', 'HAB ${h.habitacion}')">
-                    <i class="bi bi-tools me-1"></i>Mant.
-                  </button>
-                </div>
-              </div>
-            </div>`;
-        });
-        grid.innerHTML = html;
-      })
-      .catch(() => {
-        const ts = document.getElementById('hk-ts-urgente');
-        if (ts) ts.innerHTML = '<i class="bi bi-wifi-off me-1"></i>Error';
-      });
-  }
-
-  // Cambio de estado rápido desde la sección de urgentes usando los forms existentes
-  function cambiarEstadoHK(habNumero, nuevoEstado, label) {
-    if (nuevoEstado === 'MANTENIMIENTO' && !confirm(`¿Enviar ${label} a MANTENIMIENTO?`)) return;
-    if (nuevoEstado === 'DISPONIBLE' && !confirm(`¿Marcar ${label} como DISPONIBLE?`)) return;
-    
-    // Buscar el form por número de habitación en la lista de limpieza
-    // o hacer reload con un param especial
-    // Como fallback, redirigimos al formulario ya existente buscando el ID
-    // Usamos fetch a la API REST si está disponible, sino reload
+  // Recargar la página automáticamente cada 30 segundos para actualizar alertas urgentes de checkouts recientes
+  setTimeout(function() {
     window.location.reload();
   }
 

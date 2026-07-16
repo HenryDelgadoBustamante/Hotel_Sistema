@@ -340,6 +340,24 @@ def reserva_nueva(request):
                 )
                 if not fecha_entrada or not fecha_salida:
                     raise ValidationError('Debes indicar las fechas de entrada y salida.')
+            import json
+            productos_json = request.POST.get('productos_json', '[]')
+            productos_data = []
+            if productos_json:
+                try:
+                    productos_data = json.loads(productos_json)
+                except Exception:
+                    pass
+
+            original_obs = request.POST.get('observaciones', '')
+            if productos_data:
+                productos_desc = "\n\n--- Insumos Adicionales Solicitados ---\n"
+                for item in productos_data:
+                    productos_desc += f"- {item['nombre']} x {item['cantidad']} (S/. {Decimal(str(item['precio'])) * int(item['cantidad']):.2f})\n"
+                productos_desc += f"\n__JSON_PRODUCTOS_START__{json.dumps(productos_data)}__JSON_PRODUCTOS_END__"
+                reserva_obs = original_obs + productos_desc
+            else:
+                reserva_obs = original_obs
 
             with transaction.atomic():
                 reserva = Reserva.objects.create(
@@ -353,9 +371,16 @@ def reserva_nueva(request):
                     duracion_horas=duracion_horas,
                     num_adultos=int(request.POST.get('num_adultos', 1)),
                     origen=request.POST.get('origen', 'DIRECTO'),
-                    observaciones=request.POST.get('observaciones', ''),
+                    observaciones=reserva_obs,
                 )
-                reserva.precio_total = reserva.calcular_precio()
+                
+                # Calcular precio base de habitacion + total de productos adicionales
+                base_price = reserva.calcular_precio()
+                prod_price = Decimal('0.00')
+                for item in productos_data:
+                    prod_price += Decimal(str(item['precio'])) * int(item['cantidad'])
+                
+                reserva.precio_total = base_price + prod_price
                 reserva.save()
 
                 # Pago anticipado opcional
@@ -376,12 +401,18 @@ def reserva_nueva(request):
                     if metodo_pago != Pago.EFECTIVO and not transaccion_id:
                         raise ValidationError('Debes ingresar el ID de transacción para pagos electrónicos/bancarios.')
                     
+                    from caja.services import obtener_caja_abierta, registrar_movimiento_pago
+                    caja = obtener_caja_abierta(request.user)
+                    if not caja:
+                        raise ValidationError('No tienes una caja abierta. Es obligatorio aperturar tu caja antes de registrar un pago.')
+                    
                     pago = Pago.objects.create(
                         reserva=reserva,
                         monto=monto_decimal,
                         metodo_pago=metodo_pago,
                         transaccion_id=transaccion_id
                     )
+                    registrar_movimiento_pago(pago, request.user)
 
                     # Registrar auditoría de pago
                     # removed import, using utils.auditoria.log_action
@@ -416,11 +447,15 @@ def reserva_nueva(request):
     if huesped_id:
         selected_huesped = Huesped.objects.filter(id=huesped_id).first()
 
+    from inventario.models import Producto
+    productos_inventario = Producto.objects.filter(estado='ACTIVO', es_vendible=True).select_related('categoria').order_by('nombre')
+
     return render(request, 'reservas/nueva.html', {
         'huespedes': Huesped.objects.all().order_by('nombres', 'apellidos'),
         'habitaciones': Habitacion.objects.exclude(estado='MANTENIMIENTO').select_related('tipo').order_by('piso', 'numero'),
         'selected_habitacion_id': selected_habitacion_id,
         'selected_huesped': selected_huesped,
+        'productos_inventario': productos_inventario,
         'hora_actual': timezone.localtime().strftime('%Y-%m-%dT%H:%M'),
     })
 
@@ -621,15 +656,6 @@ def reserva_checkin(request, reserva_id):
     import estancias.services as estancia_services
     from estancias.models import Estancia as EstanciaModel
 
-    # ── Auto-sanar habitaciones en estado OCUPADA sin estancia activa ──────────
-    # Esto corrige datos inconsistentes que quedan cuando hay errores de transacción.
-    habitaciones_huerfanas = Habitacion.objects.filter(estado=Habitacion.OCUPADA).exclude(
-        id__in=EstanciaModel.objects.filter(estado=EstanciaModel.ACTIVA).values_list('habitacion_id', flat=True)
-    )
-    if habitaciones_huerfanas.exists():
-        habitaciones_huerfanas.update(estado=Habitacion.DISPONIBLE)
-    # ──────────────────────────────────────────────────────────────────────────
-
     if request.method == 'POST':
         hab_id = request.POST.get('habitacion')
         exonerar_early = request.POST.get('exonerar_early') in ['true', 'on', 'True']
@@ -643,6 +669,29 @@ def reserva_checkin(request, reserva_id):
                 exonerar_early=exonerar_early,
                 motivo_exoneracion_early=motivo_early
             )
+            
+            # Parsear e ingresar productos pre-seleccionados de la reserva
+            import json
+            from decimal import Decimal
+            observaciones = reserva.observaciones or ""
+            if "__JSON_PRODUCTOS_START__" in observaciones:
+                try:
+                    json_part = observaciones.split("__JSON_PRODUCTOS_START__")[1].split("__JSON_PRODUCTOS_END__")[0].strip()
+                    productos_data = json.loads(json_part)
+                    for item in productos_data:
+                        estancia_services.registrar_consumo(
+                            estancia_id=estancia.id,
+                            concepto="",
+                            monto=Decimal('0.00'),
+                            tipo='OTRO',
+                            usuario=request.user,
+                            producto_id=int(item['id']),
+                            cantidad=int(item['cantidad'])
+                        )
+                except Exception as ex:
+                    # Silenciosamente continuar o registrar warning si falla algún producto individual
+                    pass
+
             messages.success(request, f'Check-in realizado. Estancia #{estancia.id} creada.')
             return redirect('folio', estancia_id=estancia.id)
         except ValidationError as e:
@@ -763,6 +812,53 @@ def agregar_cargo(request, estancia_id):
 
 
 @login_required
+def eliminar_cargo_view(request, cargo_id):
+    """Elimina un cargo adicional del folio y revierte el stock si corresponde."""
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
+
+    cargo = get_object_or_404(CargoEstancia, id=cargo_id)
+    estancia_id = cargo.estancia_id
+
+    if request.method == 'POST':
+        try:
+            import estancias.services as estancia_services
+            estancia_services.eliminar_cargo(cargo_id=cargo_id, usuario=request.user)
+            messages.success(request, f'Cargo "{cargo.concepto}" eliminado correctamente.')
+        except Exception as e:
+            messages.error(request, str(e))
+
+    return redirect('folio', estancia_id=estancia_id)
+
+
+@login_required
+def editar_cargo_view(request, cargo_id):
+    """Edita la cantidad de un cargo de producto en el folio, ajustando el stock."""
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
+
+    cargo = get_object_or_404(CargoEstancia, id=cargo_id)
+    estancia_id = cargo.estancia_id
+
+    if request.method == 'POST':
+        try:
+            nueva_cantidad = int(request.POST.get('cantidad', 1))
+            import estancias.services as estancia_services
+            estancia_services.editar_cargo(
+                cargo_id=cargo_id,
+                nueva_cantidad=nueva_cantidad,
+                usuario=request.user
+            )
+            messages.success(request, 'Cargo actualizado correctamente.')
+        except (ValueError, TypeError):
+            messages.error(request, 'Cantidad inválida.')
+        except Exception as e:
+            messages.error(request, str(e))
+
+    return redirect('folio', estancia_id=estancia_id)
+
+
+@login_required
 def registrar_pago(request, estancia_id):
     if not _es_recepcionista(request.user):
         return _acceso_denegado(request)
@@ -819,10 +915,37 @@ def housekeeping_view(request):
     if not _es_housekeeping(request.user):
         return _acceso_denegado(request)
     piso = request.GET.get('piso', '')
-    habitaciones = Habitacion.objects.filter(estado='LIMPIEZA').select_related('tipo').order_by('piso', 'numero')
+    habitaciones = list(Habitacion.objects.filter(estado='LIMPIEZA').select_related('tipo').order_by('piso', 'numero'))
     
+    # Identificar cuáles son urgentes (check-out en los últimos 10 minutos)
+    from datetime import timedelta
+    limite = timezone.now() - timedelta(minutes=10)
+    
+    # Obtenemos estancias finalizadas recientemente
+    from estancias.models import Estancia
+    estancias_recientes = Estancia.objects.filter(
+        estado=Estancia.FINALIZADA,
+        habitacion__estado=Habitacion.LIMPIEZA,
+        fecha_checkout__gte=limite
+    ).select_related('reserva__huesped')
+    
+    urgentes_map = {e.habitacion_id: e for e in estancias_recientes}
+    
+    for hab in habitaciones:
+        estancia = urgentes_map.get(hab.id)
+        if estancia:
+            hab.is_urgente = True
+            checkout_local = timezone.localtime(estancia.fecha_checkout)
+            hab.checkout_hora = checkout_local.strftime('%H:%M')
+            hab.minutos_desde_checkout = int((timezone.now() - estancia.fecha_checkout).total_seconds() // 60)
+            huesped = estancia.reserva.huesped
+            hab.huesped_checkout = f"{huesped.nombres} {huesped.apellidos}"
+        else:
+            hab.is_urgente = False
+            
+    # Aplicar filtro de piso si viene en el request
     if piso:
-        habitaciones = habitaciones.filter(piso=piso)
+        habitaciones = [h for h in habitaciones if str(h.piso) == piso]
         
     pisos_disponibles = Habitacion.objects.values_list('piso', flat=True).distinct().order_by('piso')
 
@@ -845,8 +968,25 @@ def housekeeping_estado(request, hab_id):
             hab.estado = nuevo_estado
             hab.save()
             
-            # Registrar auditoría única
-            # removed import, using utils.auditoria.log_action
+            # Registrar auditoría con detalles de lo realizado si viene desde el modal "Lista"
+            observacion = f"Cambio estado de Hab. {hab.numero} de {anterior} a {nuevo_estado}."
+            
+            detalles = []
+            if request.POST.get('check_estado') == 'on':
+                detalles.append("Estado general de la habitación verificado")
+            if request.POST.get('check_danos') == 'on':
+                detalles.append("Verificación de daños completada")
+            if request.POST.get('check_objetos') == 'on':
+                detalles.append("Búsqueda de objetos olvidados completada")
+            if request.POST.get('check_limpieza') == 'on':
+                detalles.append("Limpieza y reposición completa realizada")
+            
+            obs_texto = request.POST.get('observaciones_inspeccion', '').strip()
+            if detalles:
+                observacion += " Tareas realizadas: " + ", ".join(detalles) + "."
+            if obs_texto:
+                observacion += f" Observaciones: {obs_texto}"
+                
             registrar_auditoria(
                 usuario=request.user,
                 accion="Housekeeping Estado Modificado",
@@ -854,7 +994,7 @@ def housekeeping_estado(request, hab_id):
                 tabla_afectada="hotel_habitacion",
                 estado_anterior=anterior,
                 estado_nuevo=nuevo_estado,
-                observacion=f"Cambio estado de Hab. {hab.numero} de {anterior} a {nuevo_estado}"
+                observacion=observacion
             )
             messages.success(request, f'Habitación {hab.numero} actualizada a {nuevo_estado}.')
     return redirect('housekeeping')
@@ -2332,12 +2472,20 @@ def registrar_pago_anticipo(request, reserva_id):
                 elif metodo_pago != Pago.EFECTIVO and not transaccion_id:
                     messages.error(request, 'Debes ingresar el ID de transacción para pagos electrónicos/bancarios.')
                 else:
-                    pago = Pago.objects.create(
-                        reserva=reserva,
-                        monto=monto_decimal,
-                        metodo_pago=metodo_pago,
-                        transaccion_id=transaccion_id
-                    )
+                    from caja.services import obtener_caja_abierta, registrar_movimiento_pago
+                    caja = obtener_caja_abierta(request.user)
+                    if not caja:
+                        messages.error(request, 'No tienes una caja abierta. Es obligatorio aperturar tu caja antes de registrar un pago.')
+                        return redirect('reserva_detalle', reserva_id=reserva_id)
+
+                    with transaction.atomic():
+                        pago = Pago.objects.create(
+                            reserva=reserva,
+                            monto=monto_decimal,
+                            metodo_pago=metodo_pago,
+                            transaccion_id=transaccion_id
+                        )
+                        registrar_movimiento_pago(pago, request.user)
                     
                     # Registrar auditoria
                     # removed import, using utils.auditoria.log_action
@@ -2678,11 +2826,21 @@ def aprobar_reembolso(request, reembolso_id):
             return redirect_url
 
         if accion in ['APROBAR', 'aprobar']:
-            reembolso.estado = Reembolso.APROBADO
-            reembolso.aprobado_por = request.user
-            reembolso.fecha_resolucion = timezone.now()
-            reembolso.observacion = observacion
-            reembolso.save()
+            from caja.services import obtener_caja_abierta, registrar_movimiento_reembolso
+            caja = obtener_caja_abierta(request.user)
+            if not caja:
+                messages.error(request, 'No tienes una caja abierta. Debes abrir una caja para poder procesar reembolsos.')
+                return redirect_url
+
+            with transaction.atomic():
+                reembolso.estado = Reembolso.APROBADO
+                reembolso.aprobado_por = request.user
+                reembolso.fecha_resolucion = timezone.now()
+                reembolso.observacion = observacion
+                reembolso.save()
+                
+                # Registrar salida de caja
+                registrar_movimiento_reembolso(reembolso, request.user)
 
             pago = reembolso.pago
             estancia = pago.folio.estancia if pago.folio else None

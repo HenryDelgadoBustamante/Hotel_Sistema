@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% block title %}Historial de Cajas — HotelSystem{% endblock %}
+{% block page_title %}Historial de Cajas y Turnos{% endblock %}
+{% block content %}
+<div class="form-shell">
+  <!-- Filtros -->
+  <div class="form-panel mb-3">
+    <div class="form-section-title"><i class="bi bi-funnel me-2"></i>Filtros de Búsqueda</div>
+    <form method="get" class="row g-3">
+      <div class="col-md-3">
+        <label for="fecha_inicio" class="form-label">Fecha Apertura (Desde)</label>
+        <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control" value="{{ filtros.fecha_inicio|default:'' }}">
+      </div>
+      <div class="col-md-3">
+        <label for="fecha_fin" class="form-label">Fecha Apertura (Hasta)</label>
+        <input type="date" name="fecha_fin" id="fecha_fin" class="form-control" value="{{ filtros.fecha_fin|default:'' }}">
+      </div>
+      <div class="col-md-3">
+        <label for="recepcionista" class="form-label">Cajero / Recepcionista</label>
+        <select name="recepcionista" id="recepcionista" class="form-select">
+          <option value="">-- Todos los cajeros --</option>
+          {% for u in usuarios %}
+          <option value="{{ u.id }}" {% if filtros.recepcionista == u.id|stringformat:"s" %}selected{% endif %}>{{ u.username }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label for="estado" class="form-label">Estado</label>
+        <select name="estado" id="estado" class="form-select">
+          <option value="">-- Todos --</option>
+          <option value="ABIERTA" {% if filtros.estado == 'ABIERTA' %}selected{% endif %}>Abierta</option>
+          <option value="CERRADA" {% if filtros.estado == 'CERRADA' %}selected{% endif %}>Cerrada</option>
+        </select>
+      </div>
+      <div class="col-md-1 d-flex align-items-end">
+        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i></button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Listado -->
+  <div class="form-panel">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead>
+          <tr>
+            <th>Caja #</th>
+            <th>Usuario</th>
+            <th>Fecha Apertura</th>
+            <th>Fecha Cierre</th>
+            <th>Monto Inicial</th>
+            <th>Esperado</th>
+            <th>Real Contado</th>
+            <th>Diferencia</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in cajas %}
+          <tr>
+            <td><strong>#{{ c.id }}</strong></td>
+            <td>{{ c.usuario.username }}</td>
+            <td class="text-nowrap">{{ c.fecha_apertura|date:"d/m/Y H:i" }}</td>
+            <td class="text-nowrap">{{ c.fecha_cierre|date:"d/m/Y H:i"|default:"-" }}</td>
+            <td>S/. {{ c.monto_inicial|stringformat:".2f" }}</td>
+            <td>S/. {{ c.monto_esperado|stringformat:".2f" }}</td>
+            <td>{{ c.monto_real|default:"-" }}</td>
+            <td>
+              {% if c.diferencia == None %}
+                -
+              {% elif c.diferencia == 0 %}
+                <span class="text-success fw-semibold">S/. 0.00</span>
+              {% elif c.diferencia > 0 %}
+                <span class="text-warning fw-semibold">+ S/. {{ c.diferencia|stringformat:".2f" }}</span>
+              {% else %}
+                <span class="text-danger fw-semibold"> S/. {{ c.diferencia|stringformat:".2f" }}</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if c.estado == 'ABIERTA' %}
+              <span class="badge bg-success">Abierta</span>
+              {% else %}
+              <span class="badge bg-secondary">Cerrada</span>
+              {% endif %}
+            </td>
+            <td>
+              <a href="{% url 'caja_imprimir_acta' c.id %}" target="_blank" class="btn btn-sm btn-outline-dark" title="Imprimir Acta">
+                <i class="bi bi-printer"></i>
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="10" class="text-center text-muted py-4">No se encontraron registros de caja con los filtros especificados.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

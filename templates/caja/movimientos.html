@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% block title %}Consulta de Movimientos — HotelSystem{% endblock %}
+{% block page_title %}Consulta de Movimientos de Caja{% endblock %}
+{% block content %}
+<div class="form-shell">
+  <!-- Filtros -->
+  <div class="form-panel mb-3">
+    <div class="form-section-title"><i class="bi bi-funnel me-2"></i>Filtros de Búsqueda</div>
+    <form method="get" class="row g-3">
+      <div class="col-md-4">
+        <label for="tipo" class="form-label">Tipo de Movimiento</label>
+        <select name="tipo" id="tipo" class="form-select">
+          <option value="">-- Todos --</option>
+          <option value="INGRESO" {% if filtros.tipo == 'INGRESO' %}selected{% endif %}>Ingreso (+)</option>
+          <option value="EGRESO" {% if filtros.tipo == 'EGRESO' %}selected{% endif %}>Egreso (-)</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label for="concepto" class="form-label">Concepto</label>
+        <select name="concepto" id="concepto" class="form-select">
+          <option value="">-- Todos --</option>
+          <option value="PAGO_RESERVA" {% if filtros.concepto == 'PAGO_RESERVA' %}selected{% endif %}>Pago Reserva (Anticipo)</option>
+          <option value="PAGO_HOSPEDAJE" {% if filtros.concepto == 'PAGO_HOSPEDAJE' %}selected{% endif %}>Pago Hospedaje</option>
+          <option value="PAGO_CONSUMOS" {% if filtros.concepto == 'PAGO_CONSUMOS' %}selected{% endif %}>Pago Consumos</option>
+          <option value="REEMBOLSO" {% if filtros.concepto == 'REEMBOLSO' %}selected{% endif %}>Reembolso</option>
+          <option value="AJUSTE_MANUAL" {% if filtros.concepto == 'AJUSTE_MANUAL' %}selected{% endif %}>Ajuste Manual</option>
+          <option value="OTROS" {% if filtros.concepto == 'OTROS' %}selected{% endif %}>Otros</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label for="metodo_pago" class="form-label">Método de Pago</label>
+        <select name="metodo_pago" id="metodo_pago" class="form-select">
+          <option value="">-- Todos --</option>
+          <option value="EFECTIVO" {% if filtros.metodo_pago == 'EFECTIVO' %}selected{% endif %}>Efectivo</option>
+          <option value="TARJETA_DEBITO" {% if filtros.metodo_pago == 'TARJETA_DEBITO' %}selected{% endif %}>Tarjeta de Débito</option>
+          <option value="TARJETA_CREDITO" {% if filtros.metodo_pago == 'TARJETA_CREDITO' %}selected{% endif %}>Tarjeta de Crédito</option>
+          <option value="TRANSFERENCIA" {% if filtros.metodo_pago == 'TRANSFERENCIA' %}selected{% endif %}>Transferencia Bancaria</option>
+          <option value="YAPE" {% if filtros.metodo_pago == 'YAPE' %}selected{% endif %}>Yape</option>
+          <option value="PLIN" {% if filtros.metodo_pago == 'PLIN' %}selected{% endif %}>Plin</option>
+        </select>
+      </div>
+      <div class="col-md-1 d-flex align-items-end">
+        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i></button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Listado -->
+  <div class="form-panel">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead>
+          <tr>
+            <th>Fecha/Hora</th>
+            <th>Caja Ref #</th>
+            <th>Usuario</th>
+            <th>Monto</th>
+            <th>Tipo</th>
+            <th>Concepto</th>
+            <th>Método</th>
+            <th>Descripción</th>
+            <th>Origen / Link</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in movimientos %}
+          <tr>
+            <td class="text-nowrap">{{ m.fecha|date:"d/m/Y H:i" }}</td>
+            <td><strong>#{{ m.caja.id }}</strong></td>
+            <td>{{ m.usuario.username }}</td>
+            <td class="fw-semibold {% if m.tipo == 'INGRESO' %}text-success{% else %}text-danger{% endif %}">
+              {% if m.tipo == 'INGRESO' %}+{% else %}-{% endif %} S/. {{ m.monto|stringformat:".2f" }}
+            </td>
+            <td>
+              <span class="badge {% if m.tipo == 'INGRESO' %}bg-success-subtle text-success{% else %}bg-danger-subtle text-danger{% endif %}">
+                {{ m.get_tipo_display }}
+              </span>
+            </td>
+            <td>{{ m.get_concepto_display }}</td>
+            <td><span class="badge bg-light text-dark">{{ m.get_metodo_pago_display }}</span></td>
+            <td>{{ m.descripcion }}</td>
+            <td class="text-nowrap text-muted text-sm">
+              {% if m.pago_origen %}
+                {% if m.pago_origen.folio %}
+                  <a href="{% url 'folio' m.pago_origen.folio.estancia.id %}">Folio #{{ m.pago_origen.folio.id }}</a>
+                {% elif m.pago_origen.reserva %}
+                  <a href="{% url 'reserva_detalle' m.pago_origen.reserva.id %}">Reserva #{{ m.pago_origen.reserva.id }}</a>
+                {% endif %}
+              {% elif m.reembolso_origen %}
+                Reembolso #{{ m.reembolso_origen.id }}
+              {% else %}
+                {{ m.referencia|default:"-" }}
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="9" class="text-center text-muted py-4">No se encontraron movimientos registrados en caja con los filtros especificados.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

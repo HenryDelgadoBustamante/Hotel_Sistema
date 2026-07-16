@@ -184,6 +184,14 @@ class Reserva(models.Model):
         return self.habitacion.tipo.precio_base * noches
 
     @property
+    def observaciones_limpias(self):
+        if not self.observaciones:
+            return ""
+        if "__JSON_PRODUCTOS_START__" in self.observaciones:
+            return self.observaciones.split("__JSON_PRODUCTOS_START__")[0].strip()
+        return self.observaciones
+
+    @property
     def total_pagado(self):
         return sum(p.monto for p in self.pagos.all())
 

@@ -8,6 +8,7 @@ urlpatterns = [
     path('inventario/movimiento/registrar/', views.registrar_movimiento, name='registrar_movimiento'),
     path('inventario/movimiento/historial/', views.historial_movimientos, name='historial_movimientos'),
     path('inventario/categorias/', views.categorias_lista, name='categorias_lista'),
+    path('inventario/api/categorias/nueva/', views.api_categoria_crear, name='api_categoria_crear'),
     path('inventario/proveedores/', views.proveedores_lista, name='proveedores_lista'),
     path('inventario/conteo/', views.conteo_fisico_lista, name='conteo_fisico_lista'),
     path('inventario/conteo/nuevo/', views.conteo_fisico_crear, name='conteo_fisico_crear'),

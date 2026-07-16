@@ -100,6 +100,7 @@ def producto_crear(request):
         precio_v = Decimal(request.POST.get('precio_venta', '0'))
         costo_r = Decimal(request.POST.get('costo_referencial', '0'))
         controla = request.POST.get('controla_stock') == 'on'
+        stock_act = Decimal(request.POST.get('stock_actual', '0'))
         stock_min = Decimal(request.POST.get('stock_minimo', '0'))
         es_vend = request.POST.get('es_vendible') == 'on'
         es_int = request.POST.get('es_uso_interno') == 'on'
@@ -117,6 +118,7 @@ def producto_crear(request):
                     precio_venta=precio_v,
                     costo_referencial=costo_r,
                     controla_stock=controla,
+                    stock_actual=stock_act,
                     stock_minimo=stock_min,
                     es_vendible=es_vend,
                     es_uso_interno=es_int,
@@ -161,6 +163,7 @@ def producto_editar(request, pk):
         producto.precio_venta = Decimal(request.POST.get('precio_venta', '0'))
         producto.costo_referencial = Decimal(request.POST.get('costo_referencial', '0'))
         producto.controla_stock = request.POST.get('controla_stock') == 'on'
+        producto.stock_actual = Decimal(request.POST.get('stock_actual', '0'))
         producto.stock_minimo = Decimal(request.POST.get('stock_minimo', '0'))
         producto.es_vendible = request.POST.get('es_vendible') == 'on'
         producto.es_uso_interno = request.POST.get('es_uso_interno') == 'on'
@@ -515,3 +518,41 @@ def conteo_fisico_aprobar(request, pk):
     except Exception as e:
         messages.error(request, f"Error al aprobar conteo: {str(e)}")
         return redirect('conteo_fisico_detalle', pk=conteo.id)
+
+
+@login_required
+def api_categoria_crear(request):
+    from django.http import JsonResponse
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    if not es_admin(request.user):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    
+    nombre = request.POST.get('nombre', '').strip()
+    if not nombre:
+        return JsonResponse({'error': 'El nombre es obligatorio'}, status=400)
+        
+    try:
+        # Validar si ya existe
+        if CategoriaProducto.objects.filter(nombre__iexact=nombre, estado='ACTIVO').exists():
+            return JsonResponse({'error': 'La categoría ya existe y está activa'}, status=400)
+            
+        cat = CategoriaProducto.objects.create(nombre=nombre, estado='ACTIVO')
+        
+        # Registrar auditoría
+        registrar_auditoria(
+            usuario=request.user,
+            accion="Categoria Creada API",
+            registro_id=cat.id,
+            tabla_afectada="inventario_categoriaproducto",
+            estado_nuevo=f"Nombre: {nombre}"
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'id': cat.id,
+            'nombre': cat.nombre
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

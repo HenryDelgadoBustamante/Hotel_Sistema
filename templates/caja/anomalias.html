@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block title %}Anomalías de Caja — HotelSystem{% endblock %}
+{% block page_title %}Anomalías e Incidencias de Caja{% endblock %}
+{% block content %}
+<div class="form-shell">
+  <div class="form-panel">
+    <div class="form-section-title"><i class="bi bi-exclamation-triangle me-2 text-warning"></i>Lista de Incidencias de Caja</div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Caja #</th>
+            <th>Cajero</th>
+            <th>Tipo</th>
+            <th>Monto</th>
+            <th>Observación</th>
+            <th>Estado</th>
+            <th>Resolución</th>
+            {% if request.user.is_superuser or 'admin' in request.user.groups.all|stringformat:"s" %}
+            <th>Acción</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in anomalias %}
+          <tr>
+            <td class="text-nowrap">{{ a.fecha|date:"d/m/Y H:i" }}</td>
+            <td><strong>#{{ a.caja.id }}</strong></td>
+            <td>{{ a.caja.usuario.username }}</td>
+            <td>
+              <span class="badge {% if a.tipo == 'FALTANTE' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                {{ a.get_tipo_display }}
+              </span>
+            </td>
+            <td class="fw-semibold">S/. {{ a.monto|stringformat:".2f" }}</td>
+            <td>{{ a.observacion }}</td>
+            <td>
+              {% if a.resuelta %}
+              <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Resuelta</span>
+              {% else %}
+              <span class="badge bg-danger"><i class="bi bi-clock me-1"></i>Pendiente</span>
+              {% endif %}
+            </td>
+            <td class="text-muted text-sm">
+              {% if a.resuelta %}
+              Por: {{ a.resuelta_por.username }}<br>
+              El: {{ a.fecha_resolucion|date:"d/m/Y" }}
+              {% else %}
+              -
+              {% endif %}
+            </td>
+            {% if request.user.is_superuser or 'admin' in request.user.groups.all|stringformat:"s" %}
+            <td>
+              {% if not a.resuelta %}
+              <form action="{% url 'caja_anomalia_resolver' a.id %}" method="post" onsubmit="return confirm('¿Estás seguro de que deseas marcar esta anomalía como resuelta?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-success">
+                  <i class="bi bi-check-lg me-1"></i>Resolver
+                </button>
+              </form>
+              {% else %}
+              <button class="btn btn-sm btn-outline-secondary" disabled>Resuelta</button>
+              {% endif %}
+            </td>
+            {% endif %}
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="9" class="text-center text-muted py-4">No se han registrado anomalías en el sistema. Todo se encuentra al día.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

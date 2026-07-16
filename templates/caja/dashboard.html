@@ -1,0 +1,269 @@
+{% extends 'base.html' %}
+{% block title %}Mi Caja — HotelSystem{% endblock %}
+{% block page_title %}Mi Turno de Caja{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <!-- Tarjeta de Resumen Financiero -->
+  <div class="col-lg-4">
+    <div class="form-panel h-100">
+      <div class="form-section-title d-flex justify-content-between align-items-center">
+        <span>Resumen Financiero</span>
+        <span class="badge bg-success">Caja ABIERTA</span>
+      </div>
+
+      <div class="text-center my-3">
+        <span class="text-muted text-sm d-block">MONTO ESPERADO EN EFECTIVO</span>
+        <h1 class="display-5 fw-bold text-primary">S/. {{ caja.monto_esperado|stringformat:".2f" }}</h1>
+      </div>
+
+      <div class="list-group list-group-flush mb-4">
+        <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+          <span class="text-muted"><i class="bi bi-door-open me-2 text-info"></i>Monto Inicial</span>
+          <span class="fw-semibold">S/. {{ caja.monto_inicial|stringformat:".2f" }}</span>
+        </div>
+        <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+          <span class="text-muted"><i class="bi bi-arrow-up-right me-2 text-success"></i>Ingresos (Folios/Reservas)</span>
+          <span class="fw-semibold text-success">+ S/. {{ caja.monto_ingresos|stringformat:".2f" }}</span>
+        </div>
+        <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+          <span class="text-muted"><i class="bi bi-arrow-down-left me-2 text-danger"></i>Egresos (Reembolsos/Ajustes)</span>
+          <span class="fw-semibold text-danger">- S/. {{ caja.monto_egresos|stringformat:".2f" }}</span>
+        </div>
+        {% if caja.arqueada %}
+        <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+          <span class="text-muted"><i class="bi bi-clipboard-check me-2 text-warning"></i>Monto Contado</span>
+          <span class="fw-semibold text-dark">S/. {{ caja.monto_real|stringformat:".2f" }}</span>
+        </div>
+        <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+          <span class="text-muted"><i class="bi bi-calculator me-2"></i>Diferencia (Arqueo)</span>
+          {% if caja.diferencia == 0 %}
+          <span class="badge bg-success">Cuadrada (S/. 0.00)</span>
+          {% elif caja.diferencia > 0 %}
+          <span class="badge bg-warning text-dark">+ S/. {{ caja.diferencia|stringformat:".2f" }} (Sobrante)</span>
+          {% else %}
+          <span class="badge bg-danger">- S/. {{ caja.diferencia|stringformat:".2f"|cut:"-" }} (Faltante)</span>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="d-grid gap-2">
+        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalArqueo">
+          <i class="bi bi-calculator me-2"></i>{% if caja.arqueada %}Volver a Arquear{% else %}Realizar Arqueo de Caja{% endif %}
+        </button>
+        {% if caja.arqueada %}
+        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modalCierre">
+          <i class="bi bi-lock-fill me-2"></i>Cerrar Caja y Turno
+        </button>
+        {% else %}
+        <button type="button" class="btn btn-secondary" disabled title="Debe realizar el arqueo antes del cierre">
+          <i class="bi bi-lock-fill me-2"></i>Cerrar Caja (Requiere Arqueo)
+        </button>
+        {% endif %}
+        <a href="{% url 'caja_imprimir_acta' caja.id %}" target="_blank" class="btn btn-outline-dark">
+          <i class="bi bi-printer me-2"></i>Imprimir Acta de Turno
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Operaciones y Movimientos Recientes -->
+  <div class="col-lg-8">
+    <div class="form-panel h-100">
+      <div class="form-section-title d-flex justify-content-between align-items-center">
+        <span>Movimientos del Turno Actual</span>
+        <div>
+          <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalMovimiento">
+            <i class="bi bi-plus-lg me-1"></i>Movimiento Manual
+          </button>
+          <a href="{% url 'caja_movimientos_lista' %}" class="btn btn-sm btn-outline-secondary ms-1">Ver Todos</a>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead>
+            <tr>
+              <th>Hora</th>
+              <th>Monto</th>
+              <th>Tipo</th>
+              <th>Concepto</th>
+              <th>Método</th>
+              <th>Descripción</th>
+              <th>Referencia</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for mov in movimientos %}
+            <tr>
+              <td class="text-nowrap">{{ mov.fecha|date:"H:i" }}</td>
+              <td class="fw-semibold {% if mov.tipo == 'INGRESO' %}text-success{% else %}text-danger{% endif %}">
+                {% if mov.tipo == 'INGRESO' %}+{% else %}-{% endif %} S/. {{ mov.monto|stringformat:".2f" }}
+              </td>
+              <td>
+                <span class="badge {% if mov.tipo == 'INGRESO' %}bg-success-subtle text-success{% else %}bg-danger-subtle text-danger{% endif %}">
+                  {{ mov.get_tipo_display }}
+                </span>
+              </td>
+              <td>{{ mov.get_concepto_display }}</td>
+              <td><span class="badge bg-light text-dark">{{ mov.get_metodo_pago_display }}</span></td>
+              <td class="text-truncate" style="max-width: 200px;" title="{{ mov.descripcion }}">{{ mov.descripcion }}</td>
+              <td class="text-muted text-nowrap">
+                {% if mov.pago_origen %}
+                  {% if mov.pago_origen.folio %}
+                    <a href="{% url 'folio' mov.pago_origen.folio.estancia.id %}">Folio #{{ mov.pago_origen.folio.id }}</a>
+                  {% elif mov.pago_origen.reserva %}
+                    <a href="{% url 'reserva_detalle' mov.pago_origen.reserva.id %}">Reserva #{{ mov.pago_origen.reserva.id }}</a>
+                  {% endif %}
+                {% elif mov.reembolso_origen %}
+                  Reembolso #{{ mov.reembolso_origen.id }}
+                {% else %}
+                  {{ mov.referencia|default:"-" }}
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="7" class="text-center text-muted py-4">No se han registrado movimientos en este turno aún.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: REGISTRAR MOVIMIENTO MANUAL -->
+<div class="modal fade" id="modalMovimiento" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Registrar Movimiento Manual</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="{% url 'caja_movimiento_registrar' %}" method="post">
+        {% csrf_token %}
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Tipo de Movimiento *</label>
+            <div class="d-flex gap-3">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="tipo" id="tipoIngreso" value="INGRESO" checked>
+                <label class="form-check-label" for="tipoIngreso">Ingreso (+)</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="tipo" id="tipoEgreso" value="EGRESO">
+                <label class="form-check-label" for="tipoEgreso">Egreso (-)</label>
+              </div>
+            </div>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label for="monto" class="form-label">Monto (S/.) *</label>
+              <input type="number" step="0.01" min="0.01" name="monto" id="monto" class="form-control" placeholder="0.00" required>
+            </div>
+            <div class="col-md-6">
+              <label for="metodo_pago" class="form-label">Método de Pago *</label>
+              <select name="metodo_pago" id="metodo_pago" class="form-select">
+                <option value="EFECTIVO">Efectivo</option>
+                <option value="TARJETA_DEBITO">Tarjeta de Débito</option>
+                <option value="TARJETA_CREDITO">Tarjeta de Crédito</option>
+                <option value="TRANSFERENCIA">Transferencia</option>
+                <option value="YAPE">Yape</option>
+                <option value="PLIN">Plin</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="concepto" class="form-label">Concepto *</label>
+            <select name="concepto" id="concepto" class="form-select">
+              <option value="AJUSTE_MANUAL">Ajuste Manual</option>
+              <option value="OTROS">Otros</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="descripcion" class="form-label">Descripción / Detalle *</label>
+            <textarea name="descripcion" id="descripcion" rows="3" class="form-control" placeholder="Describe brevemente la razón de este movimiento manual." required></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="referencia" class="form-label">Referencia / Comprobante (Opcional)</label>
+            <input type="text" name="referencia" id="referencia" class="form-control" placeholder="Nro de Recibo, Ticket, Operación">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Registrar Movimiento</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: REALIZAR ARQUEO -->
+<div class="modal fade" id="modalArqueo" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Arqueo de Caja</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="{% url 'caja_arqueo' %}" method="post">
+        {% csrf_token %}
+        <div class="modal-body">
+          <div class="alert alert-info">
+            <strong>Monto esperado por Sistema:</strong> S/. {{ caja.monto_esperado|stringformat:".2f" }}
+          </div>
+          <div class="mb-3">
+            <label for="monto_real" class="form-label">Monto Real Contado Físicamente (S/.) *</label>
+            <div class="input-group">
+              <span class="input-group-text">S/.</span>
+              <input type="number" step="0.01" min="0" name="monto_real" id="monto_real" class="form-control form-control-lg text-end" value="{{ caja.monto_real|default:caja.monto_esperado|stringformat:'.2f' }}" required>
+            </div>
+            <div class="form-text">Cuenta todo el efectivo físico disponible en la caja y digita la cantidad exacta.</div>
+          </div>
+          <div class="mb-3">
+            <label for="observacion_cierre" class="form-label">Observación o Comentarios</label>
+            <textarea name="observacion_cierre" id="observacion_cierre" rows="3" class="form-control" placeholder="Ingresa una observación detallada del arqueo. Obligatoria si existe diferencia o faltante/sobrante." required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Completar Arqueo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CERRAR CAJA -->
+<div class="modal fade" id="modalCierre" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>Confirmar Cierre de Caja</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="{% url 'caja_cerrar' %}" method="post">
+        {% csrf_token %}
+        <div class="modal-body text-center py-4">
+          <p class="fs-5 mb-3">¿Estás seguro de que deseas cerrar definitivamente la caja de tu turno?</p>
+          <p class="text-danger fw-bold">Esta acción bloqueará y prohibirá cualquier nuevo cobro, pago o movimiento en esta caja. Deberás aperturar un nuevo turno si deseas seguir cobrando.</p>
+          <div class="card bg-light p-3 my-3">
+            <div class="row g-2">
+              <div class="col-6 text-end text-muted">Saldo Final Contado:</div>
+              <div class="col-6 text-start fw-bold">S/. {{ caja.monto_real|stringformat:".2f" }}</div>
+              <div class="col-6 text-end text-muted">Diferencia de Arqueo:</div>
+              <div class="col-6 text-start fw-bold">S/. {{ caja.diferencia|stringformat:".2f" }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer justify-content-center">
+          <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#modalArqueo">Volver a Arquear</button>
+          <button type="submit" class="btn btn-danger px-4">Sí, Cerrar Caja y Finalizar Turno</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

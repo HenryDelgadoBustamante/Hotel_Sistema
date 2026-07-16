@@ -120,7 +120,7 @@
     /* ── Sidebar ── */
     .sidebar {
       width: 230px;
-      min-height: 100vh;
+      height: 100vh;
       background: linear-gradient(180deg, #1e2a3b 0%, #1a2535 100%);
       background-image: radial-gradient(circle, rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(180deg, #1e2a3b 0%, #1a2535 100%);
       background-size: 20px 20px, 100% 100%;
@@ -177,7 +177,7 @@
       padding: 12px 10px;
       flex: 1;
       overflow-y: auto;
-      max-height: calc(100vh - 200px);
+      min-height: 0;
     }
 
     .sidebar-nav::-webkit-scrollbar {
@@ -214,6 +214,18 @@
 
     .sub-nav .nav-link.active {
       color: #818cf8;
+      background: transparent !important;
+      border-left: none !important;
+      font-weight: 600;
+      opacity: 1;
+      padding-left: 16px !important;
+    }
+
+    .nav-dropdown-toggle.expanded .nav-link.active {
+      background: transparent !important;
+      border-left: none !important;
+      color: #818cf8;
+      padding-left: 16px !important;
     }
 
     .nav-dropdown-toggle {
@@ -291,6 +303,7 @@
     .sidebar-footer {
       padding: 10px 10px 16px;
       border-top: 1px solid rgba(255, 255, 255, .06);
+      margin-top: auto;
     }
 
     .sidebar-footer .nav-dropdown-toggle {
@@ -853,20 +866,25 @@
 
     <nav class="sidebar-nav">
       {% with groups=request.user.groups.all|stringformat:"s" %}
+      
+      <!-- SECCIÓN: PRINCIPAL -->
       {% if request.user.is_superuser or 'admin' in groups or 'recepcionista' in groups %}
       <div class="sidebar-section">Principal</div>
       <a href="/dashboard/" class="nav-link {% if request.path == '/dashboard/' %}active{% endif %}">
         <i class="bi bi-speedometer2"></i>Dashboard
       </a>
-
       <a href="/habitaciones/" class="nav-link {% if '/habitaciones/' in request.path %}active{% endif %}">
         <i class="bi bi-grid-3x3-gap"></i>Habitaciones
       </a>
       <a href="/reservas/" class="nav-link {% if '/reservas/' in request.path %}active{% endif %}">
         <i class="bi bi-calendar-check"></i>Reservas
       </a>
+      {% endif %}
 
-      <div class="sidebar-section">Huéspedes</div>
+      <!-- SECCIÓN: RECURSOS Y HUÉSPEDES -->
+      {% if request.user.is_superuser or 'admin' in groups or 'recepcionista' in groups or 'housekeeping' in groups %}
+      <div class="sidebar-section">Huéspedes y Servicios</div>
+      {% if request.user.is_superuser or 'admin' in groups or 'recepcionista' in groups %}
       <a href="/huespedes/" class="nav-link {% if '/huespedes/' in request.path %}active{% endif %}">
         <i class="bi bi-people"></i>Huéspedes
       </a>
@@ -874,35 +892,67 @@
         <i class="bi bi-door-open"></i>Estancias
       </a>
       {% endif %}
+      <a href="/tickets/" class="nav-link {% if '/tickets/' in request.path %}active{% endif %}">
+        <i class="bi bi-chat-left-dots"></i>Atención al Cliente
+      </a>
+      {% endif %}
 
+      <!-- SECCIÓN: FINANZAS Y CONTROL -->
+      {% if request.user.is_superuser or 'admin' in groups or 'recepcionista' in groups %}
+      <div class="sidebar-section">Finanzas y Caja</div>
+      <div class="nav-dropdown-toggle {% if '/caja/' in request.path or '/reembolsos/' in request.path %}expanded{% endif %}" onclick="toggleDropdown(this)">
+        <a href="javascript:void(0)" class="nav-link {% if '/caja/' in request.path or '/reembolsos/' in request.path %}active{% endif %}" style="flex:1;">
+          <i class="bi bi-cash-coin"></i>Gestión de Caja
+        </a>
+        <i class="bi bi-chevron-right dropdown-arrow"></i>
+      </div>
+      <div class="nav-dropdown-content {% if '/caja/' in request.path or '/reembolsos/' in request.path %}expanded{% endif %}">
+        <div class="sub-nav">
+          <a href="{% url 'caja_dashboard' %}" class="nav-link {% if request.path == '/caja/' %}active{% endif %}">
+            <i class="bi bi-wallet2"></i>Mi Turno de Caja
+          </a>
+          <a href="{% url 'caja_movimientos_lista' %}" class="nav-link {% if '/caja/movimientos/' in request.path %}active{% endif %}">
+            <i class="bi bi-list-columns-reverse"></i>Ver Movimientos
+          </a>
+          {% if request.user.is_superuser or 'admin' in groups %}
+          <a href="/reembolsos/" class="nav-link {% if '/reembolsos/' in request.path %}active{% endif %}">
+            <i class="bi bi-arrow-left-right"></i>Reembolsos
+          </a>
+          {% endif %}
+          <a href="{% url 'caja_historial' %}" class="nav-link {% if '/caja/historial/' in request.path %}active{% endif %}">
+            <i class="bi bi-clock-history"></i>Historial de Cajas
+          </a>
+          <a href="{% url 'caja_anomalias' %}" class="nav-link {% if '/caja/anomalias/' in request.path %}active{% endif %}">
+            <i class="bi bi-exclamation-triangle"></i>Anomalías de Caja
+          </a>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- SECCIÓN: OPERACIONES -->
+      {% if request.user.is_superuser or 'admin' in groups or 'housekeeping' in groups or 'inventario' in groups %}
       <div class="sidebar-section">Operaciones</div>
       {% if request.user.is_superuser or 'admin' in groups or 'housekeeping' in groups %}
       <a href="/housekeeping/" class="nav-link {% if '/housekeeping/' in request.path %}active{% endif %}">
         <i class="bi bi-stars"></i>Housekeeping
       </a>
       {% endif %}
-      
       {% if request.user.is_superuser or 'admin' in groups or 'recepcionista' in groups or 'housekeeping' in groups or 'inventario' in groups %}
       <a href="/inventario/" class="nav-link {% if '/inventario/' in request.path %}active{% endif %}">
         <i class="bi bi-box-seam"></i>Inventario
       </a>
       {% endif %}
-
-      {% if request.user.is_superuser or 'admin' in groups or 'recepcionista' in groups or 'housekeeping' in groups %}
-      <a href="/tickets/" class="nav-link {% if '/tickets/' in request.path %}active{% endif %}">
-        <i class="bi bi-chat-left-dots"></i>Atención al Cliente
-      </a>
       {% endif %}
 
+      <!-- SECCIÓN: REPORTES -->
       {% if request.user.is_superuser or 'admin' in groups %}
-      <a href="/reembolsos/" class="nav-link {% if '/reembolsos/' in request.path %}active{% endif %}">
-        <i class="bi bi-wallet2"></i>Reembolsos
-      </a>
+      <div class="sidebar-section">Reportes y Estadísticas</div>
       <a href="/reportes/" class="nav-link {% if '/reportes/' in request.path %}active{% endif %}">
-        <i class="bi bi-bar-chart-line"></i>Reportes
+        <i class="bi bi-bar-chart-line"></i>Reportes Financieros
       </a>
       {% endif %}
 
+      <!-- SECCIÓN: CONFIGURACIÓN -->
       {% if request.user.is_superuser or 'admin' in groups or 'recepcionista' in groups or 'housekeeping' in groups %}
       <div class="sidebar-section">Configuración</div>
 
@@ -912,13 +962,16 @@
 
       {% if request.user.is_superuser or 'admin' in groups %}
       <div class="nav-dropdown-toggle {% if '/usuarios/' in request.path or '/sesiones/' in request.path %}expanded{% endif %}" onclick="toggleDropdown(this)">
-        <a href="/usuarios/" class="nav-link {% if '/usuarios/' in request.path %}active{% endif %}" style="flex:1;">
+        <a href="javascript:void(0)" class="nav-link {% if '/usuarios/' in request.path or '/sesiones/' in request.path %}active{% endif %}" style="flex:1;">
           <i class="bi bi-person-gear"></i>Usuarios y Roles
         </a>
         <i class="bi bi-chevron-right dropdown-arrow"></i>
       </div>
       <div class="nav-dropdown-content {% if '/usuarios/' in request.path or '/sesiones/' in request.path %}expanded{% endif %}">
         <div class="sub-nav">
+          <a href="/usuarios/" class="nav-link {% if request.path == '/usuarios/' %}active{% endif %}">
+            <i class="bi bi-people"></i>Lista de Usuarios
+          </a>
           <a href="/sesiones/" class="nav-link {% if '/sesiones/' in request.path %}active{% endif %}">
             <i class="bi bi-display"></i>Sesiones Activas
           </a>

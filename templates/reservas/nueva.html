@@ -78,6 +78,59 @@
             </div>
           </div>
         </div>
+
+        <!-- Productos Adicionales -->
+        <div class="form-panel mb-3">
+          <div class="form-section-title d-flex justify-content-between align-items-center">
+            <span>Productos Adicionales (Inventario)</span>
+            <i class="bi bi-box-seam text-primary"></i>
+          </div>
+          
+          <div class="row g-2 align-items-end mb-3">
+            <div class="col-sm-7">
+              <label class="form-label" style="font-size: 12px; font-weight:600;">Seleccionar Producto</label>
+              <select id="prod_select" class="form-select form-select-sm">
+                <option value="">-- Seleccionar --</option>
+                {% for p in productos_inventario %}
+                <option value="{{ p.id }}" data-nombre="{{ p.nombre }}" data-precio="{{ p.precio_venta }}" data-stock="{{ p.stock_actual }}">
+                  {{ p.nombre }} (S/. {{ p.precio_venta }}) - Stock: {{ p.stock_actual|floatformat:0 }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label" style="font-size: 12px; font-weight:600;">Cantidad</label>
+              <input type="number" id="prod_cant" class="form-control form-control-sm" min="1" value="1">
+            </div>
+            <div class="col-sm-2">
+              <button type="button" id="btn_add_prod" class="btn btn-sm btn-primary w-100 py-1.5" style="border-radius: 8px;">
+                <i class="bi bi-plus-lg"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-sm table-hover border align-middle mb-0" style="font-size: 12.5px;" id="prod_table">
+              <thead class="table-light">
+                <tr>
+                  <th>Producto</th>
+                  <th class="text-end">Precio</th>
+                  <th class="text-center" style="width: 70px;">Cant.</th>
+                  <th class="text-end">Subtotal</th>
+                  <th class="text-center" style="width: 40px;"></th>
+                </tr>
+              </thead>
+              <tbody id="prod_tbody">
+                <tr id="tr_empty_prod">
+                  <td colspan="5" class="text-center text-muted py-3">No hay productos agregados.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Hidden Input containing JSON array of selected products -->
+          <input type="hidden" name="productos_json" id="productos_json" value="[]">
+        </div>
       </div>
 
       <div class="col-lg-5">
@@ -293,13 +346,17 @@
       }
     }
 
+    let listProductos = [];
+    let subtotalProductos = 0;
+
     function calcularTarifa() {
+      let subtotalHabitacion = 0;
       if (modalidadHora.checked && fHoraEntrada.value && selectHab.value) {
         const selectedOption = selectHab.options[selectHab.selectedIndex];
         const precioBase = parseFloat(selectedOption.getAttribute("data-precio")) || 0;
         const horas = parseFloat(duracionHoras.value || "3");
         const bloques = Math.max(1, Math.ceil(horas / 3));
-        tarifaSpan.textContent = (bloques * precioBase * 0.35).toFixed(2);
+        subtotalHabitacion = bloques * precioBase * 0.35;
 
         const salida = new Date(fHoraEntrada.value);
         salida.setMinutes(salida.getMinutes() + horas * 60);
@@ -315,16 +372,114 @@
 
         const selectedOption = selectHab.options[selectHab.selectedIndex];
         const precioBase = parseFloat(selectedOption.getAttribute("data-precio")) || 0;
-        tarifaSpan.textContent = (diffDays * precioBase).toFixed(2);
-      } else {
-        tarifaSpan.textContent = "0.00";
+        subtotalHabitacion = diffDays * precioBase;
       }
+
+      const totalConProductos = subtotalHabitacion + subtotalProductos;
+      tarifaSpan.textContent = totalConProductos.toFixed(2);
 
       // Actualizar campos de pago anticipado según tarifa
       if (regPagoCheck.checked && !montoEditado) {
-        pagoMonto.value = tarifaSpan.textContent;
+        pagoMonto.value = totalConProductos.toFixed(2);
       }
-      pagoMonto.max = tarifaSpan.textContent;
+      pagoMonto.max = totalConProductos.toFixed(2);
+    }
+
+    // Gestión de Productos Adicionales
+    const prodSelect = document.getElementById("prod_select");
+    const prodCant = document.getElementById("prod_cant");
+    const btnAddProd = document.getElementById("btn_add_prod");
+    const prodTbody = document.getElementById("prod_tbody");
+    const trEmptyProd = document.getElementById("tr_empty_prod");
+    const inputProductosJson = document.getElementById("productos_json");
+
+    btnAddProd.addEventListener("click", function() {
+      const option = prodSelect.options[prodSelect.selectedIndex];
+      if (!option.value) {
+        alert("Por favor seleccione un producto.");
+        return;
+      }
+      
+      const prodId = parseInt(option.value);
+      const prodNombre = option.getAttribute("data-nombre");
+      const prodPrecio = parseFloat(option.getAttribute("data-precio")) || 0;
+      const prodStock = parseFloat(option.getAttribute("data-stock")) || 0;
+      const cant = parseInt(prodCant.value) || 1;
+
+      if (cant <= 0) {
+        alert("La cantidad debe ser mayor a cero.");
+        return;
+      }
+
+      // Validar si el producto controla stock
+      if (option.textContent.includes("Stock:")) {
+        if (prodStock < cant) {
+          alert(`Stock insuficiente para ${prodNombre}. Disponible: ${prodStock}`);
+          return;
+        }
+      }
+
+      // Check if product is already in the list
+      const existing = listProductos.find(p => p.id === prodId);
+      if (existing) {
+        existing.cantidad += cant;
+      } else {
+        listProductos.push({
+          id: prodId,
+          nombre: prodNombre,
+          precio: prodPrecio,
+          cantidad: cant
+        });
+      }
+
+      // Reset selection
+      prodSelect.value = "";
+      prodCant.value = "1";
+
+      renderProductos();
+    });
+
+    function renderProductos() {
+      // Clear rows except empty message
+      prodTbody.querySelectorAll("tr:not(#tr_empty_prod)").forEach(tr => tr.remove());
+      
+      subtotalProductos = 0;
+      
+      if (listProductos.length === 0) {
+        trEmptyProd.classList.remove("d-none");
+      } else {
+        trEmptyProd.classList.add("d-none");
+        
+        listProductos.forEach((p, idx) => {
+          const sub = p.precio * p.cantidad;
+          subtotalProductos += sub;
+          
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td><strong>${p.nombre}</strong></td>
+            <td class="text-end">S/. ${p.precio.toFixed(2)}</td>
+            <td class="text-center">${p.cantidad}</td>
+            <td class="text-end">S/. ${sub.toFixed(2)}</td>
+            <td class="text-center">
+              <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="eliminarProducto(${idx})">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          `;
+          prodTbody.appendChild(tr);
+        });
+      }
+
+      // Update hidden input JSON
+      inputProductosJson.value = JSON.stringify(listProductos);
+      
+      // Recalculate whole reservation tariff
+      calcularTarifa();
+    }
+
+    window.eliminarProducto = function(idx) {
+      listProductos.splice(idx, 1);
+      renderProductos();
     }
 
     function toggleModalidad() {

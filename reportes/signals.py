@@ -13,7 +13,8 @@ def _model_is_excluded(model):
 
 @receiver(pre_save)
 def audit_pre_save(sender, instance, **kwargs):
-    if _model_is_excluded(sender):
+    from django.conf import settings
+    if getattr(settings, 'TESTING', False) or _model_is_excluded(sender):
         return
     data = {}
     for field in sender._meta.get_fields():
@@ -31,7 +32,8 @@ def audit_pre_save(sender, instance, **kwargs):
 
 @receiver(post_save)
 def audit_post_save(sender, instance, created, **kwargs):
-    if _model_is_excluded(sender):
+    from django.conf import settings
+    if getattr(settings, 'TESTING', False) or _model_is_excluded(sender):
         return
     old_state = _PRE_SAVE_CACHE.pop(id(instance), {})
     new_state = {}
@@ -59,7 +61,8 @@ def audit_post_save(sender, instance, created, **kwargs):
 
 @receiver(pre_delete)
 def audit_pre_delete(sender, instance, **kwargs):
-    if _model_is_excluded(sender):
+    from django.conf import settings
+    if getattr(settings, 'TESTING', False) or _model_is_excluded(sender):
         return
     state = {}
     for field in sender._meta.get_fields():

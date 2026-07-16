@@ -426,12 +426,13 @@
             <th>Concepto</th>
             <th>Categoría</th>
             <th class="text-end">Monto</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
           <!-- Alojamiento -->
           <tr style="background:#f4f7fb;">
-            <td colspan="3" class="fw-bold text-secondary text-uppercase"
+            <td colspan="4" class="fw-bold text-secondary text-uppercase"
               style="font-size:10px; letter-spacing:0.05em;"><i class="bi bi-building me-1"></i> Alojamiento</td>
           </tr>
           {% for cargo in estancia.cargos.all %}
@@ -441,19 +442,23 @@
             <td><span class="badge bg-light text-secondary border px-2 py-1"><i
                   class="bi bi-building me-1"></i>Habitación</span></td>
             <td class="text-end fw-semibold">S/. {{ cargo.monto }}</td>
+            <td></td>
           </tr>
           {% endif %}
           {% endfor %}
 
           <!-- Consumos Extra -->
           <tr style="background:#f4f7fb;">
-            <td colspan="3" class="fw-bold text-secondary text-uppercase"
+            <td colspan="4" class="fw-bold text-secondary text-uppercase"
               style="font-size:10px; letter-spacing:0.05em;"><i class="bi bi-basket me-1"></i> Consumos Adicionales</td>
           </tr>
           {% for cargo in estancia.cargos.all %}
           {% if cargo.tipo != 'HABITACION' %}
-          <tr>
-            <td class="fw-medium">{{ cargo.concepto }}</td>
+          <tr class="cargo-row-{% if cargo.exonerado %}exonerado{% else %}activo{% endif %}">
+            <td class="fw-medium">
+              {{ cargo.concepto }}
+              {% if cargo.exonerado %}<span class="badge bg-warning-subtle text-warning ms-1" style="font-size:10px;">Exonerado</span>{% endif %}
+            </td>
             <td>
               <span class="badge bg-light text-secondary border px-2 py-1">
                 {% if cargo.tipo == 'RESTAURANTE' %}<i class="bi bi-cup-straw me-1"></i>Restaurante
@@ -462,7 +467,77 @@
               </span>
             </td>
             <td class="text-end fw-semibold">S/. {{ cargo.monto }}</td>
+            {% if estancia.estado == 'ACTIVA' and not cargo.exonerado %}
+            <td class="text-end" style="white-space:nowrap;">
+              <!-- Botón Editar -->
+              <button type="button" class="btn btn-xs btn-outline-primary py-0 px-2 me-1"
+                style="font-size:11px; border-radius:6px;"
+                data-bs-toggle="modal"
+                data-bs-target="#modalEditarCargo{{ cargo.id }}"
+                title="Editar cantidad">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <!-- Botón Eliminar -->
+              <form method="post" action="{% url 'eliminar_cargo' cargo.id %}" class="d-inline"
+                onsubmit="return confirm('¿Eliminar este cargo? El stock se devolverá al inventario si aplica.');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-xs btn-outline-danger py-0 px-2"
+                  style="font-size:11px; border-radius:6px;" title="Eliminar cargo">
+                  <i class="bi bi-trash3"></i>
+                </button>
+              </form>
+            </td>
+            {% else %}
+            <td></td>
+            {% endif %}
           </tr>
+
+          <!-- Modal de edición de cantidad para este cargo -->
+          {% if estancia.estado == 'ACTIVA' and not cargo.exonerado %}
+          <div class="modal fade" id="modalEditarCargo{{ cargo.id }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+              <div class="modal-content" style="border-radius: 14px; border: none; box-shadow: 0 16px 40px rgba(0,0,0,0.14);">
+                <div class="modal-header border-0 p-4 pb-2">
+                  <div>
+                    <span class="badge mb-1 px-2 py-1" style="font-size:10px; font-weight:700; border-radius:6px; background:rgba(99,102,241,0.1); color:#6366f1;">EDITAR CARGO</span>
+                    <h6 class="fw-bold mb-0 text-dark" style="font-size:15px;">{{ cargo.concepto|truncatechars:35 }}</h6>
+                    <p class="text-muted mb-0" style="font-size:11.5px;">
+                      {% if cargo.producto %}Precio unitario: S/. {{ cargo.producto.precio_venta }}{% else %}Cargo manual{% endif %}
+                    </p>
+                  </div>
+                  <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body px-4 pb-4">
+                  <form method="post" action="{% url 'editar_cargo' cargo.id %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                      <label class="form-label fw-semibold text-dark mb-1" style="font-size:13px;">Nueva Cantidad</label>
+                      <input type="number" name="cantidad" min="1"
+                        {% if cargo.producto and cargo.producto.controla_stock %}max="{{ cargo.producto.stock_actual|add:cargo.cantidad|floatformat:0 }}"{% endif %}
+                        value="{{ cargo.cantidad }}" class="form-control"
+                        style="border-radius:10px; border:1px solid #cbd5e1; font-size:13px; padding:8px 12px;"
+                        onfocus="this.style.borderColor='#6366f1'; this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.15)';"
+                        onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';" required>
+                      {% if cargo.producto and cargo.producto.controla_stock %}
+                      <div class="form-text text-muted mt-1" style="font-size:11px;">
+                        <i class="bi bi-info-circle me-1"></i>Stock disponible: {{ cargo.producto.stock_actual|floatformat:0 }} (+ {{ cargo.cantidad }} ya cargados)
+                      </div>
+                      {% endif %}
+                    </div>
+                    <div class="d-flex gap-2">
+                      <button type="button" class="btn btn-outline-secondary w-50 fw-semibold" data-bs-dismiss="modal"
+                        style="border-radius:10px; font-size:13px;">Cancelar</button>
+                      <button type="submit" class="btn btn-primary w-50 fw-bold"
+                        style="background:#6366f1; border-color:#6366f1; border-radius:10px; font-size:13px;">
+                        <i class="bi bi-check2 me-1"></i>Guardar
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
           {% endif %}
           {% endfor %}
 
@@ -693,19 +768,32 @@
 </div>
 
 <div class="modal fade" id="modalCargo" tabindex="-1">
-  <div class="modal-dialog modal-sm modal-dialog-centered">
-    <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
-      <div class="modal-header border-0 pb-0">
-        <h6 class="fw-bold m-0 text-dark">Agregar Cargo</h6>
-        <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal"></button>
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content" style="border-radius: 16px; border: none; box-shadow: 0 24px 48px rgba(0,0,0,0.16); overflow: hidden;">
+      
+      <!-- Cabecera limpia y elegante -->
+      <div class="modal-header border-0 pb-0 d-flex flex-column align-items-start position-relative p-4" style="background: #ffffff;">
+        <span class="badge text-primary mb-2 px-2 py-1" style="font-size:10px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; border-radius: 6px; background-color: rgba(99, 102, 241, 0.1);">
+          Consumo / Venta
+        </span>
+        <h6 class="fw-bold mb-1 fs-5 text-dark" style="letter-spacing: -0.01em;">
+          Agregar Cargo Extra
+        </h6>
+        <p class="text-muted mb-0" style="font-size: 12px;">Cargar consumo de minibar, restaurante u otros al folio</p>
+        <button type="button" class="btn-close position-absolute" data-bs-dismiss="modal" style="top: 24px; right: 24px;"></button>
       </div>
-      <div class="modal-body">
+
+      <div class="modal-body px-4 pb-4 pt-3">
         <form method="post" action="/estancias/{{ estancia.id }}/cargo/" id="formAgregarCargo">
           {% csrf_token %}
           
+          <!-- Elemento del Catálogo -->
           <div class="mb-3">
-            <label class="form-label" style="font-size: 12px; font-weight: 600; color: #475569;">Elemento del Catálogo</label>
-            <select name="producto_id" id="id_producto_cargo" class="form-select form-select-sm">
+            <label class="form-label fw-semibold text-dark mb-1" style="font-size: 13px;">Elemento del Catálogo</label>
+            <select name="producto_id" id="id_producto_cargo" class="form-select"
+              style="border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13px; background: #f8fafc; padding: 8px 12px; transition: all 0.2s;"
+              onfocus="this.style.borderColor='#6366f1'; this.style.boxShadow='0 0 0 3px rgba(99, 102, 241, 0.15)';"
+              onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
               <option value="">-- Cargo Libre (Manual) --</option>
               {% for p in productos_inventario %}
               <option value="{{ p.id }}" 
@@ -713,33 +801,49 @@
                 data-stock="{{ p.stock_actual }}" 
                 data-controla="{% if p.controla_stock %}true{% else %}false{% endif %}"
                 data-tipo="{% if p.categoria.nombre == 'Restaurante' %}RESTAURANTE{% elif p.categoria.nombre == 'Lavandería' %}LAVANDERIA{% else %}OTRO{% endif %}">
-                {{ p.nombre }} (S/. {{ p.precio_venta }})
+                {{ p.nombre }} (S/. {{ p.precio_venta }}) - Stock: {{ p.stock_actual|floatformat:0 }}
               </option>
               {% endfor %}
             </select>
           </div>
 
+          <!-- Cantidad (visible solo cuando se selecciona producto) -->
           <div class="mb-3" id="div_cantidad_cargo" style="display:none;">
-            <label class="form-label" style="font-size: 12px; font-weight: 600; color: #475569;">Cantidad</label>
-            <input type="number" name="cantidad" id="id_cantidad_cargo" min="1" value="1" class="form-control form-control-sm">
-            <div class="form-text text-danger" id="stock_alert_text" style="display:none; font-size:11px;"></div>
+            <label class="form-label fw-semibold text-dark mb-1" style="font-size: 13px;">Cantidad</label>
+            <input type="number" name="cantidad" id="id_cantidad_cargo" min="1" value="1" class="form-control"
+              style="border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13px; background: #f8fafc; padding: 8px 12px; transition: all 0.2s;"
+              onfocus="this.style.borderColor='#6366f1'; this.style.boxShadow='0 0 0 3px rgba(99, 102, 241, 0.15)';"
+              onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
+            <div class="form-text text-danger mt-1 fw-semibold" id="stock_alert_text" style="display:none; font-size:11.5px;"></div>
           </div>
 
+          <!-- Concepto (visible para cargo libre) -->
           <div class="mb-3" id="div_concepto_manual">
-            <label class="form-label" style="font-size: 12px; font-weight: 600; color: #475569;">Concepto</label>
-            <input type="text" name="concepto" id="id_concepto_manual" class="form-control form-control-sm" required
-              placeholder="Ej. Minibar, Toallas">
+            <label class="form-label fw-semibold text-dark mb-1" style="font-size: 13px;">Concepto</label>
+            <input type="text" name="concepto" id="id_concepto_manual" class="form-control" required
+              placeholder="Ej. Minibar, Toallas"
+              style="border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13px; background: #f8fafc; padding: 8px 12px; transition: all 0.2s;"
+              onfocus="this.style.borderColor='#6366f1'; this.style.boxShadow='0 0 0 3px rgba(99, 102, 241, 0.15)';"
+              onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
           </div>
 
+          <!-- Monto (visible para cargo libre) -->
           <div class="mb-3" id="div_monto_manual">
-            <label class="form-label" style="font-size: 12px; font-weight: 600; color: #475569;">Monto (S/.)</label>
-            <input type="number" name="monto" id="id_monto_manual" step="0.01" min="0.01" class="form-control form-control-sm" required
-              placeholder="0.00">
+            <label class="form-label fw-semibold text-dark mb-1" style="font-size: 13px;">Monto (S/.)</label>
+            <input type="number" name="monto" id="id_monto_manual" step="0.01" min="0.01" class="form-control" required
+              placeholder="0.00"
+              style="border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13px; background: #f8fafc; padding: 8px 12px; transition: all 0.2s;"
+              onfocus="this.style.borderColor='#6366f1'; this.style.boxShadow='0 0 0 3px rgba(99, 102, 241, 0.15)';"
+              onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
           </div>
 
+          <!-- Categoría -->
           <div class="mb-4">
-            <label class="form-label" style="font-size: 12px; font-weight: 600; color: #475569;">Categoría</label>
-            <select name="tipo" id="id_tipo_cargo" class="form-select form-select-sm">
+            <label class="form-label fw-semibold text-dark mb-1" style="font-size: 13px;">Categoría</label>
+            <select name="tipo" id="id_tipo_cargo" class="form-select"
+              style="border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13px; background: #f8fafc; padding: 8px 12px; transition: all 0.2s;"
+              onfocus="this.style.borderColor='#6366f1'; this.style.boxShadow='0 0 0 3px rgba(99, 102, 241, 0.15)';"
+              onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
               <option value="HABITACION">Habitación</option>
               <option value="RESTAURANTE">Restaurante</option>
               <option value="LAVANDERIA">Lavandería</option>
@@ -747,11 +851,16 @@
             </select>
           </div>
 
-          <button type="submit" class="btn btn-primary w-100" id="btnSubmitCargo"
-            style="background: #6366f1; border-color: #6366f1; border-radius: 8px; font-weight: 600;">
-            Agregar Cargo
+          <!-- Botón de Envío -->
+          <button type="submit" class="btn btn-primary w-100 fw-bold" id="btnSubmitCargo"
+            style="background: #6366f1; border-color: #6366f1; border-radius: 10px; padding: 10px; font-size: 13px; font-weight: 700; transition: all 0.2s;">
+            <i class="bi bi-plus-circle me-1"></i>Agregar Cargo
           </button>
         </form>
+      </div>
+    </div>
+  </div>
+</div>orm>
       </div>
     </div>
   </div>
@@ -901,48 +1010,74 @@
 <!-- Modal Cancelar Estancia Sin Pago (Obs. 1 – Escenario 3) -->
 <div class="modal fade" id="modalCancelarSinPago" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 20px 40px rgba(0,0,0,0.12);">
-      <div class="modal-header border-0 pb-0" style="background: linear-gradient(135deg, #fee2e2, #fef2f2); border-radius: 12px 12px 0 0;">
-        <div>
-          <h6 class="fw-bold mb-1" style="color: #991b1b;">
-            <i class="bi bi-x-octagon-fill me-2"></i>Cancelar Estancia por Problema de Habitación
-          </h6>
-          <p class="text-muted mb-0" style="font-size: 12px;">Sin pago previo — No se generará reembolso</p>
-        </div>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-content" style="border-radius: 16px; border: none; box-shadow: 0 24px 48px rgba(0,0,0,0.16); overflow: hidden;">
+      
+      <!-- Cabecera limpia y elegante -->
+      <div class="modal-header border-0 pb-0 d-flex flex-column align-items-start position-relative p-4" style="background: #ffffff;">
+        <span class="badge text-danger mb-2 px-2 py-1" style="font-size:10px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; border-radius: 6px; background-color: rgba(239, 68, 68, 0.1);">
+          Incidencia Grave
+        </span>
+        <h6 class="fw-bold mb-1 fs-5 text-dark" style="letter-spacing: -0.01em;">
+          Cancelar Estancia por Inconveniente
+        </h6>
+        <p class="text-muted mb-0" style="font-size: 12px;">Falla crítica en habitación — Sin reembolso por ausencia de pagos</p>
+        <button type="button" class="btn-close position-absolute" data-bs-dismiss="modal" style="top: 24px; right: 24px;"></button>
       </div>
-      <div class="modal-body">
-        <div class="alert alert-danger py-2 px-3 mb-3" style="font-size: 13px; border-radius: 8px;">
-          <i class="bi bi-shield-exclamation me-1"></i>
-          <strong>Acción irreversible.</strong> Se exonerarán todos los cargos, la estancia y reserva quedarán canceladas, y la habitación pasará al estado seleccionado.
-          <br><strong>No se generará ningún reembolso</strong> ya que no existe pago registrado.
+
+      <div class="modal-body px-4 pb-4 pt-3">
+        <!-- Tarjeta de Advertencia Premium -->
+        <div class="p-3 mb-3" style="background: rgba(239, 68, 68, 0.03); border: 1px solid rgba(239, 68, 68, 0.12); border-radius: 10px; font-size: 13px; color: #7f1d1d; line-height: 1.5;">
+          <div class="d-flex gap-2 align-items-start mb-1">
+            <i class="bi bi-shield-fill-x text-danger fs-5 mt-0.5"></i>
+            <div>
+              <strong class="text-danger" style="font-weight: 700;">Acción Irreversible</strong>
+              <p class="mb-0 mt-0.5" style="color: #991b1b; font-weight: 500;">
+                Se exonerarán todos los cargos del folio, la estancia y reserva quedarán canceladas de inmediato y la habitación será liberada al estado seleccionado.
+              </p>
+            </div>
+          </div>
+          <div class="mt-2 pt-2 border-top" style="border-top-color: rgba(239, 68, 68, 0.08) !important; color: #b91c1c; font-weight: 600; font-size: 12px;">
+            <i class="bi bi-exclamation-circle-fill me-1"></i>No se generará ningún reembolso físico de caja.
+          </div>
         </div>
 
         <form id="formCancelarSinPago" method="post" action="{% url 'cancelar_estancia_sin_pago' estancia.id %}">
           {% csrf_token %}
+          
+          <!-- Motivo de Cancelación -->
           <div class="mb-3">
-            <label class="form-label fw-semibold" style="font-size: 13px;">Motivo de la cancelación <span class="text-danger">*</span></label>
+            <label class="form-label fw-semibold text-dark mb-1" style="font-size: 13px;">Motivo de la cancelación <span class="text-danger">*</span></label>
             <textarea name="motivo" class="form-control" rows="3" required
-              placeholder="Ej: La habitación presenta cucarachas / fuga de agua / aire acondicionado no funciona..."
-              style="border-radius: 8px; font-size: 13px;"></textarea>
-            <div class="form-text text-muted">Campo obligatorio. Se registrará en la auditoría del sistema.</div>
+              placeholder="Describa el inconveniente (ej. Fuga de agua en baño, aire acondicionado inoperativo, plaga...)"
+              style="border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13px; background: #f8fafc; padding: 10px 12px; transition: all 0.2s;"
+              onfocus="this.style.borderColor='#ef4444'; this.style.boxShadow='0 0 0 3px rgba(239, 68, 68, 0.15)';"
+              onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';"></textarea>
+            <div class="form-text text-muted" style="font-size:11px;">Este motivo quedará registrado en la auditoría inalterable del sistema.</div>
           </div>
 
+          <!-- Estado Final de Habitación -->
           <div class="mb-4">
-            <label class="form-label fw-semibold" style="font-size: 13px;">Estado final de la habitación</label>
-            <select name="estado_habitacion_nopago" class="form-select" style="border-radius: 8px; font-size: 13px;">
+            <label class="form-label fw-semibold text-dark mb-1" style="font-size: 13px;">Estado final de la habitación</label>
+            <select name="estado_habitacion_nopago" class="form-select" 
+              style="border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13px; background: #f8fafc; padding: 8px 12px; transition: all 0.2s;"
+              onfocus="this.style.borderColor='#ef4444'; this.style.boxShadow='0 0 0 3px rgba(239, 68, 68, 0.15)';"
+              onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';">
               <option value="MANTENIMIENTO" selected>🔧 En Mantenimiento (Recomendado por falla grave)</option>
               <option value="LIMPIEZA">🧹 En Limpieza (Problema menor / estético)</option>
             </select>
-            <div class="form-text text-danger mt-1">
-              <i class="bi bi-info-circle me-1"></i>Todos los cargos serán exonerados y el saldo quedará en S/. 0.00.
+            <div class="form-text text-danger mt-2 fw-semibold" style="font-size: 11.5px;">
+              <i class="bi bi-info-circle-fill me-1"></i>Todos los cargos serán exonerados y el saldo quedará en S/. 0.00.
             </div>
           </div>
 
-          <div class="d-flex justify-content-end gap-2">
+          <!-- Botones de Acción -->
+          <div class="d-flex justify-content-end gap-2 border-top pt-3" style="border-top-color: #f1f5f9 !important;">
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"
-              style="border-radius: 8px;">Volver</button>
-            <button type="submit" class="btn btn-danger fw-semibold" style="border-radius: 8px;"
+              style="border-radius: 10px; font-size: 13px; padding: 8px 16px; font-weight: 600; border: 1px solid #cbd5e1; color: #475569;">
+              Volver
+            </button>
+            <button type="submit" class="btn btn-danger fw-bold" 
+              style="border-radius: 10px; font-size: 13px; padding: 8px 16px; font-weight: 700; background: #ef4444; border-color: #ef4444; color: #ffffff;"
               onclick="return confirm('¿Confirmar cancelación de la estancia? Esta acción no se puede deshacer.')">
               <i class="bi bi-x-octagon me-1"></i>Cancelar Estancia
             </button>

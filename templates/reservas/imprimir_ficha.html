@@ -157,13 +157,11 @@
         </tr>
         <tr>
             <th>FECHA / HORA ENTRADA</th>
-            <td>{{ reserva.fecha_hora_entrada|date:"d/m/Y H:i"|default:reserva.fecha_entrada|default:"No especificada"
-                }}</td>
+            <td>{% if reserva.fecha_hora_entrada %}{{ reserva.fecha_hora_entrada|date:"d/m/Y H:i" }}{% else %}{{ reserva.fecha_entrada|date:"d/m/Y"|default:"No especificada" }}{% endif %}</td>
         </tr>
         <tr>
             <th>FECHA / HORA SALIDA ESPERADA</th>
-            <td>{{ reserva.fecha_hora_salida|date:"d/m/Y H:i"|default:reserva.fecha_salida|default:"No especificada" }}
-            </td>
+            <td>{% if reserva.fecha_hora_salida %}{{ reserva.fecha_hora_salida|date:"d/m/Y H:i" }}{% else %}{{ reserva.fecha_salida|date:"d/m/Y"|default:"No especificada" }}{% endif %}</td>
         </tr>
         <tr>
             <th>NÚMERO DE PERSONAS</th>

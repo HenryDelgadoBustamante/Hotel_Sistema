@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Acta de Caja — Turno #{{ caja.id }}</title>
+  <style>
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 12px;
+      line-height: 1.4;
+      color: #000;
+      margin: 20px;
+      padding: 0;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+      border-bottom: 1px dashed #000;
+      padding-bottom: 10px;
+    }
+    .header h2 {
+      margin: 0 0 5px 0;
+      font-size: 16px;
+    }
+    .info-table, .totals-table, .movs-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 15px;
+    }
+    .info-table td {
+      padding: 3px 0;
+    }
+    .info-table td:nth-child(2) {
+      text-align: right;
+    }
+    .totals-table th, .totals-table td {
+      border: 1px solid #000;
+      padding: 5px;
+    }
+    .totals-table th {
+      background-color: #f2f2f2;
+      text-align: left;
+    }
+    .movs-table th, .movs-table td {
+      padding: 4px 2px;
+      text-align: left;
+      border-bottom: 1px dashed #ccc;
+    }
+    .movs-table th {
+      border-bottom: 1px solid #000;
+    }
+    .text-right {
+      text-align: right;
+    }
+    .bold {
+      font-weight: bold;
+    }
+    .signature-area {
+      margin-top: 50px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .signature-box {
+      width: 45%;
+      border-top: 1px solid #000;
+      text-align: center;
+      padding-top: 5px;
+      margin-top: 40px;
+    }
+    @media print {
+      body {
+        margin: 10px;
+      }
+      .no-print {
+        display: none;
+      }
+    }
+    .no-print-bar {
+      background-color: #f8f9fa;
+      padding: 10px;
+      border-bottom: 1px solid #dee2e6;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .btn {
+      padding: 6px 12px;
+      font-size: 14px;
+      cursor: pointer;
+      border-radius: 4px;
+      border: 1px solid #000;
+      background: #fff;
+    }
+    .btn-primary {
+      background: #000;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barra de control (No imprimible) -->
+  <div class="no-print-bar no-print">
+    <span>Visualización de Acta de Caja</span>
+    <div>
+      <button class="btn btn-primary" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir Acta</button>
+      <button class="btn" onclick="window.close()">Cerrar Ventana</button>
+    </div>
+  </div>
+
+  <div class="header">
+    <h2>ACTA OFICIAL DE CAJA</h2>
+    <div>Turno / Sesión #{{ caja.id }}</div>
+    <div>Estado: {{ caja.get_estado_display }}</div>
+  </div>
+
+  <table class="info-table">
+    <tr>
+      <td><strong>Cajero / Recepcionista:</strong></td>
+      <td>{{ caja.usuario.username }}</td>
+    </tr>
+    <tr>
+      <td><strong>Fecha Apertura:</strong></td>
+      <td>{{ caja.fecha_apertura|date:"d/m/Y H:i:s" }}</td>
+    </tr>
+    <tr>
+      <td><strong>Fecha Cierre:</strong></td>
+      <td>{{ caja.fecha_cierre|date:"d/m/Y H:i:s"|default:"SESIÓN EN CURSO" }}</td>
+    </tr>
+  </table>
+
+  <h3 style="border-bottom: 1px solid #000; padding-bottom: 3px; margin-bottom: 10px;">BALANCE FINANCIERO</h3>
+  <table class="totals-table">
+    <thead>
+      <tr>
+        <th>Concepto</th>
+        <th class="text-right">Monto (S/.)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Saldo Inicial (Efectivo)</td>
+        <td class="text-right">S/. {{ caja.monto_inicial|stringformat:".2f" }}</td>
+      </tr>
+      <tr>
+        <td>(+) Ingresos Registrados</td>
+        <td class="text-right">S/. {{ caja.monto_ingresos|stringformat:".2f" }}</td>
+      </tr>
+      <tr>
+        <td>(-) Egresos Registrados</td>
+        <td class="text-right">S/. {{ caja.monto_egresos|stringformat:".2f" }}</td>
+      </tr>
+      <tr class="bold">
+        <td>Saldo Esperado en Caja</td>
+        <td class="text-right">S/. {{ caja.monto_esperado|stringformat:".2f" }}</td>
+      </tr>
+      {% if caja.arqueada %}
+      <tr>
+        <td>Saldo Real Contado</td>
+        <td class="text-right">S/. {{ caja.monto_real|stringformat:".2f" }}</td>
+      </tr>
+      <tr class="bold">
+        <td>Diferencia</td>
+        <td class="text-right">
+          {% if caja.diferencia == 0 %}
+            S/. 0.00 (Cuadrada)
+          {% elif caja.diferencia > 0 %}
+            S/. {{ caja.diferencia|stringformat:".2f" }} (Sobrante)
+          {% else %}
+            S/. {{ caja.diferencia|stringformat:".2f" }} (Faltante)
+          {% endif %}
+        </td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
+
+  <h3 style="border-bottom: 1px solid #000; padding-bottom: 3px; margin-top: 20px; margin-bottom: 10px;">RESUMEN NETO POR MÉTODO DE PAGO</h3>
+  <table class="totals-table">
+    <thead>
+      <tr>
+        <th>Método</th>
+        <th class="text-right">Ingresos</th>
+        <th class="text-right">Egresos</th>
+        <th class="text-right">Neto</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for label, data in metodos_resumen.items %}
+      <tr>
+        <td>{{ label }}</td>
+        <td class="text-right">S/. {{ data.ingresos|stringformat:".2f" }}</td>
+        <td class="text-right">S/. {{ data.egresos|stringformat:".2f" }}</td>
+        <td class="text-right bold">S/. {{ data.neto|stringformat:".2f" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if movimientos %}
+  <h3 style="border-bottom: 1px solid #000; padding-bottom: 3px; margin-top: 25px; margin-bottom: 10px;">DETALLE DE TRANSACCIONES</h3>
+  <table class="movs-table">
+    <thead>
+      <tr>
+        <th>Hora</th>
+        <th>Tipo</th>
+        <th>Concepto</th>
+        <th>Método</th>
+        <th>Descripción</th>
+        <th class="text-right">Monto</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for mov in movimientos %}
+      <tr>
+        <td>{{ mov.fecha|date:"H:i" }}</td>
+        <td>{{ mov.get_tipo_display }}</td>
+        <td>{{ mov.get_concepto_display }}</td>
+        <td>{{ mov.get_metodo_pago_display }}</td>
+        <td>{{ mov.descripcion }}</td>
+        <td class="text-right fw-semibold">S/. {{ mov.monto|stringformat:".2f" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if anomalias %}
+  <h3 style="border-bottom: 1px solid #000; padding-bottom: 3px; margin-top: 25px; margin-bottom: 10px; color: red;">ANOMALÍAS REGISTRADAS</h3>
+  <table class="movs-table" style="color: red;">
+    <thead>
+      <tr>
+        <th>Tipo</th>
+        <th>Monto</th>
+        <th>Observación</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in anomalias %}
+      <tr>
+        <td>{{ a.get_tipo_display }}</td>
+        <td>S/. {{ a.monto|stringformat:".2f" }}</td>
+        <td>{{ a.observacion }}</td>
+        <td>{{ a.resuelta|yesno:"Resuelta,Pendiente" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <div class="signature-area">
+    <div class="signature-box">
+      Firma del Recepcionista<br>
+      {{ caja.usuario.username }}
+    </div>
+    <div class="signature-box">
+      Firma del Administrador
+    </div>
+  </div>
+
+</body>
+</html>

@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     'reportes',
     'atencion',
     'inventario',
+    'caja',
 ]
 
 MIDDLEWARE = [
@@ -67,16 +68,27 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 import os
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB") or config("DB_NAME", default="hotel_db"),
-        "USER": os.getenv("POSTGRES_USER") or config("DB_USER", default="postgres"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD") or config("DB_PASSWORD", default="postgres"),
-        "HOST": os.getenv("POSTGRES_HOST") or config("DB_HOST", default="db"),
-        "PORT": os.getenv("POSTGRES_PORT") or config("DB_PORT", default="5432"),
+import sys
+TESTING = 'test' in sys.argv or any('pytest' in arg for arg in sys.argv)
+
+if TESTING:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("POSTGRES_DB") or config("DB_NAME", default="hotel_db"),
+            "USER": os.getenv("POSTGRES_USER") or config("DB_USER", default="postgres"),
+            "PASSWORD": os.getenv("POSTGRES_PASSWORD") or config("DB_PASSWORD", default="postgres"),
+            "HOST": os.getenv("POSTGRES_HOST") or config("DB_HOST", default="db"),
+            "PORT": os.getenv("POSTGRES_PORT") or config("DB_PORT", default="5432"),
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},

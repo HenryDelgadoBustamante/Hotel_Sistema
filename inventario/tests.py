@@ -31,7 +31,7 @@ class InventarioTests(TestCase):
 
         # Auxiliares de Inventario
         self.cat_bebida = CategoriaProducto.objects.create(nombre="Bebidas", estado="ACTIVO")
-        self.um_unid = UnidadMedida.objects.create(nombre="Unidad", abreviatura="UND")
+        self.um_unid, _ = UnidadMedida.objects.get_or_create(nombre="Unidad", abreviatura="UND")
         self.proveedor = Proveedor.objects.create(razon_social="Distribuidora Alfa", documento_fiscal="20999999999")
 
         # Hotel & Habitaciones

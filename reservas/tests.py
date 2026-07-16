@@ -330,6 +330,73 @@ class ReservaViewsTest(TestCase):
         self.assertEqual(response.status_code, 302)  # Debe redirigir tras guardar
         self.assertTrue(Reserva.objects.filter(huesped=self.huesped, habitacion=self.habitacion).exists())
 
+    def test_reserva_nueva_con_productos_adicionales(self):
+        # Crear un producto en inventario
+        from inventario.models import Producto, CategoriaProducto
+        from inventario.models import UnidadMedida
+        um, _ = UnidadMedida.objects.get_or_create(abreviatura="UND", nombre="Unidad")
+        cat = CategoriaProducto.objects.create(nombre="Bebidas")
+        producto = Producto.objects.create(
+            codigo_interno="PROD001",
+            nombre="Agua Mineral 1L",
+            categoria=cat,
+            unidad_medida=um,
+            precio_venta=Decimal("5.00"),
+            stock_actual=Decimal("10.00"),
+            controla_stock=True,
+            estado="ACTIVO",
+            es_vendible=True
+        )
+
+        import json
+        productos_json_data = [
+            {"id": producto.id, "nombre": producto.nombre, "precio": 5.00, "cantidad": 2}
+        ]
+
+        data = {
+            'huesped_id': self.huesped.id,
+            'habitacion': self.habitacion.id,
+            'modalidad': Reserva.POR_DIA,
+            'fecha_entrada': '2026-07-01',
+            'fecha_salida': '2026-07-03',
+            'num_adultos': 1,
+            'origen': Reserva.DIRECTO,
+            'productos_json': json.dumps(productos_json_data)
+        }
+        
+        # Enviar petición POST
+        response = self.client.post(reverse('reserva_nueva'), data)
+        self.assertEqual(response.status_code, 302)
+
+        # Verificar que la reserva fue creada con el total correcto
+        reserva = Reserva.objects.get(huesped=self.huesped, habitacion=self.habitacion)
+        # Precio base habitacion: 100 * 2 noches = 200 S/.
+        # Mas productos: 5 * 2 = 10 S/.
+        # Total esperado: 210 S/.
+        self.assertEqual(reserva.precio_total, Decimal("210.00"))
+        self.assertIn("__JSON_PRODUCTOS_START__", reserva.observaciones)
+
+        # Ahora hagamos checkin para verificar que las consumiciones se crean en el folio
+        checkin_data = {
+            'habitacion': self.habitacion.id,
+            'exonerar_early': 'false'
+        }
+        checkin_response = self.client.post(reverse('reserva_checkin', kwargs={'reserva_id': reserva.id}), checkin_data)
+        self.assertEqual(checkin_response.status_code, 302)
+
+        # Verificar que la estancia fue creada y tiene el consumo cargado
+        from estancias.models import Estancia, CargoEstancia
+        estancia = Estancia.objects.get(reserva=reserva)
+        self.assertEqual(estancia.estado, Estancia.ACTIVA)
+        
+        cargos = CargoEstancia.objects.filter(estancia=estancia, producto=producto)
+        self.assertTrue(cargos.exists())
+        self.assertEqual(cargos.first().cantidad, 2)
+
+        # Verificar que el stock fue descontado
+        producto.refresh_from_db()
+        self.assertEqual(producto.stock_actual, Decimal("8.00"))
+
     def test_api_habitaciones_disponibles(self):
         response = self.client.get(reverse('api_habitaciones_disponibles'), {
             'entrada': '2026-07-01',
