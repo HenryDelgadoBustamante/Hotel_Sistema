@@ -11,8 +11,11 @@ from views_frontend import (
     huespedes_lista, huesped_nuevo, huesped_editar, exportar_huespedes_excel,
     habitaciones_lista, habitacion_nueva, habitacion_editar,
     estancias_lista, reservas_calendario,
+    reserva_imprimir_ficha, folio_imprimir,
     usuarios_lista, usuario_editar, usuario_nuevo, usuario_eliminar,
-    api_habitaciones_disponibles, api_consulta_dni
+    api_habitaciones_disponibles, api_consulta_dni,
+    reserva_editar, reserva_cancelar, registrar_pago_anticipo,
+    solicitar_reembolso, aprobar_reembolso
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_yasg.views import get_schema_view
@@ -69,13 +72,20 @@ urlpatterns = [
     path('estancias/', estancias_lista, name='estancias_lista'),
     path('reservas/', reservas_lista, name='reservas_lista'),
     path('reservas/<int:reserva_id>/', reserva_detalle, name='reserva_detalle'),
+    path('reservas/<int:reserva_id>/editar/', reserva_editar, name='reserva_editar'),
+    path('reservas/<int:reserva_id>/cancelar/', reserva_cancelar, name='reserva_cancelar'),
+    path('reservas/<int:reserva_id>/pago-anticipo/', registrar_pago_anticipo, name='registrar_pago_anticipo'),
+    path('pagos/<int:pago_id>/reembolso/', solicitar_reembolso, name='solicitar_reembolso'),
+    path('reembolsos/<int:reembolso_id>/resolver/', aprobar_reembolso, name='aprobar_reembolso'),
     path('reservas/calendario/', reservas_calendario, name='reservas_calendario'),
     path('reservas/nueva/', reserva_nueva, name='reserva_nueva'),
     path('reservas/<int:reserva_id>/checkin/', reserva_checkin, name='reserva_checkin'),
     path('api/habitaciones-disponibles/', api_habitaciones_disponibles, name='api_habitaciones_disponibles'),
     path('api/dni/', api_consulta_dni, name='api_consulta_dni'),
     path('estancias/<int:estancia_id>/folio/', folio_view, name='folio'),
+    path('estancias/<int:estancia_id>/imprimir-folio/', folio_imprimir, name='folio_imprimir'),
     path('estancias/<int:estancia_id>/cargo/', agregar_cargo, name='agregar_cargo'),
+    path('reservas/<int:reserva_id>/imprimir-ficha/', reserva_imprimir_ficha, name='reserva_imprimir_ficha'),
     path('estancias/<int:estancia_id>/pago/', registrar_pago, name='registrar_pago'),
     path('estancias/<int:estancia_id>/checkout/', checkout_view, name='checkout'),
     path('housekeeping/', housekeeping_view, name='housekeeping'),
@@ -87,3 +97,6 @@ urlpatterns = [
     path('usuarios/<int:user_id>/eliminar/', usuario_eliminar, name='usuario_eliminar'),
     path('', lambda request: redirect('dashboard'), name='home'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+handler403 = 'views_frontend.error_403'
+handler404 = 'views_frontend.error_404'

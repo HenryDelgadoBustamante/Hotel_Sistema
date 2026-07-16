@@ -113,6 +113,8 @@ class Folio(models.Model):
         return max(Decimal('0.00'), self.total - self.total_pagado)
 
 
+from django.contrib.auth.models import User
+
 class Pago(models.Model):
     EFECTIVO = 'EFECTIVO'
     TARJETA = 'TARJETA'
@@ -126,7 +128,8 @@ class Pago(models.Model):
         (YAPE_PLIN, 'Yape / Plin'),
     ]
 
-    folio = models.ForeignKey(Folio, on_delete=models.CASCADE, related_name='pagos')
+    folio = models.ForeignKey(Folio, on_delete=models.CASCADE, related_name='pagos', null=True, blank=True)
+    reserva = models.ForeignKey(Reserva, on_delete=models.SET_NULL, null=True, blank=True, related_name='pagos')
     monto = models.DecimalField(max_digits=10, decimal_places=2)
     metodo_pago = models.CharField(max_length=20, choices=METODO_PAGO_CHOICES, default=EFECTIVO)
     fecha = models.DateTimeField(auto_now_add=True)
@@ -137,4 +140,35 @@ class Pago(models.Model):
         verbose_name_plural = 'Pagos'
 
     def __str__(self):
-        return f"Pago #{self.id} - Folio #{self.folio.id} - S/.{self.monto} ({self.metodo_pago})"
+        folio_part = f"Folio #{self.folio.id}" if self.folio else f"Reserva #{self.reserva.id} (Anticipo)"
+        return f"Pago #{self.id} - {folio_part} - S/.{self.monto} ({self.metodo_pago})"
+
+
+class Reembolso(models.Model):
+    SOLICITADO = 'SOLICITADO'
+    APROBADO = 'APROBADO'
+    RECHAZADO = 'RECHAZADO'
+
+    ESTADO_CHOICES = [
+        (SOLICITADO, 'Solicitado'),
+        (APROBADO, 'Aprobado'),
+        (RECHAZADO, 'Rechazado'),
+    ]
+
+    pago = models.ForeignKey(Pago, on_delete=models.CASCADE, related_name='reembolsos')
+    monto = models.DecimalField(max_digits=10, decimal_places=2)
+    motivo = models.TextField()
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default=SOLICITADO)
+    solicitado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reembolsos_solicitados')
+    aprobado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reembolsos_aprobados')
+    fecha_solicitud = models.DateTimeField(auto_now_add=True)
+    fecha_resolucion = models.DateTimeField(null=True, blank=True)
+    observacion = models.TextField(blank=True, null=True)
+
+    class Meta:
+        verbose_name = 'Reembolso'
+        verbose_name_plural = 'Reembolsos'
+
+    def __str__(self):
+        return f"Reembolso #{self.id} - Pago #{self.pago.id} - S/.{self.monto} ({self.estado})"
+

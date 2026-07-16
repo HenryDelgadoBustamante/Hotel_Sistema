@@ -74,6 +74,8 @@ class Reserva(models.Model):
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default=PENDIENTE)
     precio_total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     origen = models.CharField(max_length=10, choices=ORIGEN_CHOICES, default=DIRECTO)
+    observaciones = models.TextField(blank=True, null=True)
+    motivo_cancelacion = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -114,6 +116,9 @@ class Reserva(models.Model):
             raise ValidationError('La salida debe ser posterior a la entrada.')
 
         if self.habitacion:
+            if self.habitacion.estado == Habitacion.MANTENIMIENTO:
+                raise ValidationError('No se puede reservar una habitación en mantenimiento.')
+
             estados_activos = [self.PENDIENTE, self.CONFIRMADA, self.CHECKIN]
             solapadas = Reserva.objects.filter(
                 habitacion=self.habitacion,
@@ -153,6 +158,14 @@ class Reserva(models.Model):
         if tarifa:
             return tarifa.precio_noche * noches
         return self.habitacion.tipo.precio_base * noches
+
+    @property
+    def total_pagado(self):
+        return sum(p.monto for p in self.pagos.all())
+
+    @property
+    def saldo_pendiente(self):
+        return max(Decimal('0.00'), self.precio_total - self.total_pagado)
 
     def save(self, *args, **kwargs):
         self.normalizar_horario()

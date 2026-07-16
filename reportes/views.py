@@ -5,10 +5,11 @@ from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from hotel.models import Habitacion
 from estancias.models import Estancia
+from config.permissions import EsAdmin
 
 
 class OcupacionView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [EsAdmin]
 
     def get(self, request):
         fecha_str = request.query_params.get('fecha')
@@ -54,6 +55,11 @@ from reservas.models import Reserva
 
 @login_required
 def exportar_excel(request):
+    from config import roles
+    if not roles.es_admin(request.user):
+        from django.shortcuts import render
+        return render(request, '403.html', {'mensaje_error': 'Solo los administradores pueden exportar reportes.'}, status=403)
+
     hoy = timezone.now().date()
     fecha_inicio_str = request.GET.get('fecha_inicio')
     fecha_fin_str = request.GET.get('fecha_fin')

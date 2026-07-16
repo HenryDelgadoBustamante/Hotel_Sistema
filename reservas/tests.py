@@ -245,6 +245,49 @@ class ReservaModelAndAvailabilityTest(TestCase):
         except ValidationError:
             self.fail("ValidationError lanzado en reservas por horas no solapadas.")
 
+    def test_reserva_habitacion_mantenimiento_forbidden(self):
+        self.habitacion.estado = Habitacion.MANTENIMIENTO
+        self.habitacion.save()
+
+        reserva = Reserva(
+            hotel=self.hotel,
+            huesped=self.huesped,
+            habitacion=self.habitacion,
+            fecha_entrada=date(2026, 6, 1),
+            fecha_salida=date(2026, 6, 5),
+            modalidad=Reserva.POR_DIA
+        )
+        with self.assertRaises(ValidationError):
+            reserva.save()
+
+    def test_restricciones_modificar_y_cancelar(self):
+        reserva = Reserva.objects.create(
+            hotel=self.hotel,
+            huesped=self.huesped,
+            habitacion=self.habitacion,
+            fecha_entrada=date(2026, 6, 1),
+            fecha_salida=date(2026, 6, 5),
+            modalidad=Reserva.POR_DIA,
+            estado=Reserva.CONFIRMADA
+        )
+        reserva.estado = Reserva.CHECKIN
+        reserva.save()
+
+        client = Client()
+        user = User.objects.create_superuser(username='recep_test_p1', password='password123')
+        group, _ = Group.objects.get_or_create(name='recepcionista')
+        user.groups.add(group)
+        client.login(username='recep_test_p1', password='password123')
+
+        response = client.get(reverse('reserva_editar', kwargs={'reserva_id': reserva.id}))
+        self.assertEqual(response.status_code, 302)
+        
+        response = client.post(reverse('reserva_cancelar', kwargs={'reserva_id': reserva.id}), {'motivo_cancelacion': 'Test'})
+        self.assertEqual(response.status_code, 302)
+        
+        reserva.refresh_from_db()
+        self.assertEqual(reserva.estado, Reserva.CHECKIN)
+
 
 class ReservaViewsTest(TestCase):
     def setUp(self):
@@ -297,3 +340,180 @@ class ReservaViewsTest(TestCase):
         data = response.json()
         self.assertIn('habitaciones', data)
         self.assertTrue(any(h['numero'] == '101' for h in data['habitaciones']))
+
+    def test_registro_anticipo_y_traspaso_a_folio(self):
+        reserva = Reserva.objects.create(
+            hotel=self.hotel,
+            huesped=self.huesped,
+            habitacion=self.habitacion,
+            fecha_entrada=date(2026, 7, 1),
+            fecha_salida=date(2026, 7, 3),
+            modalidad=Reserva.POR_DIA,
+            precio_total=Decimal("200.00"),
+            estado=Reserva.CONFIRMADA
+        )
+        
+        data_pago = {
+            'monto': '50.00',
+            'metodo_pago': 'TRANSFERENCIA',
+            'transaccion_id': 'TX12345'
+        }
+        response = self.client.post(reverse('registrar_pago_anticipo', kwargs={'reserva_id': reserva.id}), data_pago)
+        self.assertEqual(response.status_code, 302)
+        
+        from estancias.models import Pago
+        pago = Pago.objects.get(reserva=reserva, metodo_pago='TRANSFERENCIA')
+        self.assertIsNone(pago.folio)
+        self.assertEqual(pago.monto, Decimal("50.00"))
+        self.assertEqual(reserva.saldo_pendiente, Decimal("150.00"))
+        
+        response_checkin = self.client.post(reverse('reserva_checkin', kwargs={'reserva_id': reserva.id}), {'habitacion': self.habitacion.id})
+        self.assertEqual(response_checkin.status_code, 302)
+        
+        reserva.refresh_from_db()
+        self.assertEqual(reserva.estado, Reserva.CHECKIN)
+        
+        from estancias.models import Estancia, Folio
+        estancia = Estancia.objects.get(reserva=reserva)
+        folio = Folio.objects.get(estancia=estancia)
+        
+        pago.refresh_from_db()
+        self.assertEqual(pago.folio, folio)
+        self.assertEqual(folio.saldo_pendiente, Decimal("150.00"))
+
+
+
+class RolesAndPermissionsTest(TestCase):
+    def setUp(self):
+        # Setup basic data
+        self.hotel = Hotel.objects.create(
+            nombre="Hotel Imperial", ruc="11122233344", direccion="Centro Cusco", estrellas=3, telefono="987654321"
+        )
+        self.tipo_hab = TipoHabitacion.objects.create(
+            hotel=self.hotel, nombre="Simple", capacidad=1, precio_base=Decimal("100.00")
+        )
+        self.habitacion = Habitacion.objects.create(
+            hotel=self.hotel, tipo=self.tipo_hab, numero="101", piso=1, estado=Habitacion.DISPONIBLE
+        )
+        self.huesped = Huesped.objects.create(
+            tipo_doc=Huesped.DNI, num_doc="77777777", nombres="Ana", apellidos="Mendoza"
+        )
+        
+        # Clean current groups for clean testing
+        Group.objects.all().delete()
+        
+    def test_sincronizar_roles_and_access(self):
+        from django.core.management import call_command
+        # 1. Crear grupos antiguos con mayúsculas
+        admin_old = Group.objects.create(name='Administrador')
+        recep_old = Group.objects.create(name='Recepcionista')
+        house_old = Group.objects.create(name='Housekeeping')
+        
+        # Crear usuarios y asociar a grupos antiguos
+        u_admin = User.objects.create_user(username='u_admin', password='password123')
+        u_recep = User.objects.create_user(username='u_recep', password='password123')
+        u_house = User.objects.create_user(username='u_house', password='password123')
+        u_none = User.objects.create_user(username='u_none', password='password123')
+        
+        u_admin.groups.add(admin_old)
+        u_recep.groups.add(recep_old)
+        u_house.groups.add(house_old)
+        
+        # 2. Ejecutar la sincronización
+        call_command('sincronizar_roles')
+        
+        # 3. Comprobar que los grupos antiguos se eliminaron y existen los canónicos en minúscula
+        self.assertFalse(Group.objects.filter(name='Administrador').exists())
+        self.assertFalse(Group.objects.filter(name='Recepcionista').exists())
+        self.assertFalse(Group.objects.filter(name='Housekeeping').exists())
+        
+        self.assertTrue(Group.objects.filter(name='admin').exists())
+        self.assertTrue(Group.objects.filter(name='recepcionista').exists())
+        self.assertTrue(Group.objects.filter(name='housekeeping').exists())
+        
+        # 4. Comprobar que los usuarios fueron migrados correctamente
+        u_admin.refresh_from_db()
+        u_recep.refresh_from_db()
+        u_house.refresh_from_db()
+        
+        self.assertTrue(u_admin.groups.filter(name='admin').exists())
+        self.assertTrue(u_recep.groups.filter(name='recepcionista').exists())
+        self.assertTrue(u_house.groups.filter(name='housekeeping').exists())
+        
+        # 5. Comprobar que los permisos estén asignados correctamente
+        # Recepcionista no debe tener permisos de eliminación en hotel, huespedes, reservas, estancias
+        recep_group = Group.objects.get(name='recepcionista')
+        delete_perms = recep_group.permissions.filter(codename__startswith='delete_')
+        self.assertEqual(delete_perms.count(), 0)
+        
+        # 6. Comprobar que el comando puede ejecutarse múltiples veces sin problemas
+        try:
+            call_command('sincronizar_roles')
+        except Exception as e:
+            self.fail(f"Error al ejecutar sincronizar_roles por segunda vez: {e}")
+            
+        # 7. Verificar acceso a través del cliente Django
+        client = Client()
+        
+        # Usuario sin grupo recibe 403 o redirección a login/error
+        client.login(username='u_none', password='password123')
+        response = client.get(reverse('reservas_lista'))
+        self.assertEqual(response.status_code, 403)
+        client.logout()
+        
+        # Obtener tokens JWT para APIs
+        res = client.post(reverse('token_obtain_pair'), {'username': 'u_recep', 'password': 'password123'})
+        recep_token = res.json().get('access')
+        
+        res = client.post(reverse('token_obtain_pair'), {'username': 'u_admin', 'password': 'password123'})
+        admin_token = res.json().get('access')
+
+        # Recepcionista puede acceder a reservas pero no a reportes ni exportaciones
+        client.login(username='u_recep', password='password123')
+        response = client.get(reverse('reservas_lista'))
+        self.assertEqual(response.status_code, 200)
+        
+        # Debe recibir 403 al acceder a la vista de reportes
+        response = client.get(reverse('reportes'))
+        self.assertEqual(response.status_code, 403)
+        
+        # Debe recibir 403 al acceder a la exportación a Excel
+        response = client.get(reverse('exportar_excel'))
+        self.assertEqual(response.status_code, 403)
+        client.logout()
+        
+        # Debe recibir 403 al acceder a la API de ocupación (con cabecera JWT)
+        response = client.get(reverse('reporte-ocupacion'), HTTP_AUTHORIZATION=f'Bearer {recep_token}')
+        self.assertEqual(response.status_code, 403)
+        
+        # Housekeeping no puede acceder a reservas (403)
+        client.login(username='u_house', password='password123')
+        response = client.get(reverse('reservas_lista'))
+        self.assertEqual(response.status_code, 403)
+        client.logout()
+        
+        # Administrador puede acceder a reservas y a reportes/exportaciones
+        client.login(username='u_admin', password='password123')
+        response = client.get(reverse('reservas_lista'))
+        self.assertEqual(response.status_code, 200)
+        
+        response = client.get(reverse('reportes'))
+        self.assertEqual(response.status_code, 200)
+        
+        response = client.get(reverse('exportar_excel'))
+        self.assertEqual(response.status_code, 200)
+        client.logout()
+        
+        # Debe recibir 200 al acceder a la API de ocupación (con cabecera JWT)
+        response = client.get(reverse('reporte-ocupacion'), HTTP_AUTHORIZATION=f'Bearer {admin_token}')
+        self.assertEqual(response.status_code, 200)
+        
+        # Superusuario mantiene acceso completo
+        superuser = User.objects.create_superuser(username='super_user', password='password123')
+        client.login(username='super_user', password='password123')
+        response = client.get(reverse('reservas_lista'))
+        self.assertEqual(response.status_code, 200)
+        response = client.get(reverse('reportes'))
+        self.assertEqual(response.status_code, 200)
+        client.logout()
+

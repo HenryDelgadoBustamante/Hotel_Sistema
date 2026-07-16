@@ -747,7 +747,7 @@
       </a>
       {% endif %}
 
-      {% if request.user.is_superuser or 'admin' in groups or 'recepcionista' in groups %}
+      {% if request.user.is_superuser or 'admin' in groups %}
       <a href="/reportes/" class="nav-link {% if '/reportes/' in request.path %}active{% endif %}">
         <i class="bi bi-bar-chart-line"></i>Reportes
       </a>
@@ -786,7 +786,7 @@
     {% if messages %}
     {% for msg in messages %}
     <div class="alert alert-{{ msg.tags }} alert-dismissible fade show d-flex align-items-center gap-2 mb-3"
-      role="alert">
+      role="alert" {% if msg.tags == 'success' %}data-success="true" {% endif %}>
       {% if msg.tags == 'success' %}<i class="bi bi-check-circle-fill"></i>
       {% elif msg.tags == 'error' or msg.tags == 'danger' %}<i class="bi bi-exclamation-circle-fill"></i>
       {% elif msg.tags == 'warning' %}<i class="bi bi-exclamation-triangle-fill"></i>
@@ -799,133 +799,174 @@
     {% block content %}{% endblock %}
   </main>
 
-  {% else %}
-  {% block auth_content %}{% endblock %}
-  {% endif %}
-
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <script>
+    // Premium Success Animation
     document.addEventListener('DOMContentLoaded', () => {
-      // 1. Contador para stat-card-new y Barra de progreso
-      document.querySelectorAll('.stat-card-new .stat-number').forEach(el => {
-        let text = el.innerText.trim();
-        let isPercent = text.includes('%');
-        let finalVal = parseFloat(text.replace(/[^0-9.]/g, ''));
-        if (isNaN(finalVal)) return;
-
-        let card = el.closest('.stat-card-new');
-        if (card) {
-          let pb = document.createElement('div');
-          pb.className = 'stat-card-progress';
-          let color = window.getComputedStyle(el).color;
-          pb.style.background = color;
-          let w = isPercent ? finalVal : Math.min(100, finalVal * 2);
-          pb.style.width = w + '%';
-          card.appendChild(pb);
-        }
-
-        let start = null;
-        let duration = 800;
-        function step(timestamp) {
-          if (!start) start = timestamp;
-          let progress = Math.min((timestamp - start) / duration, 1);
-          let curr = Math.floor(progress * finalVal);
-          el.innerText = curr + (isPercent ? '%' : '');
-          if (progress < 1) {
-            window.requestAnimationFrame(step);
-          } else {
-            el.innerText = text;
-          }
-        }
-        window.requestAnimationFrame(step);
-      });
-
-      // 2. Animación escalonada para hab-card / hab-cell
-      document.querySelectorAll('.hab-cell, .hab-card').forEach((el, i) => {
-        el.style.animationDelay = (i * 0.03) + 's';
-      });
-
-      // 3. Badges parpadeantes
-      document.querySelectorAll('.badge, .hab-badge, td, span').forEach(el => {
-        let txt = el.innerText.trim().toUpperCase();
-        if (txt === 'ACTIVA' && !el.classList.contains('badge-activa-anim')) el.classList.add('badge-activa-anim');
-        if (txt === 'PENDIENTE' && !el.classList.contains('badge-pendiente-anim')) el.classList.add('badge-pendiente-anim');
-      });
-
-      // 4. Ripple effect botones
-      document.querySelectorAll('.btn-primary, .btn-success').forEach(btn => {
-        btn.addEventListener('click', function (e) {
-          let rect = this.getBoundingClientRect();
-          let size = Math.max(rect.width, rect.height);
-          let x = e.clientX - rect.left - size / 2;
-          let y = e.clientY - rect.top - size / 2;
-          let ripple = document.createElement('span');
-          ripple.className = 'ripple';
-          ripple.style.width = ripple.style.height = size + 'px';
-          ripple.style.left = x + 'px';
-          ripple.style.top = y + 'px';
-          this.appendChild(ripple);
-          setTimeout(() => ripple.remove(), 400);
-        });
-      });
-
-      // 5. Housekeeping action click anim
-      document.body.addEventListener('click', e => {
-        let btn = e.target.closest('button');
-        if (!btn) return;
-        let txt = btn.innerText.trim().toUpperCase();
-        if (txt.includes('MARCAR LISTA') || txt.includes('LISTA')) {
-          btn.innerHTML = '✓ Marcada';
-          btn.style.background = '#10b981';
-          btn.style.color = '#fff';
-          btn.style.borderColor = '#10b981';
-          let card = btn.closest('.card, tr, .hab-cell');
-          if (card) {
-            setTimeout(() => {
-              card.style.animation = 'slideOut 0.3s ease forwards';
-            }, 1500);
-          }
-
-          // Counter decrement in title
-          let title = document.querySelector('h1, h2, h3, h4, .card-header h6');
-          if (title && title.innerText.match(/\(\d+\)/)) {
-            title.innerText = title.innerText.replace(/\((\d+)\)/, (match, p1) => {
-              let n = parseInt(p1);
-              return '(' + Math.max(0, n - 1) + ')';
+      const successAlerts = document.querySelectorAll('.alert-success[data-success="true"]');
+      if (successAlerts.length > 0) {
+        successAlerts.forEach(alert => {
+          const text = alert.innerText.toLowerCase();
+          if (text.includes('check-out') || text.includes('check-in')) {
+            confetti({
+              particleCount: 150,
+              spread: 70,
+              origin: { y: 0.6 },
+              colors: ['#22c55e', '#3b82f6', '#f59e0b', '#6366f1']
             });
           }
-        }
-      });
-
-      // 6. Simulated "estado cambiado" when selects change
-      document.querySelectorAll('select[name="estado"]').forEach(s => {
-        s.addEventListener('change', e => {
-          let cell = e.target.closest('.modal')?.previousElementSibling;
-          if (cell) {
-            cell.classList.remove('estado-cambiado');
-            void cell.offsetWidth;
-            cell.classList.add('estado-cambiado');
-          }
-        });
-      });
-
-      // 7. Responsive sidebar toggle
-      const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-      const sidebar = document.querySelector('.sidebar');
-      const sidebarOverlay = document.getElementById('sidebarOverlay');
-      if (mobileMenuBtn && sidebar && sidebarOverlay) {
-        mobileMenuBtn.addEventListener('click', () => {
-          sidebar.classList.add('show-sidebar');
-          sidebarOverlay.classList.add('show');
-        });
-        sidebarOverlay.addEventListener('click', () => {
-          sidebar.classList.remove('show-sidebar');
-          sidebarOverlay.classList.remove('show');
         });
       }
     });
+
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const sidebar = document.querySelector('.sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+    if (mobileMenuBtn && sidebar && sidebarOverlay) {
+      mobileMenuBtn.addEventListener('click', () => {
+        sidebar.classList.add('show-sidebar');
+        sidebarOverlay.classList.add('show');
+      });
+
+      sidebarOverlay.addEventListener('click', () => {
+        sidebar.classList.remove('show-sidebar');
+        sidebarOverlay.classList.remove('show');
+      });
+    }
   </script>
-  {% block scripts %}{% endblock %}
+</body>
+
+</html>
+
+{% else %}
+{% block auth_content %}{% endblock %}
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // 1. Contador para stat-card-new y Barra de progreso
+    document.querySelectorAll('.stat-card-new .stat-number').forEach(el => {
+      let text = el.innerText.trim();
+      let isPercent = text.includes('%');
+      let finalVal = parseFloat(text.replace(/[^0-9.]/g, ''));
+      if (isNaN(finalVal)) return;
+
+      let card = el.closest('.stat-card-new');
+      if (card) {
+        let pb = document.createElement('div');
+        pb.className = 'stat-card-progress';
+        let color = window.getComputedStyle(el).color;
+        pb.style.background = color;
+        let w = isPercent ? finalVal : Math.min(100, finalVal * 2);
+        pb.style.width = w + '%';
+        card.appendChild(pb);
+      }
+
+      let start = null;
+      let duration = 800;
+      function step(timestamp) {
+        if (!start) start = timestamp;
+        let progress = Math.min((timestamp - start) / duration, 1);
+        let curr = Math.floor(progress * finalVal);
+        el.innerText = curr + (isPercent ? '%' : '');
+        if (progress < 1) {
+          window.requestAnimationFrame(step);
+        } else {
+          el.innerText = text;
+        }
+      }
+      window.requestAnimationFrame(step);
+    });
+
+    // 2. Animación escalonada para hab-card / hab-cell
+    document.querySelectorAll('.hab-cell, .hab-card').forEach((el, i) => {
+      el.style.animationDelay = (i * 0.03) + 's';
+    });
+
+    // 3. Badges parpadeantes
+    document.querySelectorAll('.badge, .hab-badge, td, span').forEach(el => {
+      let txt = el.innerText.trim().toUpperCase();
+      if (txt === 'ACTIVA' && !el.classList.contains('badge-activa-anim')) el.classList.add('badge-activa-anim');
+      if (txt === 'PENDIENTE' && !el.classList.contains('badge-pendiente-anim')) el.classList.add('badge-pendiente-anim');
+    });
+
+    // 4. Ripple effect botones
+    document.querySelectorAll('.btn-primary, .btn-success').forEach(btn => {
+      btn.addEventListener('click', function (e) {
+        let rect = this.getBoundingClientRect();
+        let size = Math.max(rect.width, rect.height);
+        let x = e.clientX - rect.left - size / 2;
+        let y = e.clientY - rect.top - size / 2;
+        let ripple = document.createElement('span');
+        ripple.className = 'ripple';
+        ripple.style.width = ripple.style.height = size + 'px';
+        ripple.style.left = x + 'px';
+        ripple.style.top = y + 'px';
+        this.appendChild(ripple);
+        setTimeout(() => ripple.remove(), 400);
+      });
+    });
+
+    // 5. Housekeeping action click anim
+    document.body.addEventListener('click', e => {
+      let btn = e.target.closest('button');
+      if (!btn) return;
+      let txt = btn.innerText.trim().toUpperCase();
+      if (txt.includes('MARCAR LISTA') || txt.includes('LISTA')) {
+        btn.innerHTML = '✓ Marcada';
+        btn.style.background = '#10b981';
+        btn.style.color = '#fff';
+        btn.style.borderColor = '#10b981';
+        let card = btn.closest('.card, tr, .hab-cell');
+        if (card) {
+          setTimeout(() => {
+            card.style.animation = 'slideOut 0.3s ease forwards';
+          }, 1500);
+        }
+
+        // Counter decrement in title
+        let title = document.querySelector('h1, h2, h3, h4, .card-header h6');
+        if (title && title.innerText.match(/\(\d+\)/)) {
+          title.innerText = title.innerText.replace(/\((\d+)\)/, (match, p1) => {
+            let n = parseInt(p1);
+            return '(' + Math.max(0, n - 1) + ')';
+          });
+        }
+      }
+    });
+
+    // 6. Simulated "estado cambiado" when selects change
+    document.querySelectorAll('select[name="estado"]').forEach(s => {
+      s.addEventListener('change', e => {
+        let cell = e.target.closest('.modal')?.previousElementSibling;
+        if (cell) {
+          cell.classList.remove('estado-cambiado');
+          void cell.offsetWidth;
+          cell.classList.add('estado-cambiado');
+        }
+      });
+    });
+
+    // 7. Responsive sidebar toggle
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const sidebar = document.querySelector('.sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    if (mobileMenuBtn && sidebar && sidebarOverlay) {
+      mobileMenuBtn.addEventListener('click', () => {
+        sidebar.classList.add('show-sidebar');
+        sidebarOverlay.classList.add('show');
+      });
+      sidebarOverlay.addEventListener('click', () => {
+        sidebar.classList.remove('show-sidebar');
+        sidebarOverlay.classList.remove('show');
+      });
+    }
+  });
+</script>
+{% block scripts %}{% endblock %}
 </body>
 
 </html>

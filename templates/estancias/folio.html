@@ -3,71 +3,354 @@
 {% block page_title %}Folio de Estancia #{{ estancia.id }}{% endblock %}
 {% block content %}
 <style>
-  .folio-container { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
-  .col-main { flex: 1; min-width: 0; min-width: 60%; }
-  .col-sidebar { width: 340px; flex-shrink: 0; position: sticky; top: 24px; }
-  
-  .f-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); border: 1px solid #f1f5f9; margin-bottom: 24px; overflow: hidden; }
-  
-  .header-guest { padding: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
-  .avatar-guest { width: 56px; height: 56px; border-radius: 12px; background: #eef2ff; color: #6366f1; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; flex-shrink: 0; }
-  .guest-info { display: flex; gap: 16px; align-items: center; }
-  .guest-name { font-size: 20px; font-weight: 700; color: #1e293b; margin-bottom: 4px; line-height: 1.2; }
-  .guest-meta { font-size: 13px; color: #64748b; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-  
-  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 24px; }
-  .kpi-card { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); border: 1px solid #f1f5f9; display: flex; flex-direction: column; gap: 4px; }
-  .kpi-label { font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
-  .kpi-value { font-size: 15px; font-weight: 700; color: #1e293b; }
-  .kpi-sub { font-size: 12px; color: #64748b; }
-  
-  .table-cargos { width: 100%; border-collapse: collapse; }
-  .table-cargos th { text-align: left; padding: 12px 24px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; border-bottom: 1px solid #f1f5f9; background: #f8faff; font-weight: 600; }
-  .table-cargos td { padding: 16px 24px; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #374151; vertical-align: middle; }
-  .table-cargos tr:last-child td { border-bottom: none; }
-  .total-row { background: #f8faff; border-top: 2px solid #e2e8f0; }
-  
-  .badge-activa { background: #dcfce7; color: #166534; padding: 6px 12px; border-radius: 8px; font-weight: 700; font-size: 12px; border: 1px solid #bbf7d0;}
-  .badge-finalizada { background: #f1f5f9; color: #475569; padding: 6px 12px; border-radius: 8px; font-weight: 700; font-size: 12px; border: 1px solid #e2e8f0;}
+  .folio-container {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
 
-  .btn-main { background: #ef4444; color: #fff; border: none; border-radius: 8px; padding: 10px 24px; font-weight: 600; font-size: 14px; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(239,68,68,0.2); }
-  .btn-main:hover { background: #dc2626; transform: translateY(-1px); color: #fff; }
-  
-  .btn-abonar { background: #22c55e; color: #fff; border: none; border-radius: 8px; padding: 12px; font-weight: 600; font-size: 15px; width: 100%; transition: all 0.2s; margin-top: 16px; box-shadow: 0 4px 12px rgba(34,197,94,0.2); }
-  .btn-abonar:hover { background: #16a34a; transform: translateY(-1px); }
+  .col-main {
+    flex: 1;
+    min-width: 0;
+    min-width: 60%;
+  }
 
-  .empty-state { text-align: center; padding: 48px 24px; }
-  .empty-icon { font-size: 48px; color: #cbd5e1; margin-bottom: 16px; display: block; }
-  
-  .alert-tardanza { background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 16px; display: flex; align-items: flex-start; gap: 16px; margin-bottom: 24px; color: #92400e; }
-  .alert-icon { font-size: 24px; color: #f59e0b; line-height: 1; }
+  .col-sidebar {
+    width: 340px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 24px;
+  }
 
-  .summary-card { padding: 24px; }
-  .summary-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 14px; color: #64748b; }
-  .summary-saldo { font-size: 24px; font-weight: 800; color: #ef4444; background: #fef2f2; padding: 16px; border-radius: 8px; border: 1px solid #fecaca; margin-top: 16px; display: flex; justify-content: space-between; align-items: center; }
-  .summary-saldo.success { color: #22c55e; background: #f0fdf4; border-color: #bbf7d0; }
+  .f-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+    border: 1px solid #f1f5f9;
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
 
-  .f-input-group { position: relative; margin-bottom: 16px; }
-  .f-input-group label { display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px; }
-  .f-input { width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; font-size: 14px; background: #f8fafc; transition: border 0.2s; outline: none; }
-  .f-input:focus { border-color: #6366f1; background: #fff; }
-  .f-prefix { position: absolute; left: 12px; top: 34px; color: #64748b; font-weight: 500; font-size: 14px; }
-  .f-input.with-prefix { padding-left: 36px; font-weight: 700; font-size: 16px; color: #1e293b; }
+  .header-guest {
+    padding: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
 
-  .toast-error { position: fixed; top: 24px; right: 24px; background: #ef4444; color: #fff; padding: 16px 24px; border-radius: 8px; box-shadow: 0 10px 25px rgba(239,68,68,0.3); z-index: 1000; display: flex; align-items: center; gap: 12px; font-weight: 500; transform: translateX(120%); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-  .toast-error.show { transform: translateX(0); }
+  .avatar-guest {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    background: #eef2ff;
+    color: #6366f1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .guest-info {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .guest-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 4px;
+    line-height: 1.2;
+  }
+
+  .guest-meta {
+    font-size: 13px;
+    color: #64748b;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .kpi-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+    border: 1px solid #f1f5f9;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .kpi-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .kpi-value {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1e293b;
+  }
+
+  .kpi-sub {
+    font-size: 12px;
+    color: #64748b;
+  }
+
+  .table-cargos {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .table-cargos th {
+    text-align: left;
+    padding: 12px 24px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    border-bottom: 1px solid #f1f5f9;
+    background: #f8faff;
+    font-weight: 600;
+  }
+
+  .table-cargos td {
+    padding: 16px 24px;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 14px;
+    color: #374151;
+    vertical-align: middle;
+  }
+
+  .table-cargos tr:last-child td {
+    border-bottom: none;
+  }
+
+  .total-row {
+    background: #f8faff;
+    border-top: 2px solid #e2e8f0;
+  }
+
+  .badge-activa {
+    background: #dcfce7;
+    color: #166534;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 12px;
+    border: 1px solid #bbf7d0;
+  }
+
+  .badge-finalizada {
+    background: #f1f5f9;
+    color: #475569;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 12px;
+    border: 1px solid #e2e8f0;
+  }
+
+  .btn-main {
+    background: #ef4444;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 24px;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+  }
+
+  .btn-main:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
+    color: #fff;
+  }
+
+  .btn-abonar {
+    background: #22c55e;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 12px;
+    font-weight: 600;
+    font-size: 15px;
+    width: 100%;
+    transition: all 0.2s;
+    margin-top: 16px;
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
+  }
+
+  .btn-abonar:hover {
+    background: #16a34a;
+    transform: translateY(-1px);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+  }
+
+  .empty-icon {
+    font-size: 48px;
+    color: #cbd5e1;
+    margin-bottom: 16px;
+    display: block;
+  }
+
+  .alert-tardanza {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 24px;
+    color: #92400e;
+  }
+
+  .alert-icon {
+    font-size: 24px;
+    color: #f59e0b;
+    line-height: 1;
+  }
+
+  .summary-card {
+    padding: 24px;
+  }
+
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 14px;
+    color: #64748b;
+  }
+
+  .summary-saldo {
+    font-size: 24px;
+    font-weight: 800;
+    color: #ef4444;
+    background: #fef2f2;
+    padding: 16px;
+    border-radius: 8px;
+    border: 1px solid #fecaca;
+    margin-top: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .summary-saldo.success {
+    color: #22c55e;
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+  }
+
+  .f-input-group {
+    position: relative;
+    margin-bottom: 16px;
+  }
+
+  .f-input-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 6px;
+  }
+
+  .f-input {
+    width: 100%;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+    background: #f8fafc;
+    transition: border 0.2s;
+    outline: none;
+  }
+
+  .f-input:focus {
+    border-color: #6366f1;
+    background: #fff;
+  }
+
+  .f-prefix {
+    position: absolute;
+    left: 12px;
+    top: 34px;
+    color: #64748b;
+    font-weight: 500;
+    font-size: 14px;
+  }
+
+  .f-input.with-prefix {
+    padding-left: 36px;
+    font-weight: 700;
+    font-size: 16px;
+    color: #1e293b;
+  }
+
+  .toast-error {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    background: #ef4444;
+    color: #fff;
+    padding: 16px 24px;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 500;
+    transform: translateX(120%);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  .toast-error.show {
+    transform: translateX(0);
+  }
 </style>
 
 <div class="folio-container">
-  
+
   <div class="col-main">
-    
+
     {% if cargo_tardanza %}
     <div class="alert-tardanza">
       <i class="bi bi-clock-history alert-icon"></i>
       <div>
         <h6 class="mb-1 fw-bold">Salida tardía detectada ({{ minutos_tarde }} min)</h6>
-        <p class="mb-0 text-sm opacity-75">Se sugiere agregar un cargo de <strong>S/. {{ cargo_tardanza }}</strong> al momento de realizar el check-out.</p>
+        <p class="mb-0 text-sm opacity-75">Se sugiere agregar un cargo de <strong>S/. {{ cargo_tardanza }}</strong> al
+          momento de realizar el check-out.</p>
       </div>
     </div>
     {% endif %}
@@ -89,15 +372,17 @@
           {% if estancia.estado == 'ACTIVA' %}ACTIVA{% else %}FINALIZADA{% endif %}
         </span>
         {% if estancia.estado == 'ACTIVA' %}
-          {% if folio.saldo_pendiente > 0 %}
-            <button class="btn-main shadow-none" style="background: #f1f5f9; color: #94a3b8; cursor: not-allowed;" onclick="showToastError()">
-              <i class="bi bi-box-arrow-right"></i> Check-out
-            </button>
-          {% else %}
-            <a href="/estancias/{{ estancia.id }}/checkout/" class="btn-main text-decoration-none" onclick="return confirm('¿Confirmar check-out?')">
-              <i class="bi bi-box-arrow-right"></i> Check-out
-            </a>
-          {% endif %}
+        {% if folio.saldo_pendiente > 0 %}
+        <button class="btn-main shadow-none" style="background: #f1f5f9; color: #94a3b8; cursor: not-allowed;"
+          onclick="showToastError()">
+          <i class="bi bi-box-arrow-right"></i> Check-out
+        </button>
+        {% else %}
+        <a href="/estancias/{{ estancia.id }}/checkout/" class="btn-main text-decoration-none"
+          onclick="return confirm('¿Confirmar check-out?')">
+          <i class="bi bi-box-arrow-right"></i> Check-out
+        </a>
+        {% endif %}
         {% endif %}
       </div>
     </div>
@@ -134,23 +419,51 @@
       </div>
       <table class="table-cargos">
         <thead>
-          <tr><th>Concepto</th><th>Categoría</th><th class="text-end">Monto</th></tr>
+          <tr>
+            <th>Concepto</th>
+            <th>Categoría</th>
+            <th class="text-end">Monto</th>
+          </tr>
         </thead>
         <tbody>
+          <!-- Alojamiento -->
+          <tr style="background:#f4f7fb;">
+            <td colspan="3" class="fw-bold text-secondary text-uppercase"
+              style="font-size:10px; letter-spacing:0.05em;"><i class="bi bi-building me-1"></i> Alojamiento</td>
+          </tr>
           {% for cargo in estancia.cargos.all %}
+          {% if cargo.tipo == 'HABITACION' %}
+          <tr>
+            <td class="fw-medium">{{ cargo.concepto }}</td>
+            <td><span class="badge bg-light text-secondary border px-2 py-1"><i
+                  class="bi bi-building me-1"></i>Habitación</span></td>
+            <td class="text-end fw-semibold">S/. {{ cargo.monto }}</td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+
+          <!-- Consumos Extra -->
+          <tr style="background:#f4f7fb;">
+            <td colspan="3" class="fw-bold text-secondary text-uppercase"
+              style="font-size:10px; letter-spacing:0.05em;"><i class="bi bi-basket me-1"></i> Consumos Adicionales</td>
+          </tr>
+          {% for cargo in estancia.cargos.all %}
+          {% if cargo.tipo != 'HABITACION' %}
           <tr>
             <td class="fw-medium">{{ cargo.concepto }}</td>
             <td>
               <span class="badge bg-light text-secondary border px-2 py-1">
-                {% if cargo.tipo == 'HABITACION' %}<i class="bi bi-building me-1"></i>Habitación
-                {% elif cargo.tipo == 'RESTAURANTE' %}<i class="bi bi-cup-straw me-1"></i>Restaurante
+                {% if cargo.tipo == 'RESTAURANTE' %}<i class="bi bi-cup-straw me-1"></i>Restaurante
                 {% elif cargo.tipo == 'LAVANDERIA' %}<i class="bi bi-basket me-1"></i>Lavandería
                 {% else %}<i class="bi bi-three-dots me-1"></i>Otro{% endif %}
               </span>
             </td>
             <td class="text-end fw-semibold">S/. {{ cargo.monto }}</td>
           </tr>
-          {% empty %}
+          {% endif %}
+          {% endfor %}
+
+          {% if not estancia.cargos.all %}
           <tr>
             <td colspan="3">
               <div class="empty-state">
@@ -159,10 +472,11 @@
               </div>
             </td>
           </tr>
-          {% endfor %}
-          
+          {% endif %}
+
           <tr class="total-row">
-            <td colspan="2" class="text-end text-muted font-monospace" style="font-size: 12px; line-height: 1.6;">Subtotal<br>IGV (18%)</td>
+            <td colspan="2" class="text-end text-muted font-monospace" style="font-size: 12px; line-height: 1.6;">
+              Subtotal<br>IGV (18%)</td>
             <td class="text-end text-muted font-monospace fw-medium" style="font-size: 13px; line-height: 1.6;">S/. {{ folio.subtotal }}<br>S/. {{ folio.igv }}</td>
           </tr>
           <tr style="background: #f8faff;">
@@ -175,11 +489,17 @@
 
     <div class="f-card">
       <div class="p-4 border-bottom" style="border-color: #f1f5f9;">
-        <h5 class="m-0 fw-bold fs-6 text-dark"><i class="bi bi-credit-card-2-back me-2 text-muted"></i>Historial de Pagos</h5>
+        <h5 class="m-0 fw-bold fs-6 text-dark"><i class="bi bi-credit-card-2-back me-2 text-muted"></i>Historial de
+          Pagos</h5>
       </div>
       <table class="table-cargos">
         <thead>
-          <tr><th>Método</th><th>Referencia</th><th>Fecha</th><th class="text-end">Monto</th></tr>
+          <tr>
+            <th>Método</th>
+            <th>Referencia</th>
+            <th>Fecha</th>
+            <th class="text-end">Monto</th>
+          </tr>
         </thead>
         <tbody>
           {% for pago in folio.pagos.all %}
@@ -188,11 +508,13 @@
               {% if pago.metodo_pago == 'EFECTIVO' %}<i class="bi bi-cash-coin me-2 text-success"></i>Efectivo
               {% elif pago.metodo_pago == 'TARJETA' %}<i class="bi bi-credit-card me-2 text-primary"></i>Tarjeta
               {% elif pago.metodo_pago == 'TRANSFERENCIA' %}<i class="bi bi-bank me-2 text-info"></i>Transferencia
-              {% elif pago.metodo_pago == 'YAPE_PLIN' %}<i class="bi bi-phone-vibrate me-2" style="color: #8b5cf6;"></i>Yape / Plin
+              {% elif pago.metodo_pago == 'YAPE_PLIN' %}<i class="bi bi-phone-vibrate me-2"
+                style="color: #8b5cf6;"></i>Yape / Plin
               {% else %}<i class="bi bi-wallet2 me-2"></i>{{ pago.get_metodo_pago_display }}
               {% endif %}
             </td>
-            <td><code class="text-secondary bg-light px-2 py-1 rounded" style="font-size: 12px;">{{ pago.transaccion_id|default:"—" }}</code></td>
+            <td><code class="text-secondary bg-light px-2 py-1 rounded"
+                style="font-size: 12px;">{{ pago.transaccion_id|default:"—" }}</code></td>
             <td class="text-muted" style="font-size: 13px;">{{ pago.fecha|date:"d/m/Y H:i" }}</td>
             <td class="text-end fw-bold text-success">S/. {{ pago.monto }}</td>
           </tr>
@@ -211,11 +533,11 @@
     </div>
 
   </div>
-  
+
   <div class="col-sidebar">
     <div class="f-card summary-card">
       <h6 class="fw-bold mb-4" style="color: #1e293b;">Resumen Financiero</h6>
-      
+
       <div class="summary-row">
         <span>Total Cargos</span>
         <span class="fw-semibold text-dark">S/. {{ folio.total }}</span>
@@ -224,10 +546,12 @@
         <span>Total Pagado</span>
         <span class="fw-semibold text-success">S/. {{ folio.total_pagado }}</span>
       </div>
-      
+
       <div class="summary-saldo {% if folio.saldo_pendiente <= 0 %}success{% endif %}">
         <div class="d-flex flex-column gap-1">
-          <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.8;">Saldo Pendiente</span>
+          <span
+            style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.8;">Saldo
+            Pendiente</span>
           <span>S/. {{ folio.saldo_pendiente }}</span>
         </div>
         {% if folio.saldo_pendiente > 0 %}
@@ -238,20 +562,21 @@
       </div>
 
       {% if estancia.estado == 'ACTIVA' %}
-      
+
       {% if folio.saldo_pendiente > 0 %}
       <hr class="my-4" style="border-color: #e2e8f0;">
-      
+
       <form method="post" action="/estancias/{{ estancia.id }}/pago/">
         {% csrf_token %}
         <h6 class="fw-bold mb-3" style="color: #1e293b;">Registrar Pago</h6>
-        
+
         <div class="f-input-group">
           <label>Monto</label>
           <span class="f-prefix">S/.</span>
-          <input type="number" name="monto" step="0.01" min="0.01" max="{{ folio.saldo_pendiente }}" value="{{ folio.saldo_pendiente }}" class="f-input with-prefix" required>
+          <input type="number" name="monto" step="0.01" min="0.01" max="{{ folio.saldo_pendiente }}"
+            value="{{ folio.saldo_pendiente }}" class="f-input with-prefix" required>
         </div>
-        
+
         <div class="f-input-group">
           <label>Método de Pago</label>
           <select name="metodo_pago" class="f-input fw-medium" onchange="toggleTx(this)">
@@ -261,28 +586,45 @@
             <option value="YAPE_PLIN">📱 Yape / Plin</option>
           </select>
         </div>
-        
+
         <div class="f-input-group" id="divTx" style="display: none;">
           <label>N° Transacción / Referencia</label>
           <input type="text" name="transaccion_id" class="f-input" placeholder="Ej: OP-098234">
         </div>
-        
+
         <button type="submit" class="btn-abonar">Abonar S/. {{ folio.saldo_pendiente }}</button>
       </form>
       {% endif %}
 
       <div class="text-center mt-4 pt-4 border-top" style="border-color: #f1f5f9;">
-        <a href="#modalCargo" data-bs-toggle="modal" class="text-decoration-none fw-semibold" style="color: #6366f1; font-size: 14px;">
+        <a href="#modalCargo" data-bs-toggle="modal" class="text-decoration-none fw-semibold"
+          style="color: #6366f1; font-size: 14px;">
           <i class="bi bi-plus-circle me-1"></i>Agregar cargo extra
         </a>
       </div>
-      
+
       {% endif %}
     </div>
-    
+
+    <div class="f-card p-3 mb-3" style="border: 1px solid #e0e7ff; background: #f8fafc;">
+      <h6 class="fw-bold mb-3" style="color: #475569; font-size: 13px; text-transform: uppercase;"><i
+          class="bi bi-printer me-2 text-indigo-500"></i>Documentos Imprimibles</h6>
+      <div class="d-flex flex-column gap-2">
+        <a href="{% url 'reserva_imprimir_ficha' estancia.reserva.id %}" target="_blank" class="btn btn-outline-primary"
+          style="text-align:left; background: #fff;">
+          <i class="bi bi-file-earmark-person me-2"></i>Ficha de Registro (Check-in)
+        </a>
+        <a href="{% url 'folio_imprimir' estancia.id %}" target="_blank" class="btn btn-outline-secondary"
+          style="text-align:left; background: #fff;">
+          <i class="bi bi-receipt me-2"></i>Folio / Recibo (Check-out)
+        </a>
+      </div>
+    </div>
+
     {% if estancia.estado == 'FINALIZADA' %}
     <div class="d-flex flex-column gap-2 mt-3">
-      <a href="/estancias/" class="btn btn-outline-secondary w-100 fw-semibold">
+      <a href="/estancias/" class="btn btn-primary w-100 fw-semibold"
+        style="box-shadow: 0 4px 12px rgba(99,102,241,0.2);">
         <i class="bi bi-arrow-left me-1"></i>Ver todas las estancias
       </a>
     </div>
@@ -302,11 +644,13 @@
           {% csrf_token %}
           <div class="mb-3">
             <label class="form-label" style="font-size: 12px; font-weight: 600; color: #475569;">Concepto</label>
-            <input type="text" name="concepto" class="form-control form-control-sm" required placeholder="Ej. Minibar, Toallas">
+            <input type="text" name="concepto" class="form-control form-control-sm" required
+              placeholder="Ej. Minibar, Toallas">
           </div>
           <div class="mb-3">
             <label class="form-label" style="font-size: 12px; font-weight: 600; color: #475569;">Monto (S/.)</label>
-            <input type="number" name="monto" step="0.01" min="0.01" class="form-control form-control-sm" required placeholder="0.00">
+            <input type="number" name="monto" step="0.01" min="0.01" class="form-control form-control-sm" required
+              placeholder="0.00">
           </div>
           <div class="mb-4">
             <label class="form-label" style="font-size: 12px; font-weight: 600; color: #475569;">Categoría</label>
@@ -317,7 +661,9 @@
               <option value="OTRO">Otro</option>
             </select>
           </div>
-          <button type="submit" class="btn btn-primary w-100" style="background: #6366f1; border-color: #6366f1; border-radius: 8px; font-weight: 600;">Agregar Cargo</button>
+          <button type="submit" class="btn btn-primary w-100"
+            style="background: #6366f1; border-color: #6366f1; border-radius: 8px; font-weight: 600;">Agregar
+            Cargo</button>
         </form>
       </div>
     </div>
@@ -326,7 +672,8 @@
 
 <div class="toast-error" id="toastError">
   <i class="bi bi-exclamation-circle-fill fs-5"></i>
-  <div>No se puede realizar el check-out.<br><strong>Hay un saldo pendiente de S/. {{ folio.saldo_pendiente }}</strong></div>
+  <div>No se puede realizar el check-out.<br><strong>Hay un saldo pendiente de S/. {{ folio.saldo_pendiente }}</strong>
+  </div>
 </div>
 
 <script>

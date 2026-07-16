@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Folio Estancia {{ estancia.id }}</title>
+    <style>
+        @page {
+            margin: 5mm;
+            size: auto;
+        }
+
+        /* Thermal receipt style */
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background: #f1f5f9;
+            color: #000;
+            margin: 0;
+            padding: 20px;
+            font-size: 13px;
+        }
+
+        .ticket {
+            background: #fff;
+            width: 80mm;
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+
+        .hotel-name {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 0;
+            text-transform: uppercase;
+        }
+
+        h2 {
+            font-size: 14px;
+            text-align: center;
+            margin: 5px 0;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .info-row {
+            margin: 4px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .info-label {
+            font-weight: bold;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th {
+            border-bottom: 1px solid #000;
+            border-top: 1px solid #000;
+            padding: 4px 0;
+            text-align: left;
+        }
+
+        td {
+            padding: 4px 0;
+        }
+
+        .price-col {
+            text-align: right;
+        }
+
+        .totals {
+            margin-top: 10px;
+            border-top: 1px dashed #000;
+            padding-top: 5px;
+        }
+
+        .totals-row {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 10px;
+            margin-top: 20px;
+            border-top: 1px dashed #000;
+            padding-top: 10px;
+        }
+
+        @media print {
+            .no-print {
+                display: none;
+            }
+
+            body {
+                background: #fff;
+                padding: 0mm;
+                font-size: 13px;
+                width: auto;
+            }
+
+            .ticket {
+                width: 76mm;
+                margin: 0;
+                padding: 5px;
+                box-shadow: none;
+                border: none;
+                border-radius: 0;
+            }
+        }
+
+        .btn-print {
+            padding: 10px;
+            background: #000;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 6px;
+            box-sizing: border-box;
+            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+
+<body onload="window.print()">
+    <div class="no-print" style="max-width: 80mm; margin: 0 auto 15px auto; display: flex; gap: 10px; justify-content: center;">
+        <button onclick="window.print()" class="btn-print">IMPRIMIR TICKET</button>
+        <button onclick="if(window.opener){window.close();}else{window.location.href='{% url 'reservas_lista' %}';}"
+            class="btn-print" style="background:#555;">CERRAR</button>
+    </div>
+
+    <div class="ticket">
+        <div class="header">
+            <h1 class="hotel-name">{{ estancia.habitacion.hotel.nombre|default:"Chiclayo" }}</h1>
+            <div>Ticket de Consumo / Folio</div>
+            <div>{{ estancia.habitacion.hotel.direccion|default:"Av. Principal 123" }}</div>
+        </div>
+
+        <div class="info-row"><span class="info-label">FOLIO:</span> <span>#{{ folio.id }}</span></div>
+        <div class="info-row"><span class="info-label">ESTANCIA:</span> <span>#{{ estancia.id }}</span></div>
+        <div class="info-row"><span class="info-label">FECHA:</span> <span>{% now "d/m/Y H:i" %}</span></div>
+        <div class="info-row"><span class="info-label">HABITACIÓN:</span> <span>{{ estancia.habitacion.numero }}</span></div>
+        <div class="info-row"><span class="info-label">HUÉSPED:</span> <span>{{ estancia.reserva.huesped.nombres|truncatechars:18 }}</span></div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>CANT / DESCRIPCIÓN</th>
+                    <th class="price-col">IMPORTE</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cargo in estancia.cargos.all %}
+                <tr>
+                    <td>1 x {{ cargo.concepto }}</td>
+                    <td class="price-col">{{ cargo.monto }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="2" class="text-center">No hay cargos registrados.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="totals">
+            <div class="info-row"><span>Subtotal:</span> <span class="price-col">S/. {{ folio.subtotal }}</span></div>
+            <div class="info-row"><span>IGV (18%):</span> <span class="price-col">S/. {{ folio.igv }}</span></div>
+            <div class="totals-row"><span>TOTAL NETO:</span> <span class="price-col">S/. {{ folio.total }}</span></div>
+        </div>
+
+        <div class="totals" style="margin-top:5px; border-top: none;">
+            <div class="info-row" style="color: #444;"><span>PAGOS RECIBIDOS:</span> <span class="price-col">- S/. {{ folio.total_pagado }}</span></div>
+            <div class="totals-row" style="margin-top:5px;"><span>SALDO FINAL:</span> <span class="price-col">S/. {{ folio.saldo_pendiente }}</span></div>
+        </div>
+
+        <div class="footer">
+            <p>¡Gracias por su amable preferencia!</p>
+            <p>Este documento no es un comprobante de pago con valor fiscal válido para SUNAT.</p>
+        </div>
+    </div>
+</body>
+
+</html>

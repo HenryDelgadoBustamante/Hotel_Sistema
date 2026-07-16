@@ -15,31 +15,25 @@ from huespedes.models import Huesped
 from reservas.models import Reserva
 from estancias.models import Estancia, CargoEstancia, Folio, Pago
 import requests
+from config import roles
 
 
 # ── Helpers de Rol ─────────────────────────────────────────────────────────────
 def _es_admin(user):
-    return user.is_superuser or user.groups.filter(name='admin').exists()
+    return roles.es_admin(user)
 
 def _es_recepcionista(user):
-    return _es_admin(user) or user.groups.filter(name='recepcionista').exists()
+    return roles.es_recepcionista(user)
 
 def _es_housekeeping(user):
-    return _es_admin(user) or user.groups.filter(name='housekeeping').exists()
+    return roles.es_housekeeping(user)
 
 def _solo_housekeeping(user):
     """True si el usuario es SOLO housekeeping (sin admin ni recepcionista)."""
-    return (
-        user.groups.filter(name='housekeeping').exists()
-        and not user.is_superuser
-        and not user.groups.filter(name__in=['admin', 'recepcionista']).exists()
-    )
+    return roles.solo_housekeeping(user)
 
 def _acceso_denegado(request, msg='No tienes permisos para acceder a esta sección.'):
-    messages.error(request, msg)
-    if _solo_housekeeping(request.user):
-        return redirect('housekeeping')
-    return redirect('dashboard')
+    return render(request, '403.html', {'mensaje_error': msg}, status=403)
 
 
 def parse_room_gallery(raw_urls, main_url=''):
@@ -92,14 +86,14 @@ def calcular_cargo_salida_tardia(estancia):
 
 def login_view(request):
     if request.user.is_authenticated:
-        if request.user.groups.filter(name='housekeeping').exists() and not request.user.is_superuser and not request.user.groups.filter(name='admin').exists():
+        if _solo_housekeeping(request.user):
             return redirect('housekeeping')
         return redirect('dashboard')
     if request.method == 'POST':
         user = authenticate(request, username=request.POST['username'], password=request.POST['password'])
         if user:
             login(request, user)
-            if user.groups.filter(name='housekeeping').exists() and not user.is_superuser and not user.groups.filter(name='admin').exists():
+            if _solo_housekeeping(user):
                 return redirect('housekeeping')
             return redirect('dashboard')
         messages.error(request, 'Usuario o contraseña incorrectos.')
@@ -113,7 +107,7 @@ def logout_view(request):
 
 @login_required
 def dashboard(request):
-    if request.user.groups.filter(name='housekeeping').exists() and not request.user.is_superuser and not request.user.groups.filter(name='admin').exists():
+    if _solo_housekeeping(request.user):
         return redirect('housekeeping')
 
     habitaciones = Habitacion.objects.select_related('tipo', 'hotel').all().order_by('piso', 'numero')
@@ -268,9 +262,21 @@ def reserva_nueva(request):
                 duracion_horas=duracion_horas,
                 num_adultos=int(request.POST.get('num_adultos', 1)),
                 origen=request.POST.get('origen', 'DIRECTO'),
+                observaciones=request.POST.get('observaciones', ''),
             )
             reserva.precio_total = reserva.calcular_precio()
             reserva.save()
+
+            # Registrar auditoria
+            from reportes.models import registrar_auditoria
+            registrar_auditoria(
+                usuario=request.user,
+                accion="Crear Reserva",
+                registro_id=reserva.id,
+                tabla_afectada="reservas_reserva",
+                estado_nuevo=f"ID: {reserva.id}, Huesped: {reserva.huesped.nombres} {reserva.huesped.apellidos}, Hab: {reserva.habitacion.numero}, Total: S/. {reserva.precio_total}"
+            )
+
             messages.success(request, f'Reserva #{reserva.id} creada correctamente.')
             if request.POST.get('accion') == 'checkin':
                 return redirect('reserva_checkin', reserva_id=reserva.id)
@@ -305,29 +311,32 @@ def api_habitaciones_disponibles(request):
 
     habitaciones = Habitacion.objects.exclude(estado='MANTENIMIENTO').select_related('tipo')
     
-    fecha_entrada = None
-    fecha_salida = None
+    target_entrada = None
+    target_salida = None
 
     try:
+        from datetime import time
         if modalidad == 'DIA' and fecha_entrada_str and fecha_salida_str:
             fecha_entrada = parse_date_local(fecha_entrada_str)
             fecha_salida = parse_date_local(fecha_salida_str)
+            if fecha_entrada and fecha_salida:
+                target_entrada = timezone.make_aware(datetime.combine(fecha_entrada, time(15, 0)))
+                target_salida = timezone.make_aware(datetime.combine(fecha_salida, time(12, 0)))
         elif modalidad == 'HORA' and hora_entrada_str:
             fecha_hora_entrada = parse_datetime_local(hora_entrada_str)
             if fecha_hora_entrada:
-                fecha_entrada = fecha_hora_entrada.date()
-                fecha_salida = (fecha_hora_entrada + timedelta(hours=duracion)).date()
+                target_entrada = fecha_hora_entrada
+                target_salida = fecha_hora_entrada + timedelta(hours=duracion)
     except Exception:
         pass
 
-    if fecha_entrada and fecha_salida:
+    if target_entrada and target_salida:
+        # Check overlaps on exact datetime windows:
+        # A reservation overlaps if (start1 < end2) AND (end1 > start2)
         reservas_cruzadas = Reserva.objects.filter(
             estado__in=['PENDIENTE', 'CONFIRMADA', 'CHECKIN'],
-            fecha_entrada__lt=fecha_salida,
-            fecha_salida__gt=fecha_entrada
-        ).exclude(
-            # Si una reserva de misma modalidad HORA no se cruza en la misma hora (se podría omitir por simplicidad de momento, limitándonos a día completo por seguridad)
-            estado__in=[] # Placeholder si luego ampliamos cruces por hora exacta
+            fecha_hora_entrada__lt=target_salida,
+            fecha_hora_salida__gt=target_entrada
         ).values_list('habitacion_id', flat=True)
         
         habitaciones = habitaciones.exclude(id__in=reservas_cruzadas)
@@ -343,6 +352,7 @@ def api_habitaciones_disponibles(request):
             'precio_base': str(h.tipo.precio_base)
         })
     return JsonResponse({'habitaciones': data})
+
 
 
 
@@ -393,6 +403,9 @@ def reserva_checkin(request, reserva_id):
                 tipo='HABITACION',
             )
             folio.calcular_totales()
+        # Asignar pagos anticipados al nuevo folio
+        Pago.objects.filter(reserva=reserva, folio__isnull=True).update(folio=folio)
+        folio.calcular_totales()
         messages.success(request, f'Check-in realizado. Estancia #{estancia.id} creada.')
         return redirect('folio', estancia_id=estancia.id)
 
@@ -516,7 +529,7 @@ def checkout_view(request, estancia_id):
             return redirect('folio', estancia_id=estancia_id)
         estancia.hacer_checkout()
         messages.success(request, 'Check-out realizado correctamente.')
-        return redirect('reservas_lista')
+        return redirect('folio_imprimir', estancia_id=estancia.id)
     except Exception as e:
         messages.error(request, str(e))
         return redirect('folio', estancia_id=estancia_id)
@@ -557,8 +570,8 @@ def housekeeping_estado(request, hab_id):
 
 @login_required
 def reportes_view(request):
-    if not _es_recepcionista(request.user):
-        return _acceso_denegado(request)
+    if not _es_admin(request.user):
+        return _acceso_denegado(request, 'Solo los administradores pueden ver reportes.')
     
     import json
     from datetime import timedelta, datetime
@@ -1077,6 +1090,28 @@ def usuarios_lista(request):
     
     return render(request, 'usuarios/lista.html', {'usuarios': usuarios, 'query': query})
 
+def error_403(request, exception=None):
+    return render(request, '403.html', {'mensaje_error': 'La página denegó el acceso por falta de permisos.'}, status=403)
+
+def error_404(request, exception=None):
+    return render(request, '404.html', status=404)
+
+@login_required
+def reserva_imprimir_ficha(request, reserva_id):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
+    reserva = get_object_or_404(Reserva.objects.select_related('huesped', 'habitacion__tipo', 'hotel'), id=reserva_id)
+    return render(request, 'reservas/imprimir_ficha.html', {'reserva': reserva})
+
+@login_required
+def folio_imprimir(request, estancia_id):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
+    estancia = get_object_or_404(Estancia, id=estancia_id)
+    folio, _ = Folio.objects.get_or_create(estancia=estancia)
+    folio.calcular_totales()
+    return render(request, 'estancias/imprimir_folio.html', {'estancia': estancia, 'folio': folio})
+
 
 @login_required
 def usuario_editar(request, user_id):
@@ -1197,3 +1232,271 @@ def api_consulta_dni(request):
         return JsonResponse(data)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def reserva_editar(request, reserva_id):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
+    reserva = get_object_or_404(Reserva, id=reserva_id)
+    if reserva.estado in ['CHECKIN', 'CHECKOUT', 'CANCELADA']:
+        messages.error(request, 'No se puede modificar una reserva en estado check-in, check-out o cancelada.')
+        return redirect('reserva_detalle', reserva_id=reserva.id)
+
+    if request.method == 'POST':
+        try:
+            huesped_id = request.POST.get('huesped_id')
+            if huesped_id:
+                reserva.huesped = Huesped.objects.get(id=huesped_id)
+            else:
+                reserva.huesped = Huesped.objects.get(num_doc=request.POST['huesped_doc'])
+
+            reserva.habitacion = Habitacion.objects.get(id=request.POST['habitacion'])
+            reserva.modalidad = request.POST.get('modalidad', Reserva.POR_DIA)
+            reserva.num_adultos = int(request.POST.get('num_adultos', 1))
+            reserva.origen = request.POST.get('origen', 'DIRECTO')
+            reserva.observaciones = request.POST.get('observaciones', '')
+
+            if reserva.modalidad == Reserva.POR_HORA:
+                reserva.fecha_hora_entrada = parse_datetime_local(request.POST.get('fecha_hora_entrada'))
+                if not reserva.fecha_hora_entrada:
+                    raise ValidationError('Debes indicar la fecha y hora de ingreso.')
+                reserva.duracion_horas = request.POST.get('duracion_horas') or 0
+                reserva.fecha_entrada = reserva.fecha_hora_entrada.date()
+                reserva.fecha_salida = (reserva.fecha_hora_entrada + timedelta(hours=float(reserva.duracion_horas or 3))).date()
+            else:
+                reserva.fecha_entrada = parse_date_local(request.POST.get('fecha_entrada'))
+                reserva.fecha_salida = parse_date_local(
+                    request.POST.get('fecha_salida') or request.POST.get('fecha_entrada')
+                )
+                if not reserva.fecha_entrada or not reserva.fecha_salida:
+                    raise ValidationError('Debes indicar las fechas de entrada y salida.')
+                reserva.fecha_hora_entrada = None
+                reserva.duracion_horas = 0
+
+            # Validar y salvar
+            reserva.precio_total = reserva.calcular_precio()
+            reserva.save()
+
+            # Registrar auditoria
+            from reportes.models import registrar_auditoria
+            registrar_auditoria(
+                usuario=request.user,
+                accion="Modificar Reserva",
+                registro_id=reserva.id,
+                tabla_afectada="reservas_reserva",
+                estado_nuevo=f"ID: {reserva.id}, Huesped: {reserva.huesped.nombres} {reserva.huesped.apellidos}, Hab: {reserva.habitacion.numero}, Total: S/. {reserva.precio_total}"
+            )
+
+            messages.success(request, f'Reserva #{reserva.id} modificada correctamente.')
+            return redirect('reserva_detalle', reserva_id=reserva.id)
+        except Exception as e:
+            messages.error(request, f'Error al modificar la reserva: {str(e)}')
+
+    selected_habitacion_id = reserva.habitacion.id if reserva.habitacion else ''
+    selected_huesped = reserva.huesped
+
+    return render(request, 'reservas/editar.html', {
+        'reserva': reserva,
+        'huespedes': Huesped.objects.all().order_by('nombres', 'apellidos'),
+        'habitaciones': Habitacion.objects.exclude(estado='MANTENIMIENTO').select_related('tipo').order_by('piso', 'numero'),
+        'selected_habitacion_id': selected_habitacion_id,
+        'selected_huesped': selected_huesped,
+        'hora_actual': timezone.localtime().strftime('%Y-%m-%dT%H:%M'),
+    })
+
+
+@login_required
+def reserva_cancelar(request, reserva_id):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
+    reserva = get_object_or_404(Reserva, id=reserva_id)
+    if reserva.estado in ['CHECKIN', 'CHECKOUT', 'CANCELADA']:
+        messages.error(request, 'No se puede cancelar una reserva en estado check-in, check-out o cancelada.')
+        return redirect('reserva_detalle', reserva_id=reserva.id)
+
+    if request.method == 'POST':
+        motivo = request.POST.get('motivo_cancelacion', '').strip()
+        if not motivo:
+            messages.error(request, 'Debes ingresar un motivo de cancelación.')
+            return redirect('reserva_detalle', reserva_id=reserva.id)
+
+        reserva.estado = Reserva.CANCELADA
+        reserva.motivo_cancelacion = motivo
+        reserva.save()
+
+        # Registrar auditoria
+        from reportes.models import registrar_auditoria
+        registrar_auditoria(
+            usuario=request.user,
+            accion="Cancelar Reserva",
+            registro_id=reserva.id,
+            tabla_afectada="reservas_reserva",
+            estado_nuevo=f"Estado: CANCELADA, Motivo: {motivo}"
+        )
+
+        messages.success(request, f'Reserva #{reserva.id} cancelada correctamente.')
+        return redirect('reserva_detalle', reserva_id=reserva.id)
+
+    return redirect('reserva_detalle', reserva_id=reserva.id)
+
+
+@login_required
+def registrar_pago_anticipo(request, reserva_id):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
+    reserva = get_object_or_404(Reserva, id=reserva_id)
+    if request.method == 'POST':
+        monto = request.POST.get('monto')
+        metodo_pago = request.POST.get('metodo_pago', Pago.EFECTIVO)
+        transaccion_id = request.POST.get('transaccion_id') or None
+
+        if monto:
+            try:
+                monto_decimal = Decimal(monto)
+                if monto_decimal <= 0:
+                    messages.error(request, 'El monto debe ser mayor a cero.')
+                elif monto_decimal > reserva.saldo_pendiente:
+                    messages.error(request, f'No se puede pagar más del saldo pendiente (S/. {reserva.saldo_pendiente:.2f}).')
+                elif metodo_pago != Pago.EFECTIVO and not transaccion_id:
+                    messages.error(request, 'Debes ingresar el ID de transacción para pagos electrónicos/bancarios.')
+                else:
+                    pago = Pago.objects.create(
+                        reserva=reserva,
+                        monto=monto_decimal,
+                        metodo_pago=metodo_pago,
+                        transaccion_id=transaccion_id
+                    )
+                    
+                    # Registrar auditoria
+                    from reportes.models import registrar_auditoria
+                    registrar_auditoria(
+                        usuario=request.user,
+                        accion="Registrar Pago Anticipado",
+                        registro_id=pago.id,
+                        tabla_afectada="estancias_pago",
+                        estado_nuevo=f"ID: {pago.id}, Reserva: {reserva.id}, Monto: S/. {monto_decimal}, Metodo: {metodo_pago}"
+                    )
+                    
+                    messages.success(request, 'Pago anticipado registrado correctamente.')
+            except Exception as e:
+                messages.error(request, f'Error al registrar pago: {str(e)}')
+        else:
+            messages.error(request, 'Monto inválido para el pago.')
+            
+    return redirect('reserva_detalle', reserva_id=reserva_id)
+
+
+@login_required
+def solicitar_reembolso(request, pago_id):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
+    pago = get_object_or_404(Pago, id=pago_id)
+    
+    redirect_url = redirect('dashboard')
+    if pago.folio:
+        redirect_url = redirect('folio', estancia_id=pago.folio.estancia.id)
+    elif pago.reserva:
+        redirect_url = redirect('reserva_detalle', reserva_id=pago.reserva.id)
+
+    if request.method == 'POST':
+        monto_str = request.POST.get('monto')
+        motivo = request.POST.get('motivo', '').strip()
+        
+        if not monto_str or not motivo:
+            messages.error(request, 'Debes ingresar monto y motivo del reembolso.')
+            return redirect_url
+
+        try:
+            monto_decimal = Decimal(monto_str)
+            if monto_decimal <= 0:
+                messages.error(request, 'El monto del reembolso debe ser mayor a cero.')
+                return redirect_url
+
+            from estancias.models import Reembolso
+            reembolsos_previos = Reembolso.objects.filter(
+                pago=pago,
+                estado__in=[Reembolso.SOLICITADO, Reembolso.APROBADO]
+            )
+            total_reembolsado = sum(r.monto for r in reembolsos_previos)
+            
+            if total_reembolsado + monto_decimal > pago.monto:
+                messages.error(request, f'El reembolso acumulado no puede exceder el monto original del pago (S/. {pago.monto:.2f}).')
+                return redirect_url
+                
+            reembolso = Reembolso.objects.create(
+                pago=pago,
+                monto=monto_decimal,
+                motivo=motivo,
+                estado=Reembolso.SOLICITADO,
+                solicitado_por=request.user
+            )
+            
+            # Registrar auditoria
+            from reportes.models import registrar_auditoria
+            registrar_auditoria(
+                usuario=request.user,
+                accion="Solicitar Reembolso",
+                registro_id=reembolso.id,
+                tabla_afectada="estancias_reembolso",
+                estado_nuevo=f"ID: {reembolso.id}, Pago: {pago.id}, Monto: S/. {monto_decimal}"
+            )
+            
+            messages.success(request, 'Solicitud de reembolso registrada correctamente.')
+        except Exception as e:
+            messages.error(request, f'Error al registrar la solicitud: {str(e)}')
+            
+    return redirect_url
+
+
+@login_required
+def aprobar_reembolso(request, reembolso_id):
+    if not _es_admin(request.user):
+        return _acceso_denegado(request, 'Solo los administradores pueden resolver reembolsos.')
+        
+    from estancias.models import Reembolso
+    reembolso = get_object_or_404(Reembolso, id=reembolso_id)
+    
+    redirect_url = redirect('dashboard')
+    if reembolso.pago.folio:
+        redirect_url = redirect('folio', estancia_id=reembolso.pago.folio.estancia.id)
+    elif reembolso.pago.reserva:
+        redirect_url = redirect('reserva_detalle', reserva_id=reembolso.pago.reserva.id)
+
+    if request.method == 'POST':
+        accion = request.POST.get('accion')
+        observacion = request.POST.get('observacion', '').strip()
+        
+        if reembolso.estado != Reembolso.SOLICITADO:
+            messages.error(request, 'Este reembolso ya ha sido resuelto.')
+            return redirect_url
+
+        if accion in ['APROBAR', 'aprobar']:
+            reembolso.estado = Reembolso.APROBADO
+        elif accion in ['RECHAZAR', 'rechazar']:
+            reembolso.estado = Reembolso.RECHAZADO
+        else:
+            messages.error(request, 'Acción no válida.')
+            return redirect_url
+            
+        reembolso.aprobado_por = request.user
+        reembolso.fecha_resolucion = timezone.now()
+        reembolso.observacion = observacion
+        reembolso.save()
+        
+        # Registrar auditoria
+        from reportes.models import registrar_auditoria
+        registrar_auditoria(
+            usuario=request.user,
+            accion="Resolver Reembolso",
+            registro_id=reembolso.id,
+            tabla_afectada="estancias_reembolso",
+            estado_nuevo=f"ID: {reembolso.id}, Estado: {reembolso.estado}, Observacion: {observacion}"
+        )
+        
+        messages.success(request, f'Reembolso #{reembolso.id} resuelto: {reembolso.get_estado_display()}.')
+        
+    return redirect_url
+
+
+

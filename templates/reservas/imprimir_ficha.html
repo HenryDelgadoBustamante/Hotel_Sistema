@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Ficha de Registro {{ reserva.id }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #fff;
+            color: #000;
+            margin: 0;
+            padding: 20px;
+            font-size: 14px;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .hotel-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0;
+            text-transform: uppercase;
+        }
+
+        .doc-title {
+            font-size: 18px;
+            margin-top: 5px;
+            letter-spacing: 1px;
+        }
+
+        .section-title {
+            background-color: #f0f0f0;
+            padding: 5px;
+            font-weight: bold;
+            margin-top: 20px;
+            border: 1px solid #ccc;
+        }
+
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .info-table th {
+            text-align: left;
+            padding: 6px;
+            width: 30%;
+            color: #555;
+            font-size: 12px;
+            border-bottom: 1px dotted #ccc;
+        }
+
+        .info-table td {
+            padding: 6px;
+            border-bottom: 1px dotted #ccc;
+            font-weight: bold;
+        }
+
+        .signatures {
+            margin-top: 80px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .sig-box {
+            width: 40%;
+            text-align: center;
+            border-top: 1px solid #000;
+            padding-top: 10px;
+        }
+
+        .terms {
+            font-size: 10px;
+            margin-top: 30px;
+            text-align: justify;
+            color: #444;
+        }
+
+        @media print {
+            @page {
+                margin: 1cm;
+                size: A4;
+            }
+
+            body {
+                padding: 0;
+            }
+
+            .no-print {
+                display: none;
+            }
+        }
+
+        .btn-print {
+            padding: 10px 20px;
+            background: #2563eb;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 20px;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body onload="window.print()">
+    <div class="no-print" style="text-align: right;">
+        <button onclick="window.print()" class="btn-print">Imprimir / Guardar PDF</button>
+        <button onclick="window.close()" class="btn-print" style="background:#6b7280; margin-left:10px;">Cerrar</button>
+    </div>
+
+    <div class="header">
+        <h1 class="hotel-name">{{ reserva.hotel.nombre|default:"HOTEL SYSTEM" }}</h1>
+        <div class="doc-title">FICHA DE REGISTRO DE HUÉSPED</div>
+        <div style="font-size: 12px; margin-top:5px;">Reserva Nº {{ reserva.id }} | Fecha: {% now "d/m/Y H:i" %}</div>
+    </div>
+
+    <div class="section-title">DATOS DEL HUÉSPED</div>
+    <table class="info-table">
+        <tr>
+            <th>NOMBRES Y APELLIDOS</th>
+            <td>{{ reserva.huesped.nombres }} {{ reserva.huesped.apellidos }}</td>
+        </tr>
+        <tr>
+            <th>DOCUMENTO DE IDENTIDAD</th>
+            <td>{{ reserva.huesped.tipo_doc }} - {{ reserva.huesped.num_doc }}</td>
+        </tr>
+        <tr>
+            <th>PROCEDENCIA / DIRECCIÓN</th>
+            <td>{{ reserva.huesped.direccion|default:"_______________________________________" }}</td>
+        </tr>
+        <tr>
+            <th>TELÉFONO</th>
+            <td>{{ reserva.huesped.telefono|default:"__________________" }}</td>
+        </tr>
+        <tr>
+            <th>CORREO ELECTRÓNICO</th>
+            <td>{{ reserva.huesped.email|default:"__________________" }}</td>
+        </tr>
+    </table>
+
+    <div class="section-title">DETALLES DEL ALOJAMIENTO</div>
+    <table class="info-table">
+        <tr>
+            <th>HABITACIÓN ASIGNADA</th>
+            <td>Hab. {{ reserva.habitacion.numero }} ({{ reserva.habitacion.tipo.nombre }})</td>
+        </tr>
+        <tr>
+            <th>FECHA / HORA ENTRADA</th>
+            <td>{{ reserva.fecha_hora_entrada|date:"d/m/Y H:i"|default:reserva.fecha_entrada|default:"No especificada"
+                }}</td>
+        </tr>
+        <tr>
+            <th>FECHA / HORA SALIDA ESPERADA</th>
+            <td>{{ reserva.fecha_hora_salida|date:"d/m/Y H:i"|default:reserva.fecha_salida|default:"No especificada" }}
+            </td>
+        </tr>
+        <tr>
+            <th>NÚMERO DE PERSONAS</th>
+            <td>{{ reserva.num_adultos }} Adultos {% if reserva.num_ninos %}, {{ reserva.num_ninos }} Niños{% endif %}
+            </td>
+        </tr>
+        <tr>
+            <th>MODALIDAD Y TARIFA TOTAL</th>
+            <td>{{ reserva.get_modalidad_display }} - S/. {{ reserva.precio_total }}</td>
+        </tr>
+    </table>
+
+    <div class="terms">
+        <p><strong>REGLAMENTO Y CONDICIONES (CONTRATO DE HOSPEDAJE)</strong></p>
+        <p>1. La hora de salida (Check-out) es estrictamente a la acordada. Toda salida tardía generará un recargo
+            automático en el folio.<br>
+            2. El hotel no se responsabiliza por objetos de valor no declarados ni dejados fuera de las cajas de
+            seguridad institucionales.<br>
+            3. Está prohibido fumar dentro de las habitaciones. Toda infracción acarreará multa por limpieza y
+            lavandería especializada.<br>
+            4. Al firmar este documento, el huésped acepta conocer y someterse al reglamento interno del
+            establecimiento, afirmando que los datos declarados son veraces.</p>
+    </div>
+
+    <div class="signatures">
+        <div class="sig-box">
+            Firma del Huésped
+        </div>
+        <div class="sig-box">
+            Sello / Firma Recepción
+        </div>
+    </div>
+</body>
+
+</html>

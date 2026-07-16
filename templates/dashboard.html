@@ -491,8 +491,7 @@
                       <span
                         class="badge {% if hab.estado_visual == 'RESERVADA' or hab.estado_visual == 'RETRASO' %}bg-primary{% elif hab.estado == 'DISPONIBLE' %}bg-success{% elif hab.estado == 'OCUPADA' %}bg-danger{% elif hab.estado == 'LIMPIEZA' %}bg-warning text-dark{% else %}bg-secondary{% endif %}"
                         style="padding: 6px 12px; border-radius: 6px; font-weight: 600; letter-spacing: 0.3px;">
-                        {% if hab.estado_visual == 'RESERVADA' or hab.estado_visual == 'RETRASO' %}RESERVADA{% else %}{{
-                        hab.get_estado_display }}{% endif %}
+                        {% if hab.estado_visual == 'RESERVADA' or hab.estado_visual == 'RETRASO' %}RESERVADA{% else %}{{ hab.get_estado_display }}{% endif %}
                       </span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
@@ -648,8 +647,7 @@
               <div class="reserva-item">
                 <div class="res-guest-info">
                   <div class="res-guest-initials" style="background: rgba(16,185,129,0.1); color: #10b981;">
-                    {{ e.reserva.huesped.nombres|make_list|first|upper }}{{
-                    e.reserva.huesped.apellidos|make_list|first|upper }}
+                    {{ e.reserva.huesped.nombres|make_list|first|upper }}{{ e.reserva.huesped.apellidos|make_list|first|upper }}
                   </div>
                   <div>
                     <div class="res-name">{{ e.reserva.huesped.nombres }} {{ e.reserva.huesped.apellidos }}</div>
@@ -679,8 +677,7 @@
               <div class="reserva-item">
                 <div class="res-guest-info">
                   <div class="res-guest-initials" style="background: rgba(245,158,11,0.1); color: #f59e0b;">
-                    {{ e.reserva.huesped.nombres|make_list|first|upper }}{{
-                    e.reserva.huesped.apellidos|make_list|first|upper }}
+                    {{ e.reserva.huesped.nombres|make_list|first|upper }}{{ e.reserva.huesped.apellidos|make_list|first|upper }}
                   </div>
                   <div>
                     <div class="res-name">{{ e.reserva.huesped.nombres }} {{ e.reserva.huesped.apellidos }}</div>

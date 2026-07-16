@@ -35,6 +35,21 @@ class ReservaViewSet(viewsets.ModelViewSet):
         reserva.precio_total = precio
         reserva.save()
 
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        if instance.estado in [Reserva.CHECKIN, Reserva.CHECKOUT, Reserva.CANCELADA]:
+            from rest_framework.exceptions import ValidationError as DRFValidationError
+            raise DRFValidationError('No se puede modificar una reserva en estado check-in, check-out o cancelada.')
+        reserva = serializer.save()
+        reserva.precio_total = reserva.calcular_precio()
+        reserva.save()
+
+    def perform_destroy(self, instance):
+        if instance.estado in [Reserva.CHECKIN, Reserva.CHECKOUT, Reserva.CANCELADA]:
+            from rest_framework.exceptions import ValidationError as DRFValidationError
+            raise DRFValidationError('No se puede eliminar una reserva en estado check-in, check-out o cancelada.')
+        instance.delete()
+
     @action(detail=True, methods=['post'], url_path='checkin')
     def checkin(self, request, pk=None):
         reserva = self.get_object()
@@ -75,10 +90,48 @@ class ReservaViewSet(viewsets.ModelViewSet):
             habitacion=habitacion,
             precio_final=reserva.precio_total
         )
-        Folio.objects.create(estancia=estancia)
+        folio = Folio.objects.create(estancia=estancia)
+
+        from estancias.models import Pago
+        Pago.objects.filter(reserva=reserva, folio__isnull=True).update(folio=folio)
+        folio.calcular_totales()
 
         return Response({
             'mensaje': 'Check-in realizado correctamente',
             'estancia_id': estancia.id,
             'habitacion': habitacion.numero
         })
+
+    @action(detail=True, methods=['post'], url_path='cancelar')
+    def cancelar(self, request, pk=None):
+        reserva = self.get_object()
+
+        if reserva.estado in [Reserva.CHECKIN, Reserva.CHECKOUT, Reserva.CANCELADA]:
+            return Response(
+                {'error': 'No se puede cancelar una reserva en estado check-in, check-out o cancelada'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        motivo = request.data.get('motivo_cancelacion', '').strip()
+        if not motivo:
+            return Response(
+                {'error': 'Debes ingresar un motivo de cancelación'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        reserva.estado = Reserva.CANCELADA
+        reserva.motivo_cancelacion = motivo
+        reserva.save()
+
+        # Registrar auditoria
+        from reportes.models import registrar_auditoria
+        registrar_auditoria(
+            usuario=request.user,
+            accion="Cancelar Reserva",
+            registro_id=reserva.id,
+            tabla_afectada="reservas_reserva",
+            estado_nuevo=f"Estado: CANCELADA, Motivo: {motivo}"
+        )
+
+        return Response({'mensaje': 'Reserva cancelada correctamente'})
+
