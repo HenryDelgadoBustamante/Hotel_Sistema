@@ -769,6 +769,54 @@ def reservas_calendario(request):
 
 
 @login_required
+def consultar_disponibilidad(request):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
+    
+    fecha_entrada_str = request.GET.get('fecha_entrada')
+    fecha_salida_str = request.GET.get('fecha_salida')
+    tipo_hab = request.GET.get('tipo_habitacion')
+    capacidad = request.GET.get('capacidad')
+    
+    habitaciones = Habitacion.objects.exclude(estado='MANTENIMIENTO').select_related('tipo')
+    
+    if tipo_hab:
+        habitaciones = habitaciones.filter(tipo_id=tipo_hab)
+    if capacidad:
+        habitaciones = habitaciones.filter(tipo__capacidad__gte=int(capacidad))
+    
+    if fecha_entrada_str and fecha_salida_str:
+        try:
+            from datetime import datetime, time
+            fecha_entrada = parse_date_local(fecha_entrada_str)
+            fecha_salida = parse_date_local(fecha_salida_str)
+            
+            target_entrada = timezone.make_aware(datetime.combine(fecha_entrada, time(15, 0)))
+            target_salida = timezone.make_aware(datetime.combine(fecha_salida, time(12, 0)))
+            
+            reservados = Reserva.objects.filter(
+                estado__in=['PENDIENTE', 'CONFIRMADA', 'CHECKIN'],
+                fecha_hora_entrada__lt=target_salida,
+                fecha_hora_salida__gt=target_entrada
+            ).values_list('habitacion_id', flat=True)
+            
+            habitaciones = habitaciones.exclude(id__in=reservados)
+        except:
+            pass
+    
+    tipos = TipoHabitacion.objects.all()
+    
+    return render(request, 'reservas/disponibilidad.html', {
+        'habitaciones': habitaciones,
+        'tipos': tipos,
+        'fecha_entrada': fecha_entrada_str,
+        'fecha_salida': fecha_salida_str,
+        'tipo_hab': int(tipo_hab) if tipo_hab else '',
+        'capacidad': capacidad,
+    })
+
+
+@login_required
 def huespedes_lista(request):
     if not _es_recepcionista(request.user):
         return _acceso_denegado(request)
@@ -1307,22 +1355,51 @@ def reserva_cancelar(request, reserva_id):
             messages.error(request, 'Debes ingresar un motivo de cancelación.')
             return redirect('reserva_detalle', reserva_id=reserva.id)
 
-        reserva.estado = Reserva.CANCELADA
-        reserva.motivo_cancelacion = motivo
+        # Reembolsar anticipos automáticamente si existen
+        pagos_anticipados = Pago.objects.filter(reserva=reserva, folio__isnull=True)
+        total_reembolsado = Decimal('0.00')
+        for pago in pagos_anticipados:
+            from estancias.models import Reembolso
+            Reembolso.objects.create(
+                pago=pago,
+                monto=pago.monto,
+                motivo=f"Cancelación de reserva #{reserva.id}. {motivo}",
+                estado=Reembolso.APROBADO,
+                solicitado_por=request.user,
+                aprobado_por=request.user,
+                fecha_resolucion=timezone.now(),
+                observacion="Reembolso automático por cancelación de reserva"
+            )
+            total_reembolsado += pago.monto
+
+        if total_reembolsado > 0:
+            reserva.estado = Reserva.REEMBOLSADO
+            reserva.motivo_cancelacion = f"{motivo} (Reembolsado: S/. {total_reembolsado})"
+        else:
+            reserva.estado = Reserva.CANCELADA
+            reserva.motivo_cancelacion = motivo
         reserva.save()
+
+        if reserva.habitacion:
+            reserva.habitacion.estado = Habitacion.DISPONIBLE
+            reserva.habitacion.save()
 
         # Registrar auditoria
         from reportes.models import registrar_auditoria
+        obs_extra = f" Reembolsado: S/. {total_reembolsado}" if total_reembolsado > 0 else ""
         registrar_auditoria(
             usuario=request.user,
             accion="Cancelar Reserva",
             registro_id=reserva.id,
             tabla_afectada="reservas_reserva",
-            estado_nuevo=f"Estado: CANCELADA, Motivo: {motivo}"
+            estado_nuevo=f"Estado: CANCELADA, Motivo: {motivo}{obs_extra}"
         )
 
-        messages.success(request, f'Reserva #{reserva.id} cancelada correctamente.')
-        return redirect('reserva_detalle', reserva_id=reserva.id)
+        if total_reembolsado > 0:
+            messages.success(request, f'Reserva #{reserva.id} cancelada. Se reembolsaron S/. {total_reembolsado} automáticamente.')
+        else:
+            messages.success(request, f'Reserva #{reserva.id} cancelada correctamente.')
+        return redirect('reservas_lista')
 
     return redirect('reserva_detalle', reserva_id=reserva.id)
 
@@ -1405,9 +1482,14 @@ def solicitar_reembolso(request, pago_id):
                 estado__in=[Reembolso.SOLICITADO, Reembolso.APROBADO]
             )
             total_reembolsado = sum(r.monto for r in reembolsos_previos)
+            monto_disponible = pago.monto - total_reembolsado
             
-            if total_reembolsado + monto_decimal > pago.monto:
-                messages.error(request, f'El reembolso acumulado no puede exceder el monto original del pago (S/. {pago.monto:.2f}).')
+            if monto_disponible <= 0:
+                messages.error(request, 'Este pago ya fue completamente reembolsado.')
+                return redirect_url
+                
+            if monto_decimal > monto_disponible:
+                messages.error(request, f'Monto disponible para reembolsar: S/. {monto_disponible:.2f}')
                 return redirect_url
                 
             reembolso = Reembolso.objects.create(
@@ -1436,6 +1518,37 @@ def solicitar_reembolso(request, pago_id):
 
 
 @login_required
+def cambiar_habitacion(request, estancia_id):
+    if not _es_recepcionista(request.user):
+        return _acceso_denegado(request)
+    estancia = get_object_or_404(Estancia, id=estancia_id)
+    
+    if request.method == 'POST':
+        nueva_hab_id = request.POST.get('nueva_habitacion_id')
+        motivo = request.POST.get('motivo', '').strip()
+        
+        if not nueva_hab_id or not motivo:
+            messages.error(request, 'Nueva habitación y motivo son requeridos.')
+            return redirect('folio', estancia_id=estancia_id)
+        
+        try:
+            import estancias.services as estancia_services
+            estancia_services.cambiar_habitacion_activo(
+                estancia_id=estancia_id,
+                nueva_habitacion_id=nueva_hab_id,
+                motivo=motivo,
+                usuario=request.user
+            )
+            messages.success(request, 'Cambio de habitación completado correctamente.')
+        except ValidationError as e:
+            messages.error(request, e.message if hasattr(e, 'message') else str(e))
+        except Exception as e:
+            messages.error(request, f'Error: {str(e)}')
+    
+    return redirect('folio', estancia_id=estancia_id)
+
+
+@login_required
 def aprobar_reembolso(request, reembolso_id):
     if not _es_admin(request.user):
         return _acceso_denegado(request, 'Solo los administradores pueden resolver reembolsos.')
@@ -1459,6 +1572,45 @@ def aprobar_reembolso(request, reembolso_id):
 
         if accion in ['APROBAR', 'aprobar']:
             reembolso.estado = Reembolso.APROBADO
+            reembolso.aprobado_por = request.user
+            reembolso.fecha_resolucion = timezone.now()
+            reembolso.observacion = observacion
+            reembolso.save()
+
+            pago = reembolso.pago
+            estancia = pago.folio.estancia if pago.folio else None
+            reserva = pago.reserva if pago.reserva else (estancia.reserva if estancia else None)
+            
+            if estancia and estancia.estado == Estancia.ACTIVA:
+                folio = estancia.folio
+                folio.calcular_totales()
+                
+                # Cerrar folio y perdonar saldo pendiente
+                folio.estado = Folio.CERRADO
+                folio.save()
+                
+                estancia.habitacion.estado = Habitacion.LIMPIEZA
+                estancia.habitacion.save()
+                estancia.fecha_checkout = timezone.now()
+                estancia.estado = Estancia.FINALIZADA
+                estancia.save()
+                
+                if reserva:
+                    reserva.estado = Reserva.REEMBOLSADO
+                    reserva.motivo_cancelacion = f"Reembolso #{reembolso.id} aprobado. {observacion}"
+                    reserva.save()
+                
+                messages.success(request, f'Reembolso aprobado. Estancia finalizada, habitación en limpieza y reserva reembolsada.')
+            elif reserva and reserva.estado in [Reserva.PENDIENTE, Reserva.CONFIRMADA]:
+                if reserva.habitacion:
+                    reserva.habitacion.estado = Habitacion.DISPONIBLE
+                    reserva.habitacion.save()
+                reserva.estado = Reserva.REEMBOLSADO
+                reserva.motivo_cancelacion = f"Reembolso anticipo #{reembolso.id} aprobado. {observacion}"
+                reserva.save()
+                messages.success(request, f'Reembolso aprobado. Reserva reembolsada y habitación liberada.')
+            else:
+                messages.success(request, f'Reembolso #{reembolso.id} aprobado correctamente.')
         elif accion in ['RECHAZAR', 'rechazar']:
             reembolso.estado = Reembolso.RECHAZADO
         else:

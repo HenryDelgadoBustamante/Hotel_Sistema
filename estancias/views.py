@@ -1,12 +1,18 @@
 # Lógica operativa de cargos y folios
+from decimal import Decimal
+
+from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.core.exceptions import ValidationError
 from config.permissions import EsRecepcionista
-from .models import Estancia, CargoEstancia, Folio
-from .serializers import EstanciaSerializer, CargoEstanciaSerializer, FolioSerializer
+from config.roles import es_admin
+from .models import Estancia, CargoEstancia, Folio, Pago, Reembolso
+from .serializers import EstanciaSerializer, CargoEstanciaSerializer, FolioSerializer, PagoSerializer, ReembolsoSerializer
+from hotel.models import Habitacion
+from reservas.models import Reserva
 
 
 class EstanciaViewSet(viewsets.ModelViewSet):
@@ -147,3 +153,149 @@ class EstanciaViewSet(viewsets.ModelViewSet):
         folio.calcular_totales()
         serializer = FolioSerializer(folio)
         return Response(serializer.data)
+
+
+class PagoViewSet(viewsets.ModelViewSet):
+    queryset = Pago.objects.select_related('folio', 'reserva').all()
+    serializer_class = PagoSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class ReembolsoViewSet(viewsets.ModelViewSet):
+    queryset = Reembolso.objects.select_related('pago', 'solicitado_por', 'aprobado_por').all()
+    serializer_class = ReembolsoSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ['aprobar', 'rechazar']:
+            return [EsRecepcionista()]
+        return [IsAuthenticated()]
+
+    def perform_create(self, serializer):
+        pago_id = self.request.data.get('pago')
+        monto = self.request.data.get('monto')
+        motivo = self.request.data.get('motivo', '').strip()
+
+        if not pago_id or not monto or not motivo:
+            from rest_framework.exceptions import ValidationError as DRFValidationError
+            raise DRFValidationError('pago, monto y motivo son requeridos.')
+
+        try:
+            monto = Decimal(str(monto))
+        except Exception:
+            from rest_framework.exceptions import ValidationError as DRFValidationError
+            raise DRFValidationError('Monto inválido.')
+
+        if monto <= 0:
+            from rest_framework.exceptions import ValidationError as DRFValidationError
+            raise DRFValidationError('El monto debe ser mayor a cero.')
+
+        pago = Pago.objects.get(id=pago_id)
+        if monto > pago.monto:
+            from rest_framework.exceptions import ValidationError as DRFValidationError
+            raise DRFValidationError(f'El monto no puede superar el pago original (S/.{pago.monto}).')
+
+        serializer.save(
+            pago=pago,
+            monto=monto,
+            motivo=motivo,
+            solicitado_por=self.request.user
+        )
+
+    @action(detail=True, methods=['post'], url_path='aprobar')
+    def aprobar(self, request, pk=None):
+        reembolso = self.get_object()
+
+        if reembolso.estado != Reembolso.SOLICITADO:
+            return Response(
+                {'error': 'Solo se pueden aprobar reembolsos en estado SOLICITADO'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not es_admin(request.user):
+            return Response(
+                {'error': 'Solo un administrador puede aprobar reembolsos'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        observacion = request.data.get('observacion', '').strip()
+
+        reembolso.estado = Reembolso.APROBADO
+        reembolso.aprobado_por = request.user
+        reembolso.observacion = observacion
+        reembolso.save()
+
+        pago = reembolso.pago
+        estancia = pago.folio.estancia if pago.folio else None
+        reserva = pago.reserva if pago.reserva else (estancia.reserva if estancia else None)
+
+        if estancia and estancia.estado == Estancia.ACTIVA:
+            folio = estancia.folio
+            folio.calcular_totales()
+            folio.estado = Folio.CERRADO
+            folio.save()
+            
+            estancia.habitacion.estado = Habitacion.LIMPIEZA
+            estancia.habitacion.save()
+            estancia.fecha_checkout = timezone.now()
+            estancia.estado = Estancia.FINALIZADA
+            estancia.save()
+            
+            if reserva:
+                reserva.estado = 'REEMBOLSADO'
+                reserva.motivo_cancelacion = f"Reembolso #{reembolso.id} aprobado. {observacion}"
+                reserva.save()
+        elif reserva and reserva.estado in ['PENDIENTE', 'CONFIRMADA']:
+            if reserva.habitacion:
+                reserva.habitacion.estado = Habitacion.DISPONIBLE
+                reserva.habitacion.save()
+            reserva.estado = 'REEMBOLSADO'
+            reserva.motivo_cancelacion = f"Reembolso anticipo #{reembolso.id} aprobado. {observacion}"
+            reserva.save()
+
+        from reportes.models import registrar_auditoria
+        registrar_auditoria(
+            usuario=request.user,
+            accion="Reembolso Aprobado",
+            registro_id=reembolso.id,
+            tabla_afectada="estancias_reembolso",
+            estado_nuevo=f"Reembolso S/.{reembolso.monto} aprobado. Motivo: {reembolso.motivo}"
+        )
+
+        return Response({
+            'mensaje': 'Reembolso aprobado. Estancia finalizada y reserva reembolsada.',
+            'monto': reembolso.monto
+        })
+
+    @action(detail=True, methods=['post'], url_path='rechazar')
+    def rechazar(self, request, pk=None):
+        reembolso = self.get_object()
+
+        if reembolso.estado != Reembolso.SOLICITADO:
+            return Response(
+                {'error': 'Solo se pueden rechazar reembolsos en estado SOLICITADO'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        observacion = request.data.get('observacion', '').strip()
+        if not observacion:
+            return Response(
+                {'error': 'Debe proporcionar una observación para el rechazo'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        reembolso.estado = Reembolso.RECHAZADO
+        reembolso.aprobado_por = request.user
+        reembolso.observacion = observacion
+        reembolso.save()
+
+        from reportes.models import registrar_auditoria
+        registrar_auditoria(
+            usuario=request.user,
+            accion="Reembolso Rechazado",
+            registro_id=reembolso.id,
+            tabla_afectada="estancias_reembolso",
+            estado_nuevo=f"Reembolso rechazado. Observación: {observacion}"
+        )
+
+        return Response({'mensaje': 'Reembolso rechazado correctamente'})

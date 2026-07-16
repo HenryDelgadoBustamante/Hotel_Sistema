@@ -1,6 +1,6 @@
 # Serializadores de datos de cuentas
 from rest_framework import serializers
-from .models import Estancia, CargoEstancia, Folio
+from .models import Estancia, CargoEstancia, Folio, Pago, Reembolso
 
 
 class CargoEstanciaSerializer(serializers.ModelSerializer):
@@ -23,4 +23,16 @@ class EstanciaSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Estancia
+        fields = '__all__'
+
+
+class PagoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Pago
+        fields = '__all__'
+
+
+class ReembolsoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Reembolso
         fields = '__all__'

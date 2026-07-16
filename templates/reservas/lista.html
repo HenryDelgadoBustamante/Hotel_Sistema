@@ -20,6 +20,7 @@
     </form>
   </div>
   <div>
+    <a href="/reservas/disponibilidad/" class="btn btn-outline-success me-2"><i class="bi bi-search me-1"></i>Disponibilidad</a>
     <a href="/reservas/calendario/" class="btn btn-outline-info me-2"><i class="bi bi-calendar3 me-1"></i>Calendario</a>
     {% with groups=request.user.groups.all|stringformat:"s" %}
     {% if request.user.is_superuser or 'admin' in groups or 'recepcionista' in groups %}
@@ -177,13 +178,6 @@
           <td>S/. {{ r.precio_total }}</td>
           <td><span class="badge badge-{{ r.estado|lower }} px-2 py-1">{{ r.estado }}</span></td>
           <td>
-            {% if r.estado == 'PENDIENTE' or r.estado == 'CONFIRMADA' %}
-            <a href="/reservas/{{ r.id }}/checkin/" class="btn btn-sm btn-success">Check-in</a>
-            {% elif r.estado == 'CHECKIN' %}
-            {% if r.estancia %}
-            <a href="/estancias/{{ r.estancia.id }}/folio/" class="btn btn-sm btn-primary">Folio</a>
-            {% endif %}
-            {% endif %}
             <a href="/reservas/{{ r.id }}/" class="btn btn-sm btn-outline-secondary">Ver</a>
           </td>
         </tr>
@@ -196,4 +190,7 @@
     </table>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
 {% endblock %}

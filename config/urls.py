@@ -10,12 +10,12 @@ from views_frontend import (
     housekeeping_view, housekeeping_estado, reportes_view,
     huespedes_lista, huesped_nuevo, huesped_editar, exportar_huespedes_excel,
     habitaciones_lista, habitacion_nueva, habitacion_editar,
-    estancias_lista, reservas_calendario,
+    estancias_lista, reservas_calendario, consultar_disponibilidad,
     reserva_imprimir_ficha, folio_imprimir,
     usuarios_lista, usuario_editar, usuario_nuevo, usuario_eliminar,
     api_habitaciones_disponibles, api_consulta_dni,
     reserva_editar, reserva_cancelar, registrar_pago_anticipo,
-    solicitar_reembolso, aprobar_reembolso
+    solicitar_reembolso, aprobar_reembolso, cambiar_habitacion
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_yasg.views import get_schema_view
@@ -78,6 +78,7 @@ urlpatterns = [
     path('pagos/<int:pago_id>/reembolso/', solicitar_reembolso, name='solicitar_reembolso'),
     path('reembolsos/<int:reembolso_id>/resolver/', aprobar_reembolso, name='aprobar_reembolso'),
     path('reservas/calendario/', reservas_calendario, name='reservas_calendario'),
+    path('reservas/disponibilidad/', consultar_disponibilidad, name='consultar_disponibilidad'),
     path('reservas/nueva/', reserva_nueva, name='reserva_nueva'),
     path('reservas/<int:reserva_id>/checkin/', reserva_checkin, name='reserva_checkin'),
     path('api/habitaciones-disponibles/', api_habitaciones_disponibles, name='api_habitaciones_disponibles'),
@@ -88,6 +89,7 @@ urlpatterns = [
     path('reservas/<int:reserva_id>/imprimir-ficha/', reserva_imprimir_ficha, name='reserva_imprimir_ficha'),
     path('estancias/<int:estancia_id>/pago/', registrar_pago, name='registrar_pago'),
     path('estancias/<int:estancia_id>/checkout/', checkout_view, name='checkout'),
+    path('estancias/<int:estancia_id>/cambiar-habitacion/', cambiar_habitacion, name='cambiar_habitacion'),
     path('housekeeping/', housekeeping_view, name='housekeeping'),
     path('housekeeping/<int:hab_id>/estado/', housekeeping_estado, name='housekeeping_estado'),
     path('reportes/', reportes_view, name='reportes'),

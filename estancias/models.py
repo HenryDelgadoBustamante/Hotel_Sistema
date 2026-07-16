@@ -156,6 +156,12 @@ class Pago(models.Model):
         folio_part = f"Folio #{self.folio.id}" if self.folio else f"Reserva #{self.reserva.id} (Anticipo)"
         return f"Pago #{self.id} - {folio_part} - S/.{self.monto} ({self.metodo_pago})"
 
+    @property
+    def reembolsado(self):
+        from django.db.models import Sum
+        total = self.reembolsos.filter(estado='APROBADO').aggregate(total=Sum('monto'))['total'] or 0
+        return total >= self.monto
+
 
 class Reembolso(models.Model):
     SOLICITADO = 'SOLICITADO'

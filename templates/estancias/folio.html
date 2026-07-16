@@ -372,6 +372,9 @@
           {% if estancia.estado == 'ACTIVA' %}ACTIVA{% else %}FINALIZADA{% endif %}
         </span>
         {% if estancia.estado == 'ACTIVA' %}
+        <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalCambiarHab" style="border-radius:8px; font-size:13px; font-weight:600;">
+          <i class="bi bi-arrow-left-right me-1"></i>Cambiar Hab.
+        </button>
         {% if folio.saldo_pendiente > 0 %}
         <button class="btn-main shadow-none" style="background: #f1f5f9; color: #94a3b8; cursor: not-allowed;"
           onclick="showToastError()">
@@ -499,6 +502,7 @@
             <th>Referencia</th>
             <th>Fecha</th>
             <th class="text-end">Monto</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -517,6 +521,15 @@
                 style="font-size: 12px;">{{ pago.transaccion_id|default:"—" }}</code></td>
             <td class="text-muted" style="font-size: 13px;">{{ pago.fecha|date:"d/m/Y H:i" }}</td>
             <td class="text-end fw-bold text-success">S/. {{ pago.monto }}</td>
+            <td class="text-end">
+              {% if not pago.reembolsado and estancia.estado == 'ACTIVA' %}
+              <button class="btn btn-sm btn-outline-danger" onclick="solicitarReembolso({{ pago.id }}, {{ pago.monto }})">
+                <i class="bi bi-arrow-return-left"></i>
+              </button>
+              {% elif pago.reembolsado %}
+              <span class="badge bg-secondary" style="font-size:10px;">Reembolsado</span>
+              {% endif %}
+            </td>
           </tr>
           {% empty %}
           <tr>
@@ -608,15 +621,15 @@
 
     <div class="f-card p-3 mb-3" style="border: 1px solid #e0e7ff; background: #f8fafc;">
       <h6 class="fw-bold mb-3" style="color: #475569; font-size: 13px; text-transform: uppercase;"><i
-          class="bi bi-printer me-2 text-indigo-500"></i>Documentos Imprimibles</h6>
+          class="bi bi-printer me-2 text-indigo-500"></i>Documentos</h6>
       <div class="d-flex flex-column gap-2">
         <a href="{% url 'reserva_imprimir_ficha' estancia.reserva.id %}" target="_blank" class="btn btn-outline-primary"
           style="text-align:left; background: #fff;">
-          <i class="bi bi-file-earmark-person me-2"></i>Ficha de Registro (Check-in)
+          <i class="bi bi-file-earmark-person me-2"></i>Ficha de Registro
         </a>
         <a href="{% url 'folio_imprimir' estancia.id %}" target="_blank" class="btn btn-outline-secondary"
           style="text-align:left; background: #fff;">
-          <i class="bi bi-receipt me-2"></i>Folio / Recibo (Check-out)
+          <i class="bi bi-receipt me-2"></i>Folio / Recibo
         </a>
       </div>
     </div>
@@ -676,6 +689,72 @@
   </div>
 </div>
 
+<!-- Modal Reembolso -->
+<div class="modal fade" id="modalReembolso" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content" style="border-radius: 12px;">
+      <div class="modal-header border-0 pb-0">
+        <h6 class="fw-bold text-warning"><i class="bi bi-arrow-return-left me-2"></i>Solicitar Reembolso</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="formReembolso" method="post">
+          {% csrf_token %}
+          <div class="alert alert-info py-2 small mb-3">
+            <strong>Monto máximo:</strong> S/. <span id="maxReembolso"></span>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Monto</label>
+            <input type="number" name="monto" step="0.01" min="0.01" class="form-control" id="montoReembolso" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Motivo</label>
+            <textarea name="motivo" class="form-control" rows="2" required placeholder="Motivo del reembolso..."></textarea>
+          </div>
+          <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Volver</button>
+            <button type="submit" class="btn btn-warning">Solicitar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Cambiar Habitación -->
+<div class="modal fade" id="modalCambiarHab" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius: 12px;">
+      <div class="modal-header border-0 pb-0">
+        <h6 class="fw-bold text-warning"><i class="bi bi-arrow-left-right me-2"></i>Cambiar Habitación</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info py-2 small mb-3">
+          <strong>Actual:</strong> Hab. {{ estancia.habitacion.numero }} - {{ estancia.habitacion.tipo.nombre }}
+        </div>
+        <form method="post" action="/estancias/{{ estancia.id }}/cambiar-habitacion/">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nueva Habitación</label>
+            <select name="nueva_habitacion_id" class="form-select" id="selectNuevaHab" required>
+              <option value="">Seleccionar...</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Motivo</label>
+            <textarea name="motivo" class="form-control" rows="2" required placeholder="Motivo del cambio..."></textarea>
+          </div>
+          <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Volver</button>
+            <button type="submit" class="btn btn-warning">Cambiar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
   function toggleTx(select) {
     document.getElementById('divTx').style.display = select.value === 'EFECTIVO' ? 'none' : 'block';
@@ -685,6 +764,30 @@
     t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 3500);
   }
+  function solicitarReembolso(pagoId, montoMax) {
+    document.getElementById('formReembolso').action = '/pagos/' + pagoId + '/reembolso/';
+    document.getElementById('maxReembolso').textContent = montoMax.toFixed(2);
+    document.getElementById('montoReembolso').max = montoMax;
+    new bootstrap.Modal(document.getElementById('modalReembolso')).show();
+  }
+
+  // Cargar habitaciones disponibles al abrir modal de cambio
+  document.getElementById('modalCambiarHab').addEventListener('show.bs.modal', function() {
+    fetch('/api/habitaciones-disponibles/?modalidad=DIA')
+      .then(r => r.json())
+      .then(data => {
+        const select = document.getElementById('selectNuevaHab');
+        select.innerHTML = '<option value="">Seleccionar...</option>';
+        data.habitaciones.forEach(h => {
+          if (h.id !== {{ estancia.habitacion.id }}) {
+            select.innerHTML += `<option value="${h.id}">Hab. ${h.numero} - ${h.tipo_nombre} (S/. ${h.precio_base})</option>`;
+          }
+        });
+      })
+      .catch(() => {
+        document.getElementById('selectNuevaHab').innerHTML = '<option value="">Error cargando habitaciones</option>';
+      });
+  });
 </script>
 
 {% endblock %}

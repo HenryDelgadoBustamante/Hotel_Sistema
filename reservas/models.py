@@ -40,6 +40,7 @@ class Reserva(models.Model):
     CHECKIN = 'CHECKIN'
     CHECKOUT = 'CHECKOUT'
     CANCELADA = 'CANCELADA'
+    REEMBOLSADO = 'REEMBOLSADO'
 
     ESTADO_CHOICES = [
         (PENDIENTE, 'Pendiente'),
@@ -47,6 +48,7 @@ class Reserva(models.Model):
         (CHECKIN, 'Check-In realizado'),
         (CHECKOUT, 'Check-Out realizado'),
         (CANCELADA, 'Cancelada'),
+        (REEMBOLSADO, 'Reembolsado'),
     ]
 
     DIRECTO = 'DIRECTO'
