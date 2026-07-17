@@ -4,27 +4,52 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.shortcuts import redirect
+# Auth, Dashboard, Usuarios (raíz)
 from views_frontend import (
-    login_view, logout_view, dashboard, reservas_lista, reserva_nueva,
-    reserva_detalle, checkin_directo, reserva_checkin, folio_view, agregar_cargo, registrar_pago, checkout_view,
-    housekeeping_view, housekeeping_estado, reportes_view,
-    huespedes_lista, huesped_nuevo, huesped_editar, exportar_huespedes_excel,
-    habitaciones_lista, habitacion_nueva, habitacion_editar,
-    estancias_lista, reservas_calendario, consultar_disponibilidad,
-    reserva_imprimir_ficha, folio_imprimir,
+    login_view, logout_view, dashboard,
     usuarios_lista, usuario_editar, usuario_nuevo, usuario_eliminar,
-    api_habitaciones_disponibles, api_consulta_dni, api_buscar_huesped,
-    reserva_editar, reserva_cancelar, registrar_pago_anticipo,
-    solicitar_reembolso, aprobar_reembolso, cambiar_habitacion,
-    cancelar_estancia_sin_pago, eliminar_cargo_view, editar_cargo_view,
-    tickets_lista, ticket_nuevo, ticket_detalle, ticket_iniciar,
-    ticket_resolver, ticket_cerrar, ticket_reabrir, ticket_seguimiento,
-    ticket_agregar_cargo, reembolsos_lista_admin,
-    api_ocupacion_habitaciones, api_habitaciones_housekeeping_recientes,
     mi_perfil, cambiar_password,
     recuperar_contrasena, reset_confirmar, desbloquear_usuario,
-    sesiones_activas, cerrar_sesion, actualizar_estado_habitacion, hotel_configuracion
+    sesiones_activas, cerrar_sesion,
 )
+# Hotel
+from hotel.views_frontend import (
+    habitaciones_lista, habitacion_nueva, habitacion_editar,
+    api_habitaciones_disponibles, api_habitaciones_housekeeping_recientes,
+    housekeeping_view, housekeeping_estado,
+    actualizar_estado_habitacion, hotel_configuracion,
+)
+# Huéspedes
+from huespedes.views_frontend import (
+    huespedes_lista, huesped_nuevo, huesped_editar, exportar_huespedes_excel,
+    api_consulta_dni, api_buscar_huesped,
+)
+# Reservas
+from reservas.views_frontend import (
+    reservas_lista, reserva_nueva, reserva_detalle,
+    reservas_calendario, consultar_disponibilidad,
+    reserva_imprimir_ficha, reserva_editar, reserva_cancelar,
+    registrar_pago_anticipo,
+)
+# Estancias
+from estancias.views_frontend import (
+    estancias_lista, checkin_directo, reserva_checkin,
+    folio_view, folio_imprimir, agregar_cargo, agregar_cargo_tardanza,
+    eliminar_cargo_view, editar_cargo_view, registrar_pago,
+    checkout_view, cambiar_habitacion, cancelar_estancia_sin_pago,
+    solicitar_reembolso, aprobar_reembolso, reembolsos_lista_admin,
+)
+# Atención (Tickets)
+from atencion.views_frontend import (
+    tickets_lista, ticket_nuevo, ticket_detalle, ticket_iniciar,
+    ticket_resolver, ticket_cerrar, ticket_reabrir, ticket_seguimiento,
+    ticket_agregar_cargo,
+)
+# Reportes
+from reportes.views_frontend import (
+    reportes_view, api_ocupacion_habitaciones,
+)
+# DRF
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
@@ -99,6 +124,7 @@ urlpatterns = [
     path('estancias/<int:estancia_id>/folio/', folio_view, name='folio'),
     path('estancias/<int:estancia_id>/imprimir-folio/', folio_imprimir, name='folio_imprimir'),
     path('estancias/<int:estancia_id>/cargo/', agregar_cargo, name='agregar_cargo'),
+    path('estancias/<int:estancia_id>/agregar-cargo-tardanza/', agregar_cargo_tardanza, name='agregar_cargo_tardanza'),
     path('cargos/<int:cargo_id>/eliminar/', eliminar_cargo_view, name='eliminar_cargo'),
     path('cargos/<int:cargo_id>/editar/', editar_cargo_view, name='editar_cargo'),
     path('reservas/<int:reserva_id>/imprimir-ficha/', reserva_imprimir_ficha, name='reserva_imprimir_ficha'),
